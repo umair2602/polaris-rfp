@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: rfp_system
+      POSTGRES_USER: rfp_user
+      POSTGRES_PASSWORD: rfp_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://rfp_user:rfp_password@postgres:5432/rfp_system
+      - MONGODB_URL=mongodb://mongodb:27017/rfp_system
+    depends_on:
+      - postgres
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_BASE_URL=http://backend:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  backend_uploads:

@@ -1,0 +1,51 @@
+(node:1238) [MONGOOSE] Warning: Duplicate schema index on {"memberId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Server running on port 8000
+Environment: development
+🚀 Connected to MongoDB successfully
+💾 Mode: Full MongoDB persistence
+::1 - - [04/Sep/2025:12:25:56 +0000] "GET /api/templates/ HTTP/1.1" 200 461 "-" "curl/8.7.1"
+Analyzing RFP from URL: https://www.example.com
+Fetching content from URL: https://www.example.com
+Extracted content from body tag
+Successfully extracted 187 characters from URL
+RFP from URL saved successfully: new ObjectId('68b985787b0885effef6cdd8')
+::1 - - [04/Sep/2025:12:26:32 +0000] "POST /api/rfp/analyze-url HTTP/1.1" 201 1528 "-" "curl/8.7.1"
+Analyzing RFP from URL: https://www.planning.org/consultants/rfp/9315995/
+Fetching content from URL: https://www.planning.org/consultants/rfp/9315995/
+Extracted content from selector: main
+Successfully extracted 12554 characters from URL
+RFP from URL saved successfully: new ObjectId('68b985e17b0885effef6cdda')
+::1 - - [04/Sep/2025:12:28:17 +0000] "POST /api/rfp/analyze-url HTTP/1.1" 201 16831 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:17 +0000] "GET /api/rfp/ HTTP/1.1" 200 4809 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:17 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:17 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:18 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:20 +0000] "GET /api/rfp/68b985e17b0885effef6cdda HTTP/1.1" 200 16831 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:20 +0000] "GET /api/templates/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:20 +0000] "GET /api/rfp/68b985e17b0885effef6cdda HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:20 +0000] "GET /api/templates/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+Proposal generated successfully: new ObjectId('68b985f67b0885effef6cded')
+::1 - - [04/Sep/2025:12:28:38 +0000] "POST /api/proposals/generate HTTP/1.1" 201 6875 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:38 +0000] "GET /api/proposals/68b985f67b0885effef6cded HTTP/1.1" 200 7773 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:39 +0000] "GET /api/proposals/68b985f67b0885effef6cded HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:56 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:56 +0000] "GET /api/proposals/ HTTP/1.1" 200 1295 "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:56 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:28:56 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:36 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:36 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:36 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:37 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:41 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:41 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:41 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:30:41 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:38 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:38 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:38 +0000] "GET /api/rfp/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:38 +0000] "GET /api/proposals/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:49 +0000] "GET /api/rfp/68b985e17b0885effef6cdda HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:49 +0000] "GET /api/templates/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:49 +0000] "GET /api/rfp/68b985e17b0885effef6cdda HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+::1 - - [04/Sep/2025:12:31:49 +0000] "GET /api/templates/ HTTP/1.1" 304 - "http://localhost:3002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
