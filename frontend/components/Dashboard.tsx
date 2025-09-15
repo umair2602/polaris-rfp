@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { rfpApi, proposalApi, RFP, Proposal } from '../lib/api'
+import Card, { CardHeader, CardBody } from './ui/Card'
+import Button from './ui/Button'
+import Badge from './ui/Badge'
+import { LoadingScreen } from './ui/LoadingSpinner'
 import {
   DocumentTextIcon,
   PlusIcon,
   ClockIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  ArrowTrendingUpIcon,
+  ChartBarIcon,
+  RocketLaunchIcon,
+  EyeIcon,
+  CalendarDaysIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline'
 
 export default function Dashboard() {
@@ -53,155 +63,271 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <LoadingScreen message="Loading dashboard..." />
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">{error}</div>
-          <button 
-            onClick={loadDashboardData}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <Card className="border-red-200 bg-gradient-to-r from-red-50 to-rose-50">
+        <CardBody>
+          <div className="text-center py-12">
+            <div className="text-red-600 mb-4 text-lg font-semibold">{error}</div>
+            <Button 
+              onClick={loadDashboardData}
+              variant="danger"
+              gradient
+            >
+              Retry
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
     )
   }
 
   return (
-    <div>
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Dashboard
-          </h2>
+          </h1>
+          <p className="text-lg text-gray-600">
+            Welcome back! Here's what's happening with your proposals.
+          </p>
         </div>
-        <div className="mt-4 flex md:mt-0 md:ml-4">
-          <Link
+        
+        <div className="flex items-center space-x-4">
+          <Button
+            as={Link}
             href="/rfps/upload"
-            className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            variant="primary"
+            gradient
+            icon={<PlusIcon className="h-5 w-5" />}
           >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
             Upload RFP
-          </Link>
+          </Button>
+          <Button
+            as={Link}
+            href="/proposals"
+            variant="secondary"
+            icon={<RocketLaunchIcon className="h-5 w-5" />}
+          >
+            New Proposal
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="mt-8">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <DocumentTextIcon className="h-6 w-6 text-gray-400" aria-hidden="true" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total RFPs</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.totalRFPs}</dd>
-                  </dl>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card hover gradient>
+          <CardBody>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+                <DocumentTextIcon className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total RFPs</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.totalRFPs}</p>
+                <div className="flex items-center mt-2">
+                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">All time</span>
                 </div>
               </div>
             </div>
-          </div>
+          </CardBody>
+        </Card>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <ClockIcon className="h-6 w-6 text-yellow-400" aria-hidden="true" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active Proposals</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.activeProposals}</dd>
-                  </dl>
+        <Card hover gradient>
+          <CardBody>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl">
+                <ClockIcon className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Active Proposals</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.activeProposals}</p>
+                <div className="flex items-center mt-2">
+                  <ChartBarIcon className="h-4 w-4 text-yellow-500 mr-1" />
+                  <span className="text-sm text-yellow-600 font-medium">In progress</span>
                 </div>
               </div>
             </div>
-          </div>
+          </CardBody>
+        </Card>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <CheckCircleIcon className="h-6 w-6 text-green-400" aria-hidden="true" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Completed</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.completedProposals}</dd>
-                  </dl>
+        <Card hover gradient>
+          <CardBody>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                <CheckCircleIcon className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Completed</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.completedProposals}</p>
+                <div className="flex items-center mt-2">
+                  <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+                  <span className="text-sm text-green-600 font-medium">Submitted</span>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </CardBody>
+        </Card>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent RFPs */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Recent RFPs</h3>
-          </div>
-          <div className="px-6 py-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
+                  <DocumentTextIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Recent RFPs</h3>
+                  <p className="text-sm text-gray-600">Latest uploaded requests</p>
+                </div>
+              </div>
+              <Button
+                as={Link}
+                href="/rfps"
+                variant="ghost"
+                size="sm"
+                icon={<EyeIcon className="h-4 w-4" />}
+              >
+                View All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardBody>
             {recentRFPs.length > 0 ? (
-              <ul className="space-y-3">
+              <div className="space-y-4">
                 {recentRFPs.map((rfp) => (
-                  <li key={rfp._id} className="flex items-center space-x-3">
-                    <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                  <div key={rfp._id} className="flex items-center space-x-4 p-3 rounded-xl hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-colors group">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center group-hover:from-purple-200 group-hover:to-pink-200 transition-colors">
+                      <DocumentTextIcon className="h-5 w-5 text-purple-600" />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <Link href={`/rfps/${rfp._id}`} className="text-sm font-medium text-gray-900 hover:text-primary-600">
+                      <Link href={`/rfps/${rfp._id}`} className="text-sm font-semibold text-gray-900 hover:text-purple-600 transition-colors">
                         {rfp.title}
                       </Link>
-                      <p className="text-xs text-gray-500">{rfp.clientName} • {rfp.projectType}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <div className="flex items-center text-xs text-gray-500">
+                          <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                          {rfp.clientName}
+                        </div>
+                        <Badge variant="secondary" size="sm">
+                          {rfp.projectType}
+                        </Badge>
+                      </div>
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className="text-gray-500 text-sm">No RFPs uploaded yet</p>
+              <div className="text-center py-8">
+                <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <p className="text-gray-600 font-medium">No RFPs uploaded yet</p>
+                <p className="text-gray-500 text-sm mt-1">Upload your first RFP to get started</p>
+                <Button
+                  as={Link}
+                  href="/rfps/upload"
+                  className="mt-4"
+                  variant="primary"
+                  gradient
+                  size="sm"
+                  icon={<PlusIcon className="h-4 w-4" />}
+                >
+                  Upload RFP
+                </Button>
+              </div>
             )}
-          </div>
-        </div>
+          </CardBody>
+        </Card>
 
         {/* Recent Proposals */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Proposals</h3>
-          </div>
-          <div className="px-6 py-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+                  <RocketLaunchIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Recent Proposals</h3>
+                  <p className="text-sm text-gray-600">Latest proposal submissions</p>
+                </div>
+              </div>
+              <Button
+                as={Link}
+                href="/proposals"
+                variant="ghost"
+                size="sm"
+                icon={<EyeIcon className="h-4 w-4" />}
+              >
+                View All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardBody>
             {recentProposals.length > 0 ? (
-              <ul className="space-y-3">
-                {recentProposals.map((proposal) => (
-                  <li key={proposal._id} className="flex items-center space-x-3">
-                    <DocumentTextIcon className="h-5 w-5 text-gray-400" />
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/proposals/${proposal._id}`} className="text-sm font-medium text-gray-900 hover:text-primary-600">
-                        {proposal.title}
-                      </Link>
-                      <p className="text-xs text-gray-500">
-                        Status: {proposal.status} • Updated {new Date(proposal.updatedAt).toLocaleDateString()}
-                      </p>
+              <div className="space-y-4">
+                {recentProposals.map((proposal) => {
+                  const getStatusVariant = (status: string) => {
+                    switch (status) {
+                      case 'draft': return 'warning'
+                      case 'submitted': return 'success'
+                      case 'in_review': return 'info'
+                      default: return 'secondary'
+                    }
+                  }
+
+                  return (
+                    <div key={proposal._id} className="flex items-center space-x-4 p-3 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-colors group">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg flex items-center justify-center group-hover:from-green-200 group-hover:to-emerald-200 transition-colors">
+                        <RocketLaunchIcon className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/proposals/${proposal._id}`} className="text-sm font-semibold text-gray-900 hover:text-green-600 transition-colors">
+                          {proposal.title}
+                        </Link>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <Badge variant={getStatusVariant(proposal.status)} size="sm">
+                            {proposal.status}
+                          </Badge>
+                          <div className="flex items-center text-xs text-gray-500">
+                            <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                            {new Date(proposal.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  )
+                })}
+              </div>
             ) : (
-              <p className="text-gray-500 text-sm">No proposals created yet</p>
+              <div className="text-center py-8">
+                <RocketLaunchIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <p className="text-gray-600 font-medium">No proposals created yet</p>
+                <p className="text-gray-500 text-sm mt-1">Create your first proposal from an RFP</p>
+                <Button
+                  as={Link}
+                  href="/proposals"
+                  className="mt-4"
+                  variant="success"
+                  gradient
+                  size="sm"
+                  icon={<RocketLaunchIcon className="h-4 w-4" />}
+                >
+                  Create Proposal
+                </Button>
+              </div>
             )}
-          </div>
-        </div>
+          </CardBody>
+        </Card>
       </div>
     </div>
   )

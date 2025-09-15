@@ -1,5 +1,5 @@
 const express = require('express');
-const mockDb = require('../utils/mockData');
+const fileStorage = require('../utils/fileStorage');
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.post('/generate', async (req, res) => {
     }
 
     // Get RFP data
-    const rfp = await mockDb.findRFPById(rfpId);
+    const rfp = await fileStorage.findRFPById(rfpId);
     if (!rfp) {
       return res.status(404).json({ error: 'RFP not found' });
     }
@@ -35,7 +35,7 @@ router.post('/generate', async (req, res) => {
       lastModifiedBy: 'admin'  // Would use req.user.username with auth
     };
 
-    const proposal = await mockDb.createProposal(proposalData);
+    const proposal = await fileStorage.createProposal(proposalData);
 
     console.log('✅ Proposal generated successfully:', proposal._id);
     res.status(201).json({
@@ -60,11 +60,12 @@ router.post('/generate', async (req, res) => {
 // Get all proposals
 router.get('/', async (req, res) => {
   try {
-    const proposals = await mockDb.findProposals();
+    const proposals = await fileStorage.findProposals();
+    const allRfps = await fileStorage.findRFPs();
     
     // Add RFP info and remove large sections for list view
     const enrichedProposals = proposals.map(proposal => {
-      const rfp = mockDb.rfps.find(r => r._id === proposal.rfpId);
+      const rfp = allRfps.find(r => r._id === proposal.rfpId);
       const { sections, ...simplified } = proposal;
       
       return {
@@ -87,14 +88,14 @@ router.get('/', async (req, res) => {
 // Get single proposal
 router.get('/:id', async (req, res) => {
   try {
-    const proposal = await mockDb.findProposalById(req.params.id);
+    const proposal = await fileStorage.findProposalById(req.params.id);
     
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
     // Add RFP info
-    const rfp = await mockDb.findRFPById(proposal.rfpId);
+    const rfp = await fileStorage.findRFPById(proposal.rfpId);
     
     res.json({
       ...proposal,
@@ -129,7 +130,7 @@ router.put('/:id', async (req, res) => {
 
     updates.lastModifiedBy = 'admin'; // Would use req.user.username with auth
 
-    const proposal = await mockDb.updateProposal(req.params.id, updates);
+    const proposal = await fileStorage.updateProposal(req.params.id, updates);
 
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
@@ -145,7 +146,7 @@ router.put('/:id', async (req, res) => {
 // Delete proposal
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await mockDb.deleteProposal(req.params.id);
+    const deleted = await fileStorage.deleteProposal(req.params.id);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Proposal not found' });

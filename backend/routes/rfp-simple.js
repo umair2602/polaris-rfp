@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const mockDb = require('../utils/mockData');
+const fileStorage = require('../utils/fileStorage');
 const rfpAnalyzer = require('../services/rfpAnalyzer');
 
 const router = express.Router();
@@ -40,7 +40,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       clientName: analysis.clientName || extractClientFromFilename(req.file.originalname) || 'Unknown Client'
     };
 
-    const rfp = await mockDb.createRFP(rfpData);
+    const rfp = await fileStorage.createRFP(rfpData);
     
     console.log('✅ RFP saved successfully:', rfp._id);
     res.status(201).json(rfp);
@@ -54,10 +54,46 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// Analyze RFP from URL
+router.post('/analyze-url', async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    console.log('📄 Analyzing RFP from URL:', url);
+    
+    // Analyze the RFP from URL
+    const analysis = await rfpAnalyzer.analyzeRFP(url, url);
+    
+    // Create RFP record
+    const rfpData = {
+      ...analysis,
+      fileName: `URL_${Date.now()}`,
+      fileSize: 0, // URLs don't have file size
+      clientName: analysis.clientName || 'Unknown Client'
+    };
+
+    const rfp = await fileStorage.createRFP(rfpData);
+    
+    console.log('✅ RFP from URL saved successfully:', rfp._id);
+    res.status(201).json(rfp);
+    
+  } catch (error) {
+    console.error('❌ RFP URL analysis error:', error);
+    res.status(500).json({ 
+      error: 'Failed to analyze RFP from URL',
+      message: error.message 
+    });
+  }
+});
+
 // Get all RFPs
 router.get('/', async (req, res) => {
   try {
-    const rfps = await mockDb.findRFPs();
+    const rfps = await fileStorage.findRFPs();
     
     // Remove large text content for list view
     const simplifiedRFPs = rfps.map(rfp => {
@@ -75,7 +111,7 @@ router.get('/', async (req, res) => {
 // Get single RFP
 router.get('/:id', async (req, res) => {
   try {
-    const rfp = await mockDb.findRFPById(req.params.id);
+    const rfp = await fileStorage.findRFPById(req.params.id);
     
     if (!rfp) {
       return res.status(404).json({ error: 'RFP not found' });
@@ -103,7 +139,7 @@ router.put('/:id', async (req, res) => {
       }
     });
 
-    const rfp = await mockDb.updateRFP(req.params.id, updates);
+    const rfp = await fileStorage.updateRFP(req.params.id, updates);
 
     if (!rfp) {
       return res.status(404).json({ error: 'RFP not found' });
@@ -119,7 +155,7 @@ router.put('/:id', async (req, res) => {
 // Delete RFP
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await mockDb.deleteRFP(req.params.id);
+    const deleted = await fileStorage.deleteRFP(req.params.id);
     
     if (!deleted) {
       return res.status(404).json({ error: 'RFP not found' });

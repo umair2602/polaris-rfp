@@ -2,87 +2,86 @@
 > rfp-proposal-frontend@1.0.0 dev
 > next dev
 
- ⚠ Port 3000 is in use, trying 3001 instead.
- ⚠ Port 3001 is in use, trying 3002 instead.
   ▲ Next.js 14.2.32
-  - Local:        http://localhost:3002
+  - Local:        http://localhost:3000
   - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.4s
+ ✓ Ready in 1319ms
  ○ Compiling / ...
- ✓ Compiled / in 865ms (378 modules)
- ✓ Compiled in 95ms (378 modules)
- GET / 200 in 1073ms
- ✓ Compiled in 70ms (262 modules)
- ✓ Compiled in 142ms (212 modules)
- ✓ Compiled in 65ms (212 modules)
- ✓ Compiled in 79ms (212 modules)
- ✓ Compiled / in 422ms (378 modules)
- GET / 200 in 479ms
- GET / 200 in 39ms
- ✓ Compiled /rfps/upload in 281ms (446 modules)
- ✓ Compiled /rfps/[id] in 254ms (458 modules)
- ✓ Compiled /proposals/[id] in 119ms (486 modules)
- ✓ Compiled /templates in 179ms (494 modules)
- ✓ Compiled /content in 96ms (506 modules)
- GET /content 200 in 62ms
- ✓ Compiled /proposals in 273ms (460 modules)
- GET /proposals 200 in 43ms
- GET /content 200 in 37ms
- ✓ Compiled /rfps in 230ms (465 modules)
- ✓ Compiled / in 76ms (470 modules)
- ✓ Compiled /templates in 92ms (480 modules)
- ✓ Compiled in 392ms (480 modules)
- ✓ Compiled /proposals/[id] in 185ms (466 modules)
- ✓ Compiled in 362ms (456 modules)
- ✓ Compiled in 253ms (456 modules)
- GET /proposals/68b981bbbfb921c2c8165871 200 in 72ms
- ✓ Compiled /proposals in 79ms (462 modules)
- ✓ Compiled /templates in 180ms (470 modules)
- ✓ Compiled /content in 86ms (482 modules)
- ✓ Compiled in 334ms (468 modules)
- ✓ Compiled in 217ms (468 modules)
- ⨯ ./pages/templates.tsx
-Error: 
-  [31mx[0m Unexpected token `Layout`. Expected jsx identifier
-    ,-[[36;1;4m/Users/umair/Desktop/claude/polaris-rfp/frontend/pages/templates.tsx[0m:64:1]
- [2m64[0m |   }
- [2m65[0m | 
- [2m66[0m |   return (
- [2m67[0m |     <Layout>
-    : [31;1m     ^^^^^^[0m
- [2m68[0m |       <Head>
- [2m69[0m |         <title>Templates - RFP Proposal System</title>
- [2m70[0m |       </Head>
-    `----
-
-Caused by:
-    Syntax Error
- ✓ Compiled in 221ms (468 modules)
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/umair/Desktop/claude/polaris-rfp/frontend/.next/cache/webpack/client-development/1.pack.gz_' -> '/Users/umair/Desktop/claude/polaris-rfp/frontend/.next/cache/webpack/client-development/1.pack.gz'
- GET /proposals 200 in 54ms
- GET /proposals 200 in 14ms
- ✓ Compiled /rfps in 242ms (462 modules)
- ✓ Compiled / in 105ms (474 modules)
- ✓ Compiled /rfps/[id] in 85ms (480 modules)
- ✓ Compiled in 305ms (440 modules)
- ✓ Compiled in 192ms (293 modules)
- ✓ Compiled in 163ms (293 modules)
- ✓ Compiled in 177ms (293 modules)
- ✓ Compiled / in 161ms (450 modules)
- ✓ Compiled in 124ms (298 modules)
- ✓ Compiled /rfps/upload in 262ms (478 modules)
- ✓ Compiled in 266ms (466 modules)
- ✓ Compiled in 181ms (466 modules)
- GET /rfps/upload 200 in 124ms
- ✓ Compiled /_error in 65ms (458 modules)
- GET /_next/static/webpack/2a599dbdce5945f6.webpack.hot-update.json 404 in 85ms
- ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
- GET /rfps/upload 200 in 13ms
- ✓ Compiled / in 94ms (468 modules)
- ✓ Compiled /proposals/[id] in 241ms (490 modules)
- GET / 200 in 41ms
- GET / 200 in 30ms
- ✓ Compiled in 256ms (456 modules)
- ✓ Compiled /rfps/[id] in 98ms (460 modules)
+ ✓ Compiled / in 662ms (378 modules)
+ ✓ Compiled in 91ms (378 modules)
+ GET / 200 in 843ms
+ GET / 200 in 20ms
+ ✓ Compiled /rfps/upload in 187ms (448 modules)
+ ✓ Compiled /rfps/[id] in 120ms (460 modules)
+ ✓ Compiled /proposals/[id] in 118ms (488 modules)
+ ✓ Compiled in 199ms (302 modules)
+ ✓ Compiled in 67ms (302 modules)
+ ✓ Compiled in 299ms (456 modules)
+ ✓ Compiled in 281ms (458 modules)
+ ✓ Compiled in 164ms (458 modules)
+ ✓ Compiled in 131ms (458 modules)
+ ✓ Compiled in 113ms (458 modules)
+ ✓ Compiled in 151ms (458 modules)
+ ✓ Compiled in 216ms (460 modules)
+ ✓ Compiled in 61ms (304 modules)
+ ✓ Compiled in 76ms (304 modules)
+ ✓ Compiled in 63ms (304 modules)
+ ✓ Compiled in 68ms (304 modules)
+ ✓ Compiled in 105ms (304 modules)
+ ✓ Compiled /googledrive in 327ms (474 modules)
+ ✓ Compiled /content in 196ms (477 modules)
+ ✓ Compiled / in 153ms (486 modules)
+ ✓ Compiled /rfps/upload in 121ms (510 modules)
+ ✓ Compiled /rfps/[id] in 70ms (496 modules)
+ ✓ Compiled /proposals/[id] in 84ms (514 modules)
+ ✓ Compiled in 414ms (472 modules)
+ ✓ Compiled in 126ms (309 modules)
+ ✓ Compiled in 302ms (309 modules)
+ ✓ Compiled in 168ms (309 modules)
+ ✓ Compiled in 97ms (309 modules)
+ ✓ Compiled in 160ms (309 modules)
+ ✓ Compiled in 88ms (309 modules)
+ ✓ Compiled in 133ms (309 modules)
+ ✓ Compiled in 164ms (309 modules)
+ ✓ Compiled in 126ms (309 modules)
+ ✓ Compiled in 121ms (309 modules)
+ ✓ Compiled in 187ms (309 modules)
+ ✓ Compiled in 191ms (309 modules)
+ ✓ Compiled in 154ms (309 modules)
+ ✓ Compiled in 105ms (309 modules)
+ ✓ Compiled in 165ms (309 modules)
+ ✓ Compiled in 100ms (309 modules)
+ ✓ Compiled in 190ms (309 modules)
+ ✓ Compiled in 201ms (309 modules)
+ ✓ Compiled in 211ms (309 modules)
+ ✓ Compiled in 173ms (309 modules)
+ ✓ Compiled in 156ms (309 modules)
+ ✓ Compiled in 185ms (309 modules)
+ GET /proposals/persist_6 200 in 81ms
+ GET /proposals/persist_6 200 in 20ms
+ ✓ Compiled / in 245ms (480 modules)
+ ✓ Compiled /rfps in 226ms (490 modules)
+ ✓ Compiled /proposals in 327ms (506 modules)
+ ✓ Compiled in 314ms (494 modules)
+ ✓ Compiled in 225ms (494 modules)
+ ✓ Compiled in 239ms (496 modules)
+ ✓ Compiled in 326ms (484 modules)
+ ✓ Compiled in 352ms (484 modules)
+ ✓ Compiled / in 241ms (492 modules)
+ GET / 200 in 294ms
+ ✓ Compiled in 355ms (483 modules)
+ ✓ Compiled in 294ms (483 modules)
+ ✓ Compiled in 298ms (483 modules)
+ ✓ Compiled /rfps/[id] in 294ms (491 modules)
+ ✓ Compiled /proposals/[id] in 160ms (500 modules)
+ ✓ Compiled /googledrive in 435ms (514 modules)
+ GET / 200 in 57ms
+ ✓ Compiled /rfps/upload in 172ms (538 modules)
+ ✓ Compiled / in 306ms (508 modules)
+ GET / 200 in 173ms
+ ✓ Compiled /templates in 133ms (518 modules)
+ ✓ Compiled /rfps/[id] in 129ms (488 modules)
+ ✓ Compiled /proposals/[id] in 257ms (506 modules)
+ ✓ Compiled /rfps/upload in 127ms (532 modules)

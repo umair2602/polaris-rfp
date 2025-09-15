@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Layout from '../../components/Layout'
 import TextEditor from '../../components/TextEditor'
 import { proposalApi, Proposal } from '../../lib/api'
+import api from '../../lib/api'
 import {
   DocumentTextIcon,
   CalendarDaysIcon,
@@ -13,7 +14,8 @@ import {
   TrashIcon,
   PlusIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  CloudArrowUpIcon
 } from '@heroicons/react/24/outline'
 
 export default function ProposalDetail() {
@@ -27,6 +29,7 @@ export default function ProposalDetail() {
   const [isAddingSection, setIsAddingSection] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     if (id && typeof id === 'string') {
@@ -126,6 +129,26 @@ export default function ProposalDetail() {
       alert('Failed to add section. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const uploadToGoogleDrive = async () => {
+    if (!proposal) return
+    
+    setUploading(true)
+    try {
+      const fileName = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_Proposal.json`
+      
+      const response = await api.post(`/googledrive/upload-proposal/${proposal._id}`, {
+        fileName
+      })
+      
+      alert(`Proposal uploaded successfully to Google Drive!\nFile: ${response.data.file.name}`)
+    } catch (error) {
+      console.error('Error uploading to Google Drive:', error)
+      alert('Failed to upload to Google Drive. Please ensure Google Drive is configured and try again.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -297,6 +320,25 @@ export default function ProposalDetail() {
                     </div>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6 flex space-x-3 md:mt-0 md:ml-4">
+                <button
+                  onClick={uploadToGoogleDrive}
+                  disabled={uploading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin -ml-1 mr-3 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <CloudArrowUpIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+                      Upload to Drive
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

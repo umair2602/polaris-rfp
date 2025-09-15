@@ -1,10 +1,18 @@
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { 
   DocumentTextIcon, 
   FolderIcon, 
   UserGroupIcon, 
-  CogIcon 
+  CogIcon,
+  CloudIcon,
+  Bars3Icon,
+  XMarkIcon,
+  BellIcon,
+  UserCircleIcon,
+  ChevronDownIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 interface LayoutProps {
@@ -12,43 +20,136 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter()
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: FolderIcon },
-    { name: 'RFPs', href: '/rfps', icon: DocumentTextIcon },
-    { name: 'Proposals', href: '/proposals', icon: DocumentTextIcon },
-    { name: 'Templates', href: '/templates', icon: CogIcon },
-    { name: 'Content Library', href: '/content', icon: UserGroupIcon },
+    { name: 'Dashboard', href: '/', icon: FolderIcon, current: router.pathname === '/' },
+    { name: 'RFPs', href: '/rfps', icon: DocumentTextIcon, current: router.pathname.startsWith('/rfps') },
+    { name: 'Proposals', href: '/proposals', icon: DocumentTextIcon, current: router.pathname.startsWith('/proposals') },
+    { name: 'Templates', href: '/templates', icon: CogIcon, current: router.pathname.startsWith('/templates') },
+    { name: 'Content Library', href: '/content', icon: UserGroupIcon, current: router.pathname === '/content' },
+    { name: 'Google Drive', href: '/googledrive', icon: CloudIcon, current: router.pathname === '/googledrive' },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 transition-opacity lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="flex items-center justify-center h-16 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">RFP System</h1>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <SparklesIcon className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-white">RFP System</h1>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-white hover:text-gray-200"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
         
-        <nav className="mt-5 px-2">
-          <div className="space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-gray-700 hover:text-gray-900 hover:bg-gray-50 group flex items-center px-2 py-2 text-sm font-medium rounded-md"
-              >
-                <item.icon className="text-gray-400 mr-3 flex-shrink-0 h-6 w-6" aria-hidden="true" />
-                {item.name}
-              </Link>
-            ))}
-          </div>
+        <nav className="mt-6 px-3 space-y-2">
+          {navigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+                item.current 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105' 
+                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100 hover:shadow-md hover:transform hover:scale-105'
+              }`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <item.icon className={`mr-4 flex-shrink-0 h-6 w-6 transition-colors ${
+                item.current ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'
+              }`} />
+              <span className="font-medium">{item.name}</span>
+              {item.current && (
+                <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
+              )}
+            </Link>
+          ))}
         </nav>
+
+        {/* Sidebar footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl">
+            <div className="flex items-center space-x-3">
+              <UserCircleIcon className="h-8 w-8 text-gray-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Admin User</p>
+                <p className="text-xs text-gray-500">admin@rfpsystem.com</p>
+              </div>
+            </div>
+            <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="py-6">
+      <div className="lg:pl-64">
+        {/* Top navigation bar */}
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200/50 sticky top-0 z-30">
+          <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <Bars3Icon className="h-6 w-6" />
+              </button>
+              <div className="hidden sm:block">
+                <div className="relative">
+                  <input
+                    type="search"
+                    placeholder="Search proposals, RFPs..."
+                    className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all duration-200"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 relative">
+                <BellIcon className="h-6 w-6" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">3</span>
+                </div>
+              </button>
+              
+              <div className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                <UserCircleIcon className="h-8 w-8 text-gray-600" />
+                <div className="hidden sm:block">
+                  <p className="text-sm font-medium text-gray-900">Admin</p>
+                  <p className="text-xs text-gray-500">Online</p>
+                </div>
+                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main content area */}
+        <main className="min-h-screen">
+          <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
             </div>

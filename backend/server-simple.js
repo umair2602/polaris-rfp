@@ -6,8 +6,9 @@ require('dotenv').config();
 
 const rfpRoutes = require('./routes/rfp-simple');
 const proposalRoutes = require('./routes/proposals-simple');
-const templateRoutes = require('./routes/templates');
+const templateRoutes = require('./routes/templates-simple');
 const contentRoutes = require('./routes/content');
+const googleDriveRoutes = require('./routes/googledrive-simple');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -27,6 +28,7 @@ app.use('/api/rfp', rfpRoutes);
 app.use('/api/proposals', proposalRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/googledrive', googleDriveRoutes);
 
 // Health check
 app.get('/', (req, res) => {
