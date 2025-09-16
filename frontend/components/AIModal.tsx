@@ -34,7 +34,7 @@ export default function AIModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center  "
+      className="fixed inset-0 z-50 flex items-center justify-center "
       onClick={handleClose}
     >
       <div
@@ -56,7 +56,8 @@ export default function AIModal({
 
         {selectedText && (
           <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
-            <p className="text-gray-600 mb-1">Selected: "{selectedText}"</p>
+            <p className="text-gray-600 mb-1 font-medium">Selected text:</p>
+            <p className="text-gray-700 italic">"{selectedText}"</p>
           </div>
         )}
 
@@ -68,9 +69,9 @@ export default function AIModal({
             <textarea
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="e.g., 'Make this more professional'"
+              placeholder="e.g., 'Make this more professional', 'Rewrite this more concisely', 'Add technical details', 'Convert to bullet points'"
               className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-              rows={2}
+              rows={3}
             />
           </div>
 

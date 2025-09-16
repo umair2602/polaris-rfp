@@ -8,6 +8,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import AIModal from "./AIModal";
+import { aiApi } from "../lib/api";
 
 interface TextEditorProps {
   value: string;
@@ -111,80 +112,52 @@ export default function TextEditor({
     }, 0); // 100ms debounce
   };
 
-  // AI functionality (frontend simulation)
+  // AI functionality with real OpenAI API
   const handleAIEdit = async (prompt: string) => {
     setIsAILoading(true);
 
-    // Simulate AI processing delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
     try {
-      // Simulate AI response based on prompt
       let editedText = value;
 
       if (selectedText) {
         // If text is selected, apply AI to that specific text
-        const aiResponse = simulateAIResponse(selectedText, prompt);
-        editedText = value.replace(selectedText, aiResponse);
+        const response = await aiApi.editText({
+          selectedText,
+          prompt,
+        });
+
+        if (response.data.success) {
+          editedText = value.replace(selectedText, response.data.editedText);
+        } else {
+          throw new Error(response.data.error || "AI edit failed");
+        }
       } else {
         // If no text selected, apply AI to entire content
-        editedText = simulateAIResponse(value, prompt);
+        const response = await aiApi.editText({
+          text: value,
+          prompt,
+        });
+
+        if (response.data.success) {
+          editedText = response.data.editedText;
+        } else {
+          throw new Error(response.data.error || "AI edit failed");
+        }
       }
 
       onChange(editedText);
       setShowAIPanel(false);
-    } catch (error) {
+      setSelectedText(""); // Clear selection after successful edit
+    } catch (error: any) {
       console.error("AI edit failed:", error);
-      alert("AI edit failed. Please try again.");
+      const errorMessage =
+        error.response?.data?.error ||
+        error.message ||
+        "AI edit failed. Please try again.";
+      alert(errorMessage);
     } finally {
       setIsAILoading(false);
     }
-  };
-
-  // Simulate AI response (replace with real API call later)
-  const simulateAIResponse = (text: string, prompt: string) => {
-    const promptLower = prompt.toLowerCase();
-
-    if (
-      promptLower.includes("professional") ||
-      promptLower.includes("formal")
-    ) {
-      return text.replace(/\b(we|i|you)\b/g, (match) => {
-        const replacements: { [key: string]: string } = {
-          we: "We",
-          i: "I",
-          you: "the client",
-        };
-        return replacements[match.toLowerCase()] || match;
-      });
-    }
-
-    if (promptLower.includes("concise") || promptLower.includes("shorter")) {
-      return text
-        .replace(/\s+/g, " ")
-        .replace(/\s*,\s*/g, ", ")
-        .trim();
-    }
-
-    if (promptLower.includes("technical") || promptLower.includes("detailed")) {
-      return (
-        text +
-        "\n\n**Technical Implementation Details:**\n- Advanced architecture patterns\n- Scalable infrastructure design\n- Performance optimization strategies"
-      );
-    }
-
-    if (promptLower.includes("bullet") || promptLower.includes("list")) {
-      return text.replace(/([.!?])\s+/g, "$1\n• ").replace(/^/, "• ");
-    }
-
-    if (promptLower.includes("improve") || promptLower.includes("better")) {
-      return text
-        .replace(/\b(good|nice|okay)\b/g, "excellent")
-        .replace(/\b(bad|terrible|awful)\b/g, "suboptimal");
-    }
-
-    // Default: add some enhancement
-    return `**Enhanced Content:**\n\n${text}\n\n*This content has been improved using AI assistance.*`;
   };
 
   const formatText = (format: string) => {
