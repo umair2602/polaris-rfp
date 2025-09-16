@@ -413,23 +413,13 @@ export default function TextEditor({
       )}
 
       {/* AI Modal */}
-      {showAIPanel && (
-        <div
-          className="absolute z-50"
-          style={{
-            top: `${Math.max(0, cursorPosition.top + 40)}px`, // Position below the button, but not above screen
-            left: `${Math.max(0, cursorPosition.left)}px`, // Ensure it doesn't go off the left edge
-          }}
-        >
-          <AIModal
-            isOpen={showAIPanel}
-            onClose={() => setShowAIPanel(false)}
-            onApply={handleAIEdit}
-            selectedText={selectedText}
-            isLoading={isAILoading}
-          />
-        </div>
-      )}
+      <AIModal
+        isOpen={showAIPanel}
+        onClose={() => setShowAIPanel(false)}
+        onApply={handleAIEdit}
+        selectedText={selectedText}
+        isLoading={isAILoading}
+      />
     </div>
   );
 }
