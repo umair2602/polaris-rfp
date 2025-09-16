@@ -141,5 +141,22 @@ export const aiApi = {
     contentType?: string;
   }) => api.post("/api/ai/generate-content", data),
 };
+export const proposalApiPdf = {
+  generate: (data: {
+    rfpId: string;
+    templateId: string;
+    title: string;
+    customContent?: any;
+  }) => api.post<Proposal>("/api/proposals/generate", data),
+  list: () => api.get<Proposal[]>("/api/proposals/"),
+  get: (id: string) => api.get<Proposal>(`/api/proposals/${id}`),
+  update: (id: string, data: any) =>
+    api.put<Proposal>(`/api/proposals/${id}`, data),
+  delete: (id: string) => api.delete(`/api/proposals/${id}`),
+
+  // ✅ FIXED ENDPOINT
+  exportPdf: (id: string) =>
+    api.get(`/api/proposals/${id}/export-pdf`, { responseType: "blob" }),
+};
 
 export default api;
