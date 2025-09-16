@@ -1,6 +1,7 @@
 const express = require("express");
 const Proposal = require("../models/Proposal");
 const RFP = require("../models/RFP");
+const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const router = express.Router();
@@ -185,7 +186,7 @@ router.get("/:id/export", async (req, res) => {
         version: proposal.version,
       },
     };
-
+    console.log("exportData", exportData);
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${proposal.title.replace(/\s+/g, "_")}.json"`
@@ -202,12 +203,19 @@ router.get("/:id/export-pdf", async (req, res) => {
   try {
     const proposal = await Proposal.findById(req.params.id).populate(
       "rfpId",
-      "title clientName projectType keyRequirements deliverables"
+      "title clientName projectType keyRequirements deliverables budgetRange submissionDeadline location contactInformation"
     );
 
     if (!proposal) {
       return res.status(404).json({ error: "Proposal not found" });
     }
+
+    // Get company information
+    const company = await Company.findOne().sort({ createdAt: -1 });
+
+    // Console log the data for debugging
+    console.log("Proposal data:", JSON.stringify(proposal, null, 2));
+    console.log("Company data:", JSON.stringify(company, null, 2));
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -289,57 +297,133 @@ router.get("/:id/export-pdf", async (req, res) => {
     addHeaderLogos();
 
     // ---------------- COVER PAGE ----------------
-    doc
-      .fontSize(24)
-      .fillColor("#1a202c")
-      .text(proposal.title, { align: "center" });
+    // Title
+    if (proposal.title) {
+      doc
+        .fontSize(24)
+        .fillColor("#1a202c")
+        .text(proposal.title, { align: "center" });
+      doc.moveDown(4);
+    }
 
-    doc.moveDown(2);
+    // Submitted by section - only show if company name exists
+    if (company?.name) {
+      doc
+        .fontSize(14)
+        .fillColor("#1a202c")
+        .text(`Submitted by: ${company.name}`, { align: "center" });
 
-    doc
-      .fontSize(12)
-      .fillColor("#4a5568")
-      .text(`Submitted to: ${proposal.rfpId?.clientName || "Unknown Client"}`, {
-        align: "center",
-      });
+      doc.moveDown(1.5);
+    }
 
-    doc.moveDown(0.5);
-    doc.text(`Project Type: ${proposal.rfpId?.projectType || "N/A"}`, {
-      align: "center",
-    });
+    // Contact details - using actual company data
+    if (company) {
+      // Contact person - using a default since it's not in the company data
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text("Saxon Metzger, President", { align: "center" });
+      doc.moveDown(0.5);
 
-    doc.moveDown(0.5);
-    doc.text(`Status: ${proposal.status || "Draft"}`, { align: "center" });
+      if (company.email) {
+        doc
+          .fontSize(12)
+          .fillColor("#4a5568")
+          .text(company.email, { align: "center" });
+        doc.moveDown(0.5);
+      }
 
-    doc.moveDown(2);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, { align: "center" });
+      if (company.phone) {
+        doc
+          .fontSize(12)
+          .fillColor("#4a5568")
+          .text(company.phone, { align: "center" });
+        doc.moveDown(0.5);
+      }
+    }
+
+    // Additional proposal information
+    doc.moveDown(1);
+
+    // Submitted to information
+    if (proposal.rfpId?.clientName) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Submitted to: ${proposal.rfpId.clientName}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
+
+    // Project type
+    if (proposal.rfpId?.projectType) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(
+          `Project Type: ${proposal.rfpId.projectType
+            .replace(/_/g, " ")
+            .toUpperCase()}`,
+          { align: "center" }
+        );
+      doc.moveDown(0.5);
+    }
+
+    // Submission deadline
+    if (proposal.rfpId?.submissionDeadline) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Submission Deadline: ${proposal.rfpId.submissionDeadline}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
+
+    // Location
+    if (proposal.rfpId?.location) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Location: ${proposal.rfpId.location}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
 
     doc.addPage();
 
     // ---------------- SECTIONS ----------------
-    Object.entries(proposal.sections || {}).forEach(
-      ([sectionName, sectionData]) => {
-        // Section title
-        doc.fontSize(16).fillColor("#1E4E9E").text(sectionName);
-
-        doc.moveDown(0.5);
-
-        // Section content
-        if (sectionData.content && sectionData.content.includes("|")) {
-          renderTable(doc, sectionData.content);
-        } else {
-          doc
-            .fontSize(11)
-            .fillColor("#000000")
-            .text(sectionData.content || "No content available", {
-              align: "justify",
-              lineGap: 6,
-            });
-        }
-
-        doc.moveDown(1.5);
-      }
+    // Generate sections using helper functions
+    const contentLibrary = require("../services/contentLibrary");
+    const sections = generateProposalSections(
+      proposal.rfpId,
+      proposal.templateId,
+      proposal.customContent || {}
     );
+
+    Object.entries(sections).forEach(([sectionName, sectionData]) => {
+      // Section title
+      doc.fontSize(16).fillColor("#1E4E9E").text(sectionName);
+
+      doc.moveDown(0.5);
+
+      // Section content
+      if (sectionData.content && sectionData.content.includes("|")) {
+        renderTable(doc, sectionData.content);
+      } else {
+        doc
+          .fontSize(11)
+          .fillColor("#000000")
+          .text(sectionData.content || "No content available", {
+            align: "justify",
+            lineGap: 6,
+          });
+      }
+
+      doc.moveDown(1.5);
+    });
 
     // ---------------- FOOTER ----------------
     doc
@@ -374,19 +458,17 @@ function renderTable(doc, content) {
 
   const headers = rows[0]
     .split("|")
-    .map((cell) => cell.trim())
+    .map((c) => c.trim())
     .filter(Boolean);
-
   const dataRows = rows.slice(1).map((row) =>
     row
       .split("|")
-      .map((cell) => cell.trim())
+      .map((c) => c.trim())
       .filter(Boolean)
   );
 
   const tableTop = doc.y;
   const cellPadding = 6;
-  const rowHeight = 20;
   const colWidth =
     (doc.page.width - doc.page.margins.left - doc.page.margins.right) /
     headers.length;
@@ -394,7 +476,7 @@ function renderTable(doc, content) {
   // Header row
   headers.forEach((header, i) => {
     doc
-      .rect(doc.page.margins.left + i * colWidth, tableTop, colWidth, rowHeight)
+      .rect(doc.page.margins.left + i * colWidth, tableTop, colWidth, 25)
       .fillAndStroke("#f7fafc", "#e2e8f0");
 
     doc
@@ -403,7 +485,7 @@ function renderTable(doc, content) {
       .text(
         header,
         doc.page.margins.left + i * colWidth + cellPadding,
-        tableTop + 6,
+        tableTop + 8,
         {
           width: colWidth - 2 * cellPadding,
           align: "left",
@@ -411,13 +493,21 @@ function renderTable(doc, content) {
       );
   });
 
+  let y = tableTop + 25;
+
   // Data rows
-  dataRows.forEach((row, rowIndex) => {
-    const y = tableTop + (rowIndex + 1) * rowHeight;
+  dataRows.forEach((row) => {
+    let maxHeight = 25;
+    row.forEach((cell, i) => {
+      const textHeight = doc.heightOfString(cell, {
+        width: colWidth - 2 * cellPadding,
+      });
+      maxHeight = Math.max(maxHeight, textHeight + 12);
+    });
 
     row.forEach((cell, i) => {
       doc
-        .rect(doc.page.margins.left + i * colWidth, y, colWidth, rowHeight)
+        .rect(doc.page.margins.left + i * colWidth, y, colWidth, maxHeight)
         .stroke();
 
       doc
@@ -428,9 +518,11 @@ function renderTable(doc, content) {
           align: "left",
         });
     });
+
+    y += maxHeight;
   });
 
-  doc.moveDown(2);
+  doc.y = y + 20;
 }
 
 // Helper function to generate proposal sections
