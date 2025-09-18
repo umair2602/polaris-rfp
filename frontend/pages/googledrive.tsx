@@ -18,7 +18,7 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
-  GridViewIcon,
+  Squares2X2Icon,
   ListBulletIcon
 } from '@heroicons/react/24/outline';
 
@@ -356,7 +356,7 @@ export default function GoogleDrive() {
                       viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    <GridViewIcon className="h-4 w-4" />
+                    <Squares2X2Icon className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
@@ -455,15 +455,13 @@ export default function GoogleDrive() {
                               onClick={() => setSharingFileId(file.id)}
                               variant="ghost"
                               size="sm"
-                              icon={<ShareIcon className="h-4 w-4" />}
-                            />
+                              icon={<ShareIcon className="h-4 w-4" />} children={undefined}                            />
                             <Button
                               onClick={() => deleteFile(file.id)}
                               variant="ghost"
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              icon={<TrashIcon className="h-4 w-4" />}
-                            />
+                              icon={<TrashIcon className="h-4 w-4" />} children={undefined}                            />
                           </div>
                         </div>
                       </CardBody>
@@ -516,22 +514,19 @@ export default function GoogleDrive() {
                                 onClick={() => downloadFile(file.id, file.name)}
                                 variant="ghost"
                                 size="sm"
-                                icon={<ArrowDownTrayIcon className="h-4 w-4" />}
-                              />
+                                icon={<ArrowDownTrayIcon className="h-4 w-4" />} children={undefined}                              />
                               <Button
                                 onClick={() => setSharingFileId(file.id)}
                                 variant="ghost"
                                 size="sm"
                                 className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                icon={<ShareIcon className="h-4 w-4" />}
-                              />
+                                icon={<ShareIcon className="h-4 w-4" />} children={undefined}                              />
                               <Button
                                 onClick={() => deleteFile(file.id)}
                                 variant="ghost"
                                 size="sm"
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                icon={<TrashIcon className="h-4 w-4" />}
-                              />
+                                icon={<TrashIcon className="h-4 w-4" />} children={undefined}                              />
                             </div>
                           </td>
                         </tr>
