@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import Head from "next/head";
 import Layout from "../../components/Layout";
 import TextEditor from "../../components/TextEditor";
-import { proposalApi, proposalApiPdf, Proposal } from "../../lib/api";
+import AIModal from "../../components/AIModal";
+import { proposalApi, proposalApiPdf, Proposal, aiApi } from "../../lib/api";
 import api from "../../lib/api";
 import {
   DocumentTextIcon,
@@ -17,6 +18,7 @@ import {
   XMarkIcon,
   CloudArrowUpIcon,
   ArrowDownTrayIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 export default function ProposalDetail() {
@@ -33,6 +35,9 @@ export default function ProposalDetail() {
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiEditingSection, setAiEditingSection] = useState<string | null>(null);
+  const [isAILoading, setIsAILoading] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -240,6 +245,59 @@ export default function ProposalDetail() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const startAIEdit = (sectionName: string) => {
+    setAiEditingSection(sectionName);
+    setShowAIModal(true);
+  };
+
+  const handleAIEdit = async (prompt: string) => {
+    if (!proposal || !aiEditingSection) return;
+
+    setIsAILoading(true);
+    try {
+      const currentContent = proposal.sections[aiEditingSection]?.content || "";
+      
+      const response = await aiApi.editText({
+        text: currentContent,
+        prompt,
+      });
+
+      if (response.data.success) {
+        const updatedSections = {
+          ...proposal.sections,
+          [aiEditingSection]: {
+            ...proposal.sections[aiEditingSection],
+            content: response.data.editedText,
+            lastModified: new Date().toISOString(),
+          },
+        };
+
+        const updateResponse = await proposalApi.update(proposal._id, {
+          sections: updatedSections,
+        });
+        setProposal(updateResponse.data);
+        setShowAIModal(false);
+        setAiEditingSection(null);
+      } else {
+        throw new Error(response.data.error || "AI edit failed");
+      }
+    } catch (error: any) {
+      console.error("AI edit failed:", error);
+      const errorMessage =
+        error.response?.data?.error ||
+        error.message ||
+        "AI edit failed. Please try again.";
+      alert(errorMessage);
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const cancelAIEdit = () => {
+    setShowAIModal(false);
+    setAiEditingSection(null);
   };
 
   // Helper function to render content with proper table formatting
@@ -593,7 +651,13 @@ export default function ProposalDetail() {
                           {sectionName}
                         </h3>
                         <div className="flex items-center space-x-2">
-                        
+                          <button
+                            onClick={() => startAIEdit(sectionName)}
+                            className="p-1 text-gray-400 hover:text-purple-600"
+                            title="Edit with AI"
+                          >
+                            <SparklesIcon className="h-4 w-4" />
+                          </button>
                           {editingSection !== sectionName && (
                             <div className="flex items-center space-x-1">
                               <button
@@ -703,6 +767,14 @@ export default function ProposalDetail() {
           </div>
         </div>
       </div>
+
+      {/* AI Modal */}
+      <AIModal
+        isOpen={showAIModal}
+        onClose={cancelAIEdit}
+        onApply={handleAIEdit}
+        isLoading={isAILoading}
+      />
     </Layout>
   );
 }

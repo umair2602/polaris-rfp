@@ -177,6 +177,28 @@ Generate a comprehensive proposal with all sections formatted as markdown.`;
 }
 
 /**
+ * Clean content specifically for Key Personnel section to remove encoding issues
+ */
+function cleanKeyPersonnelContent(content) {
+  if (!content || typeof content !== 'string') {
+    return content;
+  }
+  
+  return content
+    // Remove weird percentage symbols and encoding artifacts
+    .replace(/[%Ï]/g, '')
+    // Remove brackets around names and credentials
+    .replace(/\[([^\]]+)\]/g, '$1')
+    // Fix bullet points that might have been corrupted
+    .replace(/[●•]/g, '-')
+    // Clean up only excessive whitespace, preserve line breaks
+    .replace(/[ \t]+/g, ' ')
+    // Clean up excessive line breaks but preserve structure
+    .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    .trim();
+}
+
+/**
  * Clean content to remove duplicate titles and encoding issues
  */
 function cleanContent(content) {
@@ -229,7 +251,7 @@ function formatAISections(sections) {
       
       // Apply content cleaning to all sections except Key Personnel
       const processedContent = sectionName === "Key Personnel" 
-        ? content
+        ? cleanKeyPersonnelContent(content)
         : cleanContent(content);
       
       formattedSections[sectionName] = {
@@ -332,7 +354,7 @@ function extractSectionsFromMarkdown(markdownText) {
         if (content && content.length > 10) { // Only add if content is substantial
           // Apply content cleaning to all sections except Key Personnel
           const processedContent = sectionName === "Key Personnel" 
-            ? content
+            ? cleanKeyPersonnelContent(content)
             : cleanContent(content);
             
           sections[sectionName] = {
@@ -368,7 +390,7 @@ function extractSectionsFromMarkdown(markdownText) {
         if (content && content.length > 10) {
           // Apply content cleaning to all sections except Key Personnel
           const processedContent = sectionName === "Key Personnel" 
-            ? content
+            ? cleanKeyPersonnelContent(content)
             : cleanContent(content);
             
           sections[sectionName] = {
@@ -416,5 +438,6 @@ module.exports = {
   getFirmQualificationsContent,
   getRelevantExperienceContent,
   extractSectionsFromMarkdown,
-  cleanContent
+  cleanContent,
+  cleanKeyPersonnelContent
 };
