@@ -111,7 +111,7 @@ export const proposalApi = {
 
 // Template API calls
 export const templateApi = {
-  list: () => api.get<{data: Template[]}>("/api/templates/"),
+  list: () => api.get<Template[]>("/api/templates/"),
   get: (id: string) => api.get(`/api/templates/${id}`),
   create: (data: any) => api.post("/api/templates/", data),
   update: (id: string, data: any) => api.put(`/api/templates/${id}`, data),
