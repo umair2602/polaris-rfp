@@ -86,7 +86,7 @@ export const rfpApi = {
   analyzeUrl: (url: string) => {
     return api.post("/api/rfp/analyze-url", { url });
   },
-  list: () => api.get<RFP[]>("/api/rfp/"),
+  list: () => api.get<{data: RFP[]}>("/api/rfp/"),
   get: (id: string) => api.get<RFP>(`/api/rfp/${id}`),
   update: (id: string, data: any) => api.put<RFP>(`/api/rfp/${id}`, data),
   delete: (id: string) => api.delete(`/api/rfp/${id}`),
@@ -100,7 +100,7 @@ export const proposalApi = {
     title: string;
     customContent?: any;
   }) => api.post<Proposal>("/api/proposals/generate", data),
-  list: () => api.get<Proposal[]>("/api/proposals/"),
+  list: () => api.get<{data: Proposal[]}>("/api/proposals/"),
   get: (id: string) => api.get<Proposal>(`/api/proposals/${id}`),
   update: (id: string, data: any) =>
     api.put<Proposal>(`/api/proposals/${id}`, data),
@@ -148,7 +148,7 @@ export const proposalApiPdf = {
     title: string;
     customContent?: any;
   }) => api.post<Proposal>("/api/proposals/generate", data),
-  list: () => api.get<Proposal[]>("/api/proposals/"),
+  list: () => api.get<{data: Proposal[]}>("/api/proposals/"),
   get: (id: string) => api.get<Proposal>(`/api/proposals/${id}`),
   update: (id: string, data: any) =>
     api.put<Proposal>(`/api/proposals/${id}`, data),
