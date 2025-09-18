@@ -4,9 +4,15 @@ const RFP = require("../models/RFP");
 const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
+const OpenAI = require("openai");
 const router = express.Router();
 
-// Generate new proposal
+// Initialize OpenAI
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
+
+// Generate new proposal with AI
 router.post("/generate", async (req, res) => {
   try {
     const { rfpId, templateId, title, customContent = {} } = req.body;
@@ -24,8 +30,8 @@ router.post("/generate", async (req, res) => {
       return res.status(404).json({ error: "RFP not found" });
     }
 
-    // Generate proposal sections (simplified for now)
-    const sections = generateProposalSections(rfp, templateId, customContent);
+    // Generate proposal sections using AI
+    const sections = await generateAIProposalSections(rfp, templateId, customContent);
 
     // Create proposal
     const proposal = new Proposal({
@@ -40,12 +46,51 @@ router.post("/generate", async (req, res) => {
     await proposal.save();
     await proposal.populate("rfpId", "title clientName projectType");
 
-    console.log("Proposal generated successfully:", proposal._id);
+    console.log("AI Proposal generated successfully:", proposal._id);
     res.status(201).json(proposal);
   } catch (error) {
     console.error("Error generating proposal:", error);
     res.status(500).json({
       error: "Failed to generate proposal",
+      message: error.message,
+    });
+  }
+});
+
+// Generate proposal sections using AI
+router.post("/:id/generate-sections", async (req, res) => {
+  try {
+    const proposal = await Proposal.findById(req.params.id).populate(
+      "rfpId",
+      "title clientName projectType keyRequirements deliverables budgetRange submissionDeadline location contactInformation rawText"
+    );
+
+    if (!proposal) {
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    if (!openai) {
+      return res.status(500).json({ error: "OpenAI API key not configured" });
+    }
+
+    // Generate AI sections
+    const sections = await generateAIProposalSections(proposal.rfpId, proposal.templateId, {});
+
+    // Update proposal with new sections
+    proposal.sections = sections;
+    proposal.lastModifiedBy = "ai-generation";
+    await proposal.save();
+
+    console.log("AI sections generated successfully for proposal:", proposal._id);
+    res.json({ 
+      message: "Sections generated successfully", 
+      sections: sections,
+      proposal: proposal 
+    });
+  } catch (error) {
+    console.error("Error generating AI sections:", error);
+    res.status(500).json({
+      error: "Failed to generate AI sections",
       message: error.message,
     });
   }
@@ -395,9 +440,8 @@ router.get("/:id/export-pdf", async (req, res) => {
     doc.addPage();
 
     // ---------------- SECTIONS ----------------
-    // Generate sections using helper functions
-    const contentLibrary = require("../services/contentLibrary");
-    const sections = generateProposalSections(
+    // Generate sections using AI
+    const sections = await generateAIProposalSections(
       proposal.rfpId,
       proposal.templateId,
       proposal.customContent || {}
@@ -525,216 +569,334 @@ function renderTable(doc, content) {
   doc.y = y + 20;
 }
 
-// Helper function to generate proposal sections
-function generateProposalSections(rfp, templateId, customContent) {
-  const contentLibrary = require("../services/contentLibrary");
 
-  const sections = {};
-
-  // Generate Executive Summary
-  sections["Executive Summary"] = {
-    content: generateExecutiveSummary(rfp, contentLibrary),
-    type: "generated",
-    lastModified: new Date(),
-  };
-
-  // Generate Technical Approach (for software development)
-  if (rfp.projectType === "software_development") {
-    sections["Technical Approach & Methodology"] = {
-      content: generateTechnicalApproach(rfp),
-      type: "generated",
-      lastModified: new Date(),
-    };
+// AI-powered proposal section generation
+async function generateAIProposalSections(rfp, templateId, customContent) {
+  if (!openai) {
+    throw new Error("OpenAI API key not configured");
   }
 
-  // Generate Team Section
-  sections["Key Personnel and Experience"] = {
-    content: generateTeamSection(rfp.projectType, contentLibrary),
-    type: "generated",
-    lastModified: new Date(),
-  };
+  const systemPrompt = `
+You are an expert proposal writer. Generate a comprehensive proposal based on the RFP data provided. 
+Structure the proposal with the following sections and format them as markdown:
 
-  // Generate Budget Section
-  sections["Budget Estimate"] = {
-    content: generateBudgetSection(rfp),
-    type: "generated",
-    lastModified: new Date(),
-  };
+1. **Executive Summary** - Brief overview of the project and our approach
+2. **Project Understanding and Approach** - Detailed understanding of requirements and our methodology
+3. **Key Personnel** - Team members and their qualifications
+4. **Methodology (By Phase)** - Detailed project phases and deliverables
+5. **Project Schedule** - Timeline with milestones
+6. **Budget** - Cost breakdown by phases
+7. **References** - Relevant past projects and client experience
 
-  // Generate Timeline
-  sections["Project Timeline"] = {
-    content: generateTimelineSection(rfp),
-    type: "generated",
-    lastModified: new Date(),
-  };
+Guidelines:
+- Use professional, persuasive language
+- Include specific details from the RFP
+- Format tables using markdown table syntax
+- Use bullet points for lists
+- Include realistic timelines and budgets
+- Make content relevant to the project type
+- Ensure each section is comprehensive but concise
+- Use **bold** for emphasis and *italics* for important details
 
-  // Generate References
-  sections["References"] = {
-    content: generateReferencesSection(rfp.projectType, contentLibrary),
-    type: "generated",
-    lastModified: new Date(),
-  };
+For the References section, use this exact format:
+- Start with: "We are pleased to provide the following experience from organizations with comparable scopes of work."
+- For each reference, include:
+  - Organization Name (Year-Year)
+  - Contact: [Name], [Title] of [Organization]
+  - Email: [email]
+  - Phone: [phone]
+  - Scope of Work: [Detailed description of work performed and achievements]
+- Do NOT include testimonials or quotes
 
-  // Apply custom content overrides
-  Object.keys(customContent).forEach((sectionName) => {
-    if (sections[sectionName]) {
-      sections[sectionName].content = customContent[sectionName];
-      sections[sectionName].type = "custom";
-      sections[sectionName].lastModified = new Date();
+CRITICAL: Return the sections as a JSON object with EXACTLY these section names as keys and content as values:
+{
+  "Firm Qualifications and Experience": "content here",
+  "Relevant Comprehensive Planning & Rural Community Experience": "content here",
+  "Executive Summary": "content here",
+  "Project Understanding and Approach": "content here",
+  "Key Personnel": "content here",
+  "Methodology (By Phase)": "content here",
+  "Project Schedule": "content here",
+  "Budget": "content here",
+  "References": "content here"
+}
+
+Each section should be a separate key-value pair in the JSON object.`;
+
+  const userPrompt = `
+RFP Information:
+- Title: ${rfp.title}
+- Client: ${rfp.clientName}
+- Project Type: ${rfp.projectType}
+- Budget Range: ${rfp.budgetRange || 'Not specified'}
+- Submission Deadline: ${rfp.submissionDeadline || 'Not specified'}
+- Location: ${rfp.location || 'Not specified'}
+- Key Requirements: ${rfp.keyRequirements?.join(', ') || 'Not specified'}
+- Deliverables: ${rfp.deliverables?.join(', ') || 'Not specified'}
+- Contact Information: ${rfp.contactInformation || 'Not specified'}
+
+${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText.substring(0, 4000)}...` : ''}
+
+Generate a comprehensive proposal with all sections formatted as markdown.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 4000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content.trim();
+    
+    console.log("AI Response length:", raw.length);
+    console.log("AI Response preview:", raw.substring(0, 200) + "...");
+    
+    // Try to parse as JSON first
+    try {
+      // Clean the response to extract JSON
+      let jsonText = raw;
+      
+      // Look for JSON object in the response
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+        console.log("Found JSON in response, length:", jsonText.length);
+      }
+      
+      const parsed = JSON.parse(jsonText);
+      console.log("Parsed JSON keys:", Object.keys(parsed));
+      
+      // Validate that we have the expected sections
+      const expectedSections = [
+        "Firm Qualifications and Experience",
+        "Relevant Comprehensive Planning & Rural Community Experience",
+        "Executive Summary",
+        "Project Understanding and Approach", 
+        "Key Personnel",
+        "Methodology (By Phase)",
+        "Project Schedule",
+        "Budget",
+        "References"
+      ];
+      
+      // Check if we have the expected structure
+      const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
+      
+      if (hasExpectedSections) {
+        console.log("Using JSON parsing - found expected sections");
+        return formatAISections(parsed);
+      } else {
+        console.log("JSON structure doesn't match expected sections, trying markdown extraction");
+        // If structure is different, try to extract from markdown
+        return extractSectionsFromMarkdown(raw);
+      }
+    } catch (jsonError) {
+      console.log("JSON parsing failed, trying markdown extraction:", jsonError.message);
+      // If not JSON, try to extract sections from markdown
+      return extractSectionsFromMarkdown(raw);
+    }
+  } catch (error) {
+    console.error("AI proposal generation failed:", error);
+    throw new Error(`AI proposal generation failed: ${error.message}`);
+  }
+}
+
+// Format AI-generated sections for the database
+function formatAISections(sections) {
+  const formattedSections = {};
+  
+  // Add hardcoded sections first
+  formattedSections["Firm Qualifications and Experience"] = {
+    content: getFirmQualificationsContent(),
+    type: "hardcoded",
+    lastModified: new Date().toISOString(),
+  };
+  
+  formattedSections["Relevant Comprehensive Planning & Rural Community Experience"] = {
+    content: getRelevantExperienceContent(),
+    type: "hardcoded", 
+    lastModified: new Date().toISOString(),
+  };
+  
+  // Add AI-generated sections
+  Object.entries(sections).forEach(([sectionName, content]) => {
+    // Skip the hardcoded sections if they were generated by AI
+    if (sectionName !== "Firm Qualifications and Experience" && 
+        sectionName !== "Relevant Comprehensive Planning & Rural Community Experience") {
+      formattedSections[sectionName] = {
+        content: content,
+        type: "ai-generated",
+        lastModified: new Date().toISOString(),
+      };
     }
   });
-
-  return sections;
+  
+  return formattedSections;
 }
 
-function generateExecutiveSummary(rfp, contentLibrary) {
-  const companyIntro = contentLibrary.generateCompanyIntroduction(
-    rfp.projectType
-  );
+// Hardcoded content for Firm Qualifications and Experience
+function getFirmQualificationsContent() {
+  return `**Firm Qualifications and Experience**
 
-  return `${companyIntro}
+Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in land use planning, zoning, and public engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
 
-We understand that ${rfp.clientName} seeks a qualified partner for ${
-    rfp.title
-  }. Our proven expertise in ${rfp.projectType.replace(
-    "_",
-    " "
-  )} positions us uniquely to deliver exceptional results for your organization.
+• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering zoning, land use, and stakeholder collaboration through the City of Carbondale's Sustainability Plan.
 
-Key project requirements include:
-${
-  rfp.keyRequirements
-    ?.slice(0, 5)
-    .map((req) => `• ${req}`)
-    .join("\n") || "• Requirements to be refined during discovery phase"
+• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in land use issues.
+
+• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible land use issues.
+
+• **2025:** American Made Challenge Current Semifinalist, U.S. Department of Energy.
+
+• **2025:** Verizon Disaster Resilience Prize Current Semifinalist for oneNode, a solar microgrid technology to restore connectivity, monitor hazards, and coordinate response in disaster zones.
+
+• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible land use, zoning, and privacy concerns for data center development.
+
+• **2025:** Awarded Preferred Provider by the Alliance for Tribal Clean Energy.
+
+Our core services include: Comprehensive Planning, Zoning Ordinance Updates, Rural & Agricultural Preservation, Public Facilitation, and Legal/Statutory Compliance Reviews.`;
 }
 
-Our approach combines technical excellence with cultural sensitivity, ensuring solutions that are both innovative and appropriate for your organization's needs. We are committed to delivering exceptional value and look forward to partnering with ${
-    rfp.clientName
-  } on this important initiative.`;
+// Hardcoded content for Relevant Comprehensive Planning & Rural Community Experience
+function getRelevantExperienceContent() {
+  return `**Relevant Comprehensive Planning & Rural Community Experience**
+
+Eighth Generation Consulting's staff have contributed to and led multiple comprehensive planning and sustainability initiatives in complex municipal areas, including:
+
+• **Carbondale's Sustainability Action Plan**
+  - Emphasized cross-sector collaboration, brownfield development policy, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included rural and agricultural stakeholders. Reviewed all current Zoning Land Use and restrictions, requirements, and assumptions.
+
+• **Osage Nation planning and development support**
+  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around land use, infrastructure planning, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and land usage.
+
+• **Tribal and Municipal Environmental Permitting & Siting Projects**
+  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven siting, feasibility analysis, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
 }
 
-function generateTechnicalApproach(rfp) {
-  return `Our technical approach follows industry best practices while being tailored to your specific requirements:
-
-**Project Initiation & Planning**
-We begin with comprehensive stakeholder discovery and requirements analysis, conducting structured workshops to understand your vision, constraints, and success criteria.
-
-**Technical Architecture**
-Our architecture prioritizes scalability, security, and maintainability, employing modern patterns including microservices architecture, API-first design, and cloud-native infrastructure.
-
-**Development Methodology**
-We follow an iterative Agile development approach with regular client feedback cycles, including sprint-based development with 2-week iterations and continuous integration.
-
-**Quality Assurance**
-Comprehensive QA includes automated testing, user acceptance testing with stakeholder participation, and security vulnerability scanning.
-
-**Deployment & Support**
-Our deployment strategy minimizes risk with staged environments and includes ongoing maintenance, monitoring, and optimization services.`;
-}
-
-function generateTeamSection(projectType, contentLibrary) {
-  const relevantRoles = {
-    software_development: ["saxon_metzger", "wesley_ladd", "technical_lead"],
-    strategic_communications: ["saxon_metzger", "communications_lead"],
-    financial_modeling: ["saxon_metzger"],
-    general: ["saxon_metzger"],
+// Extract sections from markdown text if JSON parsing fails
+function extractSectionsFromMarkdown(markdownText) {
+  console.log("Extracting sections from markdown, text length:", markdownText.length);
+  const sections = {};
+  
+  // Try multiple patterns for section headers
+  const patterns = [
+    /^##\s+(.+)$/gm,  // ## Section Name
+    /^#\s+(.+)$/gm,   // # Section Name
+    /^\*\*(.+?)\*\*\s*$/gm,  // **Section Name**
+    /^(.+?):\s*$/gm   // Section Name:
+  ];
+  
+  let foundSections = false;
+  
+  for (const pattern of patterns) {
+    const matches = [];
+    let match;
+    
+    // Reset regex
+    pattern.lastIndex = 0;
+    
+    while ((match = pattern.exec(markdownText)) !== null) {
+      matches.push({
+        name: match[1].trim(),
+        index: match.index,
+        fullMatch: match[0]
+      });
+    }
+    
+    if (matches.length > 0) {
+      foundSections = true;
+      console.log(`Found ${matches.length} sections using pattern:`, pattern);
+      
+      // Process each section
+      for (let i = 0; i < matches.length; i++) {
+        const currentMatch = matches[i];
+        const nextMatch = matches[i + 1];
+        
+        const sectionName = currentMatch.name;
+        const sectionStart = currentMatch.index + currentMatch.fullMatch.length;
+        const sectionEnd = nextMatch ? nextMatch.index : markdownText.length;
+        
+        const content = markdownText
+          .substring(sectionStart, sectionEnd)
+          .trim();
+        
+        if (content && content.length > 10) { // Only add if content is substantial
+          console.log(`Adding section: ${sectionName} (${content.length} chars)`);
+          sections[sectionName] = {
+            content: content,
+            type: "ai-generated",
+            lastModified: new Date().toISOString(),
+          };
+        }
+      }
+      break; // Use the first pattern that finds sections
+    }
+  }
+  
+  // If no sections found with patterns, try to split by common section names
+  if (!foundSections) {
+    const commonSections = [
+      "Executive Summary",
+      "Project Understanding and Approach",
+      "Key Personnel", 
+      "Methodology",
+      "Project Schedule",
+      "Budget",
+      "References"
+    ];
+    
+    let currentContent = markdownText;
+    
+    for (const sectionName of commonSections) {
+      const regex = new RegExp(`(${sectionName}[\\s\\S]*?)(?=${commonSections.join('|')}|$)`, 'gi');
+      const match = regex.exec(currentContent);
+      
+      if (match && match[1]) {
+        const content = match[1].replace(new RegExp(`^${sectionName}\\s*:?\\s*`, 'i'), '').trim();
+        if (content && content.length > 10) {
+          sections[sectionName] = {
+            content: content,
+            type: "ai-generated", 
+            lastModified: new Date().toISOString(),
+          };
+        }
+      }
+    }
+  }
+  
+  // If still no sections found, create a single section with all content
+  if (Object.keys(sections).length === 0) {
+    console.log("No sections found, creating single 'Proposal Content' section");
+    sections["Proposal Content"] = {
+      content: markdownText,
+      type: "ai-generated",
+      lastModified: new Date().toISOString(),
+    };
+  }
+  
+  // Add hardcoded sections to the beginning
+  const hardcodedSections = {
+    "Firm Qualifications and Experience": {
+      content: getFirmQualificationsContent(),
+      type: "hardcoded",
+      lastModified: new Date().toISOString(),
+    },
+    "Relevant Comprehensive Planning & Rural Community Experience": {
+      content: getRelevantExperienceContent(),
+      type: "hardcoded", 
+      lastModified: new Date().toISOString(),
+    }
   };
-
-  const roles = relevantRoles[projectType] || relevantRoles.general;
-  const teamMembers = contentLibrary.getTeamMembersByRoles(roles);
-
-  return teamMembers
-    .map(
-      (member) => `
-**${member.name}**, ${member.title}
-${member.roleDescription}
-
-*Experience:* ${member.experienceYears}+ years
-*Education:* ${member.education.join(", ")}
-*Certifications:* ${member.certifications.join(", ")}
-*Key Responsibilities:* ${member.responsibilities.slice(0, 4).join(", ")}
-`
-    )
-    .join("\n");
-}
-
-function generateBudgetSection(rfp) {
-  const phases = [
-    { name: "Discovery & Planning", cost: 15000, percentage: 15 },
-    { name: "Design & Architecture", cost: 25000, percentage: 25 },
-    { name: "Development & Implementation", cost: 40000, percentage: 40 },
-    { name: "Testing & Quality Assurance", cost: 10000, percentage: 10 },
-    { name: "Deployment & Training", cost: 10000, percentage: 10 },
-  ];
-
-  const total = phases.reduce((sum, phase) => sum + phase.cost, 0);
-
-  let budgetContent = `**Project Investment Breakdown**\n\n`;
-  budgetContent += `| Phase | Investment | % of Total |\n`;
-  budgetContent += `|-------|------------|------------|\n`;
-
-  phases.forEach((phase) => {
-    budgetContent += `| ${phase.name} | $${phase.cost.toLocaleString()} | ${
-      phase.percentage
-    }% |\n`;
-  });
-
-  budgetContent += `| **TOTAL PROJECT INVESTMENT** | **$${total.toLocaleString()}** | **100%** |\n\n`;
-  budgetContent += `This investment covers all aspects of the project including planning, development, testing, deployment, and initial support.`;
-
-  return budgetContent;
-}
-
-function generateTimelineSection(rfp) {
-  const phases = [
-    { name: "Discovery & Planning", weeks: 3 },
-    { name: "Design & Architecture", weeks: 4 },
-    { name: "Development Phase 1", weeks: 4 },
-    { name: "Development Phase 2", weeks: 4 },
-    { name: "Testing & QA", weeks: 3 },
-    { name: "Deployment & Training", weeks: 2 },
-  ];
-
-  let timelineContent = `**Project Timeline**\n\n`;
-  timelineContent += `| Phase | Duration | Key Deliverables |\n`;
-  timelineContent += `|-------|----------|------------------|\n`;
-
-  let currentWeek = 0;
-  phases.forEach((phase) => {
-    const startWeek = currentWeek + 1;
-    const endWeek = currentWeek + phase.weeks;
-    timelineContent += `| Weeks ${startWeek}-${endWeek} | ${phase.name} | Key milestones and deliverables |\n`;
-    currentWeek = endWeek;
-  });
-
-  const totalWeeks = phases.reduce((sum, phase) => sum + phase.weeks, 0);
-  timelineContent += `\n**Total Project Duration:** ${totalWeeks} weeks\n`;
-  timelineContent += `**Estimated Completion:** ${Math.ceil(
-    totalWeeks / 4
-  )} months from project start`;
-
-  return timelineContent;
-}
-
-function generateReferencesSection(projectType, contentLibrary) {
-  const references = contentLibrary.getProjectReferences(projectType, 3);
-
-  return references
-    .map(
-      (ref) => `
-**${ref.clientName}**
-*Project:* ${ref.projectScope}
-*Contact:* ${ref.contactPerson} (${ref.contactEmail})
-*Value:* ${ref.projectValue} | *Duration:* ${ref.duration}
-
-*Key Outcomes:*
-${ref.outcomes.map((outcome) => `• ${outcome}`).join("\n")}
-
-*"${ref.testimonial}"*
-`
-    )
-    .join("\n");
+  
+  // Merge hardcoded sections with extracted sections
+  const finalSections = { ...hardcodedSections, ...sections };
+  
+  console.log("Final sections created:", Object.keys(finalSections));
+  return finalSections;
 }
 
 module.exports = router;

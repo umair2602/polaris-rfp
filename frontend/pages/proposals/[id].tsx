@@ -32,6 +32,7 @@ export default function ProposalDetail() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -199,6 +200,25 @@ export default function ProposalDetail() {
     }
   };
 
+  const generateAISections = async () => {
+    if (!proposal) return;
+
+    setGenerating(true);
+    try {
+      const response = await api.post(`/api/proposals/${proposal._id}/generate-sections`);
+      
+      // Update the proposal with new sections
+      setProposal(response.data.proposal);
+      
+      alert("AI sections generated successfully!");
+    } catch (error) {
+      console.error("Error generating AI sections:", error);
+      alert("Failed to generate AI sections. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // Helper function to render content with proper table formatting
   const renderSectionContent = (content: string, sectionName: string) => {
     if (!content) return "No content available";
@@ -281,7 +301,7 @@ export default function ProposalDetail() {
     const headerCells = parseRow(headerRow);
 
     let tableHtml =
-      '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 my-4">';
+      '<div class="overflow-hidden"><table class="w-full divide-y divide-gray-200 my-4">';
 
     // Header
     tableHtml += '<thead class="bg-gray-50">';
@@ -291,7 +311,7 @@ export default function ProposalDetail() {
         /\*\*(.*?)\*\*/g,
         "<strong>$1</strong>"
       );
-      tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${formattedCell}</th>`;
+      tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider break-words">${formattedCell}</th>`;
     });
     tableHtml += "</tr>";
     tableHtml += "</thead>";
@@ -308,7 +328,7 @@ export default function ProposalDetail() {
           /\*\*(.*?)\*\*/g,
           "<strong>$1</strong>"
         );
-        tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formattedCell}</td>`;
+        tableHtml += `<td class="px-6 py-4 text-sm text-gray-900 break-words">${formattedCell}</td>`;
       });
       tableHtml += "</tr>";
     });
@@ -368,8 +388,8 @@ export default function ProposalDetail() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center">
                   <DocumentTextIcon className="h-8 w-8 text-gray-400 mr-3" />
-                  <div>
-                    <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl truncate">
                       {proposal.title}
                     </h1>
                     <div className="mt-1 flex items-center text-sm text-gray-500">
@@ -550,17 +570,7 @@ export default function ProposalDetail() {
                           {sectionName}
                         </h3>
                         <div className="flex items-center space-x-2">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              sectionData.type === "generated"
-                                ? "bg-green-100 text-green-800"
-                                : sectionData.type === "custom"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {sectionData.type}
-                          </span>
+                        
                           {editingSection !== sectionName && (
                             <div className="flex items-center space-x-1">
                               <button
@@ -621,7 +631,7 @@ export default function ProposalDetail() {
                         </div>
                       ) : (
                         <div>
-                          <div className="prose max-w-none text-sm text-gray-700">
+                          <div className="prose max-w-none text-sm text-gray-700 overflow-hidden">
                             <div
                               dangerouslySetInnerHTML={{
                                 __html: renderSectionContent(
