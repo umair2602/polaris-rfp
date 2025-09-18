@@ -37,7 +37,6 @@ router.post('/generate', async (req, res) => {
 
     const proposal = await fileStorage.createProposal(proposalData);
 
-    console.log('✅ Proposal generated successfully:', proposal._id);
     res.status(201).json({
       ...proposal,
       rfp: {
