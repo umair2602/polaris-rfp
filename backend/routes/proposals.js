@@ -337,7 +337,10 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc
         .fontSize(24)
         .fillColor("#1a202c")
-        .text(proposal.title, { align: "center" });
+        .text(proposal.title, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
       doc.moveDown(4);
     }
 
@@ -346,7 +349,10 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc
         .fontSize(14)
         .fillColor("#1a202c")
-        .text(`Submitted by: ${company.name}`, { align: "center" });
+        .text(`Submitted by: ${company.name}`, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
 
       doc.moveDown(1.5);
     }
@@ -436,22 +442,26 @@ router.get("/:id/export-pdf", async (req, res) => {
     .fontSize(20)
     .font("Helvetica-Bold")
     .fillColor("#000000")
-    .text("Zoning Code Update and Comprehensive Land Use Plan", { align: "center" });
-    doc.moveDown(2);
+    .text("Zoning Code Update and Comprehensive Land Use Plan", {
+      align: "center",
+      width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+    });
+    doc.moveDown(1);
+
     // Submitted to - dynamic
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text("Submitted to:", { align: "left" });
-    doc.moveDown(1);
+    doc.moveDown(0.5);
     
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text(proposal.rfpId?.clientName || "Town of Amherst", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // Submitted by - dynamic
     doc
@@ -459,14 +469,14 @@ router.get("/:id/export-pdf", async (req, res) => {
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text("Submitted by:", { align: "left" });
-    doc.moveDown(1);
+    doc.moveDown(0.5);
     
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text(company?.name || "Eighth Generation Consulting", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // Date - hardcoded
     doc
@@ -474,7 +484,7 @@ router.get("/:id/export-pdf", async (req, res) => {
       .font("Helvetica")
       .fillColor("#000000")
       .text("09/16/2025", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(0.5);
 
     // Title - hardcoded
 
@@ -575,7 +585,13 @@ router.get("/:id/export-pdf", async (req, res) => {
       }
 
       // Section title
-      doc.fontSize(16).fillColor("#1E4E9E").text(sectionName);
+      doc
+        .fontSize(16)
+        .fillColor("#1E4E9E")
+        .text(sectionName, {
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
 
       doc.moveDown(0.5);
 
