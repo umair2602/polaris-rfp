@@ -300,34 +300,35 @@ router.get("/:id/export-pdf", async (req, res) => {
       if (!logoConfig) return;
 
       try {
-        const pageWidth =
-          doc.page.width - doc.page.margins.left - doc.page.margins.right;
-        const logoWidth = (pageWidth - logoConfig.logoSpacing) / 2;
-        const logoY = doc.page.margins.top + logoConfig.logoY;
+        const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+        const logoWidth = 80; // Fixed width for corner logos
+        const logoHeight = 60; // Fixed height for corner logos
+        const logoY = 20; // Position from top of page
+        const logoSpacing = 20; // Space from page edges
 
-        // Eighth Generation Consulting logo (left side)
-        doc.image(logoConfig.eighthGenLogoPath, doc.page.margins.left, logoY, {
+        // Village of Richfield logo (top-left corner) - stick to left edge
+        doc.image(logoConfig.villageLogoPath, logoSpacing, logoY, {
           width: logoWidth,
-          height: logoConfig.logoHeight,
-          fit: [logoWidth, logoConfig.logoHeight],
+          height: logoHeight,
+          fit: [logoWidth, logoHeight],
           align: "left",
         });
 
-        // Village of Richfield logo (right side)
+        // Eighth Generation Consulting logo (top-right corner) - stick to right edge
         doc.image(
-          logoConfig.villageLogoPath,
-          doc.page.margins.left + logoWidth + logoConfig.logoSpacing,
+          logoConfig.eighthGenLogoPath,
+          doc.page.width - logoWidth - logoSpacing,
           logoY,
           {
             width: logoWidth,
-            height: logoConfig.logoHeight,
-            fit: [logoWidth, logoConfig.logoHeight],
+            height: logoHeight,
+            fit: [logoWidth, logoHeight],
             align: "right",
           }
         );
 
         // Set the Y position after logos
-        doc.y = logoY + logoConfig.logoHeight + 20;
+        doc.y = logoY + logoHeight + 30;
       } catch (logoError) {
         console.warn("Could not render logos:", logoError.message);
       }
@@ -593,10 +594,22 @@ router.get("/:id/export-pdf", async (req, res) => {
       if (sectionData.content && sectionData.content.includes("|")) {
         renderTable(doc, sectionData.content);
       } else {
+        // Clean markdown formatting from content
+        let cleanContent = sectionData.content || "No content available";
+        
+        // Remove markdown bold formatting (**text**)
+        cleanContent = cleanContent.replace(/\*\*(.*?)\*\*/g, '$1');
+        
+        // Remove markdown italic formatting (*text*)
+        cleanContent = cleanContent.replace(/\*(.*?)\*/g, '$1');
+        
+        // Remove markdown headers (# ## ###)
+        cleanContent = cleanContent.replace(/^#{1,6}\s*/gm, '');
+        
         doc
           .fontSize(11)
           .fillColor("#000000")
-          .text(sectionData.content || "No content available", {
+          .text(cleanContent, {
             align: "justify",
             lineGap: 6,
           });

@@ -51,8 +51,8 @@ export default function Dashboard() {
       
       setStats({
         totalRFPs: rfps.length,
-        activeProposals: proposals.filter(p => p.status === 'draft' || p.status === 'in_review').length,
-        completedProposals: proposals.filter(p => p.status === 'submitted').length
+        activeProposals: proposals.filter((p: Proposal) => p.status === 'draft' || p.status === 'in_review').length,
+        completedProposals: proposals.filter((p: Proposal) => p.status === 'submitted').length
       })
     } catch (error) {
       console.error('Error loading dashboard data:', error)
