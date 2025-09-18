@@ -351,12 +351,103 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(4);
     }
 
+    // Submitted by section - only show if company name exists
+    if (company?.name) {
+      doc
+        .fontSize(14)
+        .fillColor("#1a202c")
+        .text(`Submitted by: ${company.name}`, { align: "center" });
+
+      doc.moveDown(1.5);
+    }
+
+    // Contact details - using actual company data
+    if (company) {
+      // Contact person - using a default since it's not in the company data
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text("Jose P, President", { align: "center" });
+      doc.moveDown(0.5);
+
+      if (company.email) {
+        doc
+          .fontSize(12)
+          .fillColor("#4a5568")
+          .text(company.email, { align: "center" });
+        doc.moveDown(0.5);
+      }
+
+      if (company.phone) {
+        doc
+          .fontSize(12)
+          .fillColor("#4a5568")
+          .text(company.phone, { align: "center" });
+        doc.moveDown(0.5);
+      }
+    }
+
+    // Additional proposal information
+    doc.moveDown(1);
+
+    // Submitted to information
+    if (proposal.rfpId?.clientName) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Submitted to: ${proposal.rfpId.clientName}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
+
+    // Project type
+    if (proposal.rfpId?.projectType) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(
+          `Project Type: ${proposal.rfpId.projectType
+            .replace(/_/g, " ")
+            .toUpperCase()}`,
+          { align: "center" }
+        );
+      doc.moveDown(0.5);
+    }
+
+    // Submission deadline
+    if (proposal.rfpId?.submissionDeadline) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Submission Deadline: ${proposal.rfpId.submissionDeadline}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
+
+    // Location
+    if (proposal.rfpId?.location) {
+      doc
+        .fontSize(12)
+        .fillColor("#4a5568")
+        .text(`Location: ${proposal.rfpId.location}`, {
+          align: "center",
+        });
+      doc.moveDown(0.5);
+    }
+
     // Add a new page for the hardcoded cover letter
     doc.addPage();
 
     // ---------------- HARDCODED COVER LETTER PAGE ----------------
     // This page is hardcoded exactly as shown in the image with only 4 dynamic fields
-    
+    doc
+    .fontSize(20)
+    .font("Helvetica-Bold")
+    .fillColor("#000000")
+    .text("Zoning Code Update and Comprehensive Land Use Plan", { align: "center" });
+    doc.moveDown(2);
     // Submitted to - dynamic
     doc
       .fontSize(12)
@@ -396,12 +487,7 @@ router.get("/:id/export-pdf", async (req, res) => {
     doc.moveDown(2);
 
     // Title - hardcoded
-    doc
-      .fontSize(20)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text("Zoning Code Update and Comprehensive Land Use Plan", { align: "center" });
-    doc.moveDown(2);
+
 
     // Salutation - hardcoded
     doc
@@ -489,14 +575,15 @@ router.get("/:id/export-pdf", async (req, res) => {
     doc.addPage();
 
     // ---------------- SECTIONS ----------------
-    // Generate sections using AI
-    const sections = await generateAIProposalSections(
-      proposal.rfpId,
-      proposal.templateId,
-      proposal.customContent || {}
-    );
+    // Use existing sections from the proposal database
+    const sections = proposal.sections || {};
 
-    Object.entries(sections).forEach(([sectionName, sectionData]) => {
+    Object.entries(sections).forEach(([sectionName, sectionData], index) => {
+      // Add a new page for each section (except the first one which already has a page)
+      if (index > 0) {
+        doc.addPage();
+      }
+
       // Section title
       doc.fontSize(16).fillColor("#1E4E9E").text(sectionName);
 
@@ -515,6 +602,7 @@ router.get("/:id/export-pdf", async (req, res) => {
           });
       }
 
+      // Add extra space at the end of each section
       doc.moveDown(1.5);
     });
 
