@@ -653,10 +653,11 @@ export default function ProposalDetail() {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => startAIEdit(sectionName)}
-                            className="p-1 text-gray-400 hover:text-purple-600"
-                            title="Edit with AI"
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                            title="Ask with AI"
                           >
-                            <SparklesIcon className="h-4 w-4" />
+                            <SparklesIcon className="h-3 w-3" />
+                            <span>Ask with AI</span>
                           </button>
                           {editingSection !== sectionName && (
                             <div className="flex items-center space-x-1">
