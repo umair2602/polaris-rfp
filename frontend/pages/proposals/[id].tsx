@@ -179,23 +179,46 @@ export default function ProposalDetail() {
       alert("Proposal not loaded.");
       return;
     }
+    
+    setDownloading(true);
+    
+    // Show timeout warning after 10 seconds
+    const timeoutWarning = setTimeout(() => {
+      if (downloading) {
+        console.log("PDF generation is taking longer than expected...");
+      }
+    }, 10000);
+    
     try {
+      console.log("Starting PDF generation for proposal:", proposal._id);
       const response = await proposalApiPdf.exportPdf(proposal._id);
+      console.log("PDF generation completed, creating download link");
+      
       const blob = new Blob([response.data], { type: "application/pdf" });
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
-      link.download = `${proposal.title}.pdf`;
+      link.download = `${proposal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
       link.click();
-    } catch (err) {
+      
+      // Clean up the object URL after a short delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(link.href);
+      }, 1000);
+      
+      console.log("PDF download initiated successfully");
+    } catch (err: any) {
       console.error("Download failed:", err);
       let message = "Unknown error";
       if (err instanceof Error) {
         message = err.message;
       } else if (typeof err === "string") {
         message = err;
+      } else if (err?.response?.data?.error) {
+        message = err.response.data.error;
       }
       alert("Failed to download proposal PDF: " + message);
     } finally {
+      clearTimeout(timeoutWarning);
       setDownloading(false);
     }
   };
@@ -407,12 +430,12 @@ export default function ProposalDetail() {
                 <button
                   onClick={downloadProposal}
                   disabled={downloading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {downloading ? (
                     <>
                       <div className="animate-spin -ml-1 mr-3 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                      Downloading...
+                      Generating PDF...
                     </>
                   ) : (
                     <>

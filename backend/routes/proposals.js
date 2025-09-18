@@ -341,7 +341,7 @@ router.get("/:id/export-pdf", async (req, res) => {
     // Add header to first page
     addHeaderLogos();
 
-    // ---------------- COVER PAGE ----------------
+    // ---------------- TITLE PAGE ----------------
     // Title
     if (proposal.title) {
       doc
@@ -351,91 +351,140 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(4);
     }
 
-    // Submitted by section - only show if company name exists
-    if (company?.name) {
-      doc
-        .fontSize(14)
-        .fillColor("#1a202c")
-        .text(`Submitted by: ${company.name}`, { align: "center" });
+    // Add a new page for the hardcoded cover letter
+    doc.addPage();
 
-      doc.moveDown(1.5);
-    }
+    // ---------------- HARDCODED COVER LETTER PAGE ----------------
+    // This page is hardcoded exactly as shown in the image with only 4 dynamic fields
+    
+    // Submitted to - dynamic
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text("Submitted to:", { align: "left" });
+    doc.moveDown(1);
+    
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text(proposal.rfpId?.clientName || "Town of Amherst", { align: "left" });
+    doc.moveDown(2);
 
-    // Contact details - using actual company data
-    if (company) {
-      // Contact person - using a default since it's not in the company data
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text("Saxon Metzger, President", { align: "center" });
-      doc.moveDown(0.5);
+    // Submitted by - dynamic
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text("Submitted by:", { align: "left" });
+    doc.moveDown(1);
+    
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text(company?.name || "Eighth Generation Consulting", { align: "left" });
+    doc.moveDown(2);
 
-      if (company.email) {
-        doc
-          .fontSize(12)
-          .fillColor("#4a5568")
-          .text(company.email, { align: "center" });
-        doc.moveDown(0.5);
-      }
+    // Date - hardcoded
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("09/16/2025", { align: "left" });
+    doc.moveDown(2);
 
-      if (company.phone) {
-        doc
-          .fontSize(12)
-          .fillColor("#4a5568")
-          .text(company.phone, { align: "center" });
-        doc.moveDown(0.5);
-      }
-    }
+    // Title - hardcoded
+    doc
+      .fontSize(20)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text("Zoning Code Update and Comprehensive Land Use Plan", { align: "center" });
+    doc.moveDown(2);
 
-    // Additional proposal information
+    // Salutation - hardcoded
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("Dear Town Board and Planning Commission,", { align: "left" });
+    doc.moveDown(1.5);
+
+    // Body paragraphs - all hardcoded exactly as in the image
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.", { 
+        align: "left",
+        lineGap: 6
+      });
     doc.moveDown(1);
 
-    // Submitted to information
-    if (proposal.rfpId?.clientName) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Submitted to: ${proposal.rfpId.clientName}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.", { 
+        align: "left",
+        lineGap: 6
+      });
+    doc.moveDown(1);
 
-    // Project type
-    if (proposal.rfpId?.projectType) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(
-          `Project Type: ${proposal.rfpId.projectType
-            .replace(/_/g, " ")
-            .toUpperCase()}`,
-          { align: "center" }
-        );
-      doc.moveDown(0.5);
-    }
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.", { 
+        align: "left",
+        lineGap: 6
+      });
+    doc.moveDown(1);
 
-    // Submission deadline
-    if (proposal.rfpId?.submissionDeadline) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Submission Deadline: ${proposal.rfpId.submissionDeadline}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("We appreciate your consideration and look forward to working together.", { 
+        align: "left",
+        lineGap: 6
+      });
+    doc.moveDown(1);
 
-    // Location
-    if (proposal.rfpId?.location) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Location: ${proposal.rfpId.location}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
+    // Closing - hardcoded
+    doc.moveDown(1);
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text("Sincerely,", { align: "left" });
+    doc.moveDown(2);
+
+    // Contact information - only Name, Email, Number are dynamic
+    const contactName = "Name, President"; // This could be made dynamic if needed
+    const contactEmail = company?.email || "email@gmail.com";
+    const contactPhone = company?.phone || "111-222-33";
+
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text(contactName, { align: "left" });
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text(contactEmail, { align: "left" });
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#000000")
+      .text(contactPhone, { align: "left" });
 
     doc.addPage();
 
@@ -580,13 +629,12 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
 You are an expert proposal writer. Generate a comprehensive proposal based on the RFP data provided. 
 Structure the proposal with the following sections and format them as markdown:
 
-1. **Executive Summary** - Brief overview of the project and our approach
-2. **Project Understanding and Approach** - Detailed understanding of requirements and our methodology
-3. **Key Personnel** - Team members and their qualifications
-4. **Methodology (By Phase)** - Detailed project phases and deliverables
-5. **Project Schedule** - Timeline with milestones
-6. **Budget** - Cost breakdown by phases
-7. **References** - Relevant past projects and client experience
+1. **Project Understanding and Approach** - Detailed understanding of requirements and our methodology
+2. **Key Personnel** - Team members and their qualifications
+3. **Methodology (By Phase)** - Detailed project phases and deliverables
+4. **Project Schedule** - Timeline with milestones
+5. **Budget** - Cost breakdown by phases
+6. **References** - Relevant past projects and client experience
 
 Guidelines:
 - Use professional, persuasive language
@@ -612,7 +660,6 @@ CRITICAL: Return the sections as a JSON object with EXACTLY these section names 
 {
   "Firm Qualifications and Experience": "content here",
   "Relevant Comprehensive Planning & Rural Community Experience": "content here",
-  "Executive Summary": "content here",
   "Project Understanding and Approach": "content here",
   "Key Personnel": "content here",
   "Methodology (By Phase)": "content here",
@@ -674,7 +721,6 @@ Generate a comprehensive proposal with all sections formatted as markdown.`;
       const expectedSections = [
         "Firm Qualifications and Experience",
         "Relevant Comprehensive Planning & Rural Community Experience",
-        "Executive Summary",
         "Project Understanding and Approach", 
         "Key Personnel",
         "Methodology (By Phase)",
@@ -840,7 +886,6 @@ function extractSectionsFromMarkdown(markdownText) {
   // If no sections found with patterns, try to split by common section names
   if (!foundSections) {
     const commonSections = [
-      "Executive Summary",
       "Project Understanding and Approach",
       "Key Personnel", 
       "Methodology",

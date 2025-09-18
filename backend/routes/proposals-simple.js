@@ -165,13 +165,6 @@ function generateProposalSections(rfp, templateId, customContent) {
   
   const sections = {};
 
-  // Executive Summary
-  sections['Executive Summary'] = {
-    content: generateExecutiveSummary(rfp, contentLibrary),
-    type: 'generated',
-    lastModified: new Date()
-  };
-
   // Technical Approach (for software development)
   if (rfp.projectType === 'software_development') {
     sections['Technical Approach & Methodology'] = {
@@ -221,21 +214,6 @@ function generateProposalSections(rfp, templateId, customContent) {
   return sections;
 }
 
-function generateExecutiveSummary(rfp, contentLibrary) {
-  const companyIntro = contentLibrary.generateCompanyIntroduction(rfp.projectType);
-  
-  return `${companyIntro}
-
-We understand that ${rfp.clientName} seeks a qualified partner for ${rfp.title}. Our proven expertise in ${rfp.projectType.replace('_', ' ')} positions us uniquely to deliver exceptional results for your organization.
-
-**Key Project Requirements:**
-${rfp.keyRequirements?.slice(0, 5).map(req => `• ${req}`).join('\n') || '• Requirements to be refined during discovery phase'}
-
-Our approach combines technical excellence with cultural sensitivity, ensuring solutions that are both innovative and appropriate for your organization's needs. We are committed to delivering exceptional value and look forward to partnering with ${rfp.clientName} on this important initiative.
-
-**Project Investment:** ${rfp.budgetRange || 'To be determined based on scope refinement'}
-**Timeline:** ${rfp.timeline || 'Aligned with your requirements and deadlines'}`;
-}
 
 function generateTechnicalApproach(rfp) {
   return `Our technical approach follows industry best practices while being tailored to your specific requirements:

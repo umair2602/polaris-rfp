@@ -11,19 +11,6 @@ const templates = {
     projectType: 'software_development',
     sections: [
       {
-        title: 'Executive Summary',
-        contentType: 'dynamic',
-        required: true,
-        components: [
-          'company_introduction',
-          'project_understanding',
-          'technical_approach_summary',
-          'key_features_list',
-          'timeline_summary',
-          'budget_alignment'
-        ]
-      },
-      {
         title: 'Technical Approach & Methodology',
         contentType: 'structured',
         required: true,
@@ -67,11 +54,6 @@ const templates = {
     name: 'Strategic Communications Proposal',
     projectType: 'strategic_communications',
     sections: [
-      {
-        title: 'Executive Summary',
-        contentType: 'narrative_focused',
-        required: true
-      },
       {
         title: 'Experience & Qualifications',
         contentType: 'credentials_showcase',
@@ -117,11 +99,6 @@ const templates = {
     name: 'Financial Modeling & Analysis Proposal',
     projectType: 'financial_modeling',
     sections: [
-      {
-        title: 'Executive Summary',
-        contentType: 'analytical_focused',
-        required: true
-      },
       {
         title: 'Methodology & Approach',
         contentType: 'analytical_methodology',

@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // 60 second timeout for RFP processing
+  timeout: 300000, // 5 minute timeout for PDF generation
 });
 
 // Add request interceptor for debugging

@@ -19,7 +19,7 @@ export default function RFPDetail() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [generating, setGenerating] = useState(false)
+  const [generatingTemplate, setGeneratingTemplate] = useState<string | null>(null)
 
   useEffect(() => {
     if (id && typeof id === 'string') {
@@ -47,7 +47,7 @@ export default function RFPDetail() {
   const generateProposal = async (templateId: string) => {
     if (!rfp) return
     
-    setGenerating(true)
+    setGeneratingTemplate(templateId)
     try {
       const response = await proposalApi.generate({
         rfpId: rfp._id,
@@ -62,7 +62,7 @@ export default function RFPDetail() {
       console.error('Error generating proposal:', error)
       alert('Failed to generate proposal. Please try again.')
     } finally {
-      setGenerating(false)
+      setGeneratingTemplate(null)
     }
   }
 
@@ -324,10 +324,10 @@ export default function RFPDetail() {
                         <p className="text-xs text-gray-400 mt-2">{template.projectType.replace('_', ' ')}</p>
                         <button
                           onClick={() => generateProposal(template.id)}
-                          disabled={generating}
+                          disabled={generatingTemplate !== null}
                           className="mt-3 w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {generating ? (
+                          {generatingTemplate === template.id ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                           ) : (
                             <>
