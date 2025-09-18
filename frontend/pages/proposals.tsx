@@ -1,14 +1,14 @@
-import Head from 'next/head'
-import Layout from '../components/Layout'
-import Card, { CardHeader, CardBody } from '../components/ui/Card'
-import Button from '../components/ui/Button'
-import Badge from '../components/ui/Badge'
-import { LoadingScreen } from '../components/ui/LoadingSpinner'
-import { useState, useEffect } from 'react'
-import { proposalApi, Proposal } from '../lib/api'
-import api from '../lib/api'
-import Link from 'next/link'
-import { 
+import Head from "next/head";
+import Layout from "../components/Layout";
+import Card, { CardHeader, CardBody } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import { LoadingScreen } from "../components/ui/LoadingSpinner";
+import { useState, useEffect } from "react";
+import { proposalApi, Proposal } from "../lib/api";
+import api from "../lib/api";
+import Link from "next/link";
+import {
   DocumentTextIcon,
   CalendarDaysIcon,
   EyeIcon,
@@ -21,107 +21,126 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   Squares2X2Icon,
-  ListBulletIcon
-} from '@heroicons/react/24/outline'
+  ListBulletIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Proposals() {
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null)
-  const [proposalForm, setProposalForm] = useState({ title: '', status: '' })
-  const [loading, setLoading] = useState(true)
-  const [uploadingProposalId, setUploadingProposalId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
+  const [proposalForm, setProposalForm] = useState({ title: "", status: "" });
+  const [loading, setLoading] = useState(true);
+  const [uploadingProposalId, setUploadingProposalId] = useState<string | null>(
+    null
+  );
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
-    loadProposals()
-  }, [])
+    loadProposals();
+  }, []);
 
   const loadProposals = async () => {
     try {
-      const response = await proposalApi.list()
-      setProposals(Array.isArray(response.data) ? response.data : [])
+      const response = await proposalApi.list();
+      setProposals(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error loading proposals:', error)
+      console.error("Error loading proposals:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleEditProposal = (proposal: Proposal) => {
-    setProposalForm({ title: proposal.title, status: proposal.status })
-    setEditingProposal(proposal)
-  }
+    setProposalForm({ title: proposal.title, status: proposal.status });
+    setEditingProposal(proposal);
+  };
 
   const handleSaveProposal = async () => {
-    if (!editingProposal) return
+    if (!editingProposal) return;
     try {
       // In a real app, this would make an API call
-      const updatedProposals = proposals.map(p => 
+      const updatedProposals = proposals.map((p) =>
         p._id === editingProposal._id ? { ...p, ...proposalForm } : p
-      )
-      setProposals(updatedProposals)
-      setEditingProposal(null)
-      alert('Proposal updated successfully!')
+      );
+      setProposals(updatedProposals);
+      setEditingProposal(null);
+      alert("Proposal updated successfully!");
     } catch (error) {
-      console.error('Error updating proposal:', error)
-      alert('Failed to update proposal')
+      console.error("Error updating proposal:", error);
+      alert("Failed to update proposal");
     }
-  }
+  };
 
   const handleDeleteProposal = async (proposal: Proposal) => {
     if (confirm(`Are you sure you want to delete "${proposal.title}"?`)) {
       try {
         // In a real app, this would make an API call
-        setProposals(proposals.filter(p => p._id !== proposal._id))
-        alert('Proposal deleted successfully!')
+        setProposals(proposals.filter((p) => p._id !== proposal._id));
+        alert("Proposal deleted successfully!");
       } catch (error) {
-        console.error('Error deleting proposal:', error)
-        alert('Failed to delete proposal')
+        console.error("Error deleting proposal:", error);
+        alert("Failed to delete proposal");
       }
     }
-  }
+  };
 
   const uploadToGoogleDrive = async (proposal: Proposal) => {
-    setUploadingProposalId(proposal._id)
+    setUploadingProposalId(proposal._id);
     try {
-      const fileName = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_Proposal.json`
-      
-      const response = await api.post(`/googledrive/upload-proposal/${proposal._id}`, {
-        fileName
-      })
-      
-      alert(`Proposal "${proposal.title}" uploaded successfully to Google Drive!\nFile: ${response.data.file.name}`)
-    } catch (error) {
-      console.error('Error uploading to Google Drive:', error)
-      alert('Failed to upload to Google Drive. Please ensure Google Drive is configured and try again.')
-    } finally {
-      setUploadingProposalId(null)
-    }
-  }
+      const fileName = `${proposal.title.replace(
+        /[^a-z0-9]/gi,
+        "_"
+      )}_Proposal.json`;
 
-  const filteredProposals = proposals.filter(proposal => {
-    const matchesSearch = proposal.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || proposal.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      const response = await api.post(
+        `/googledrive/upload-proposal/${proposal._id}`,
+        {
+          fileName,
+        }
+      );
+
+      alert(
+        `Proposal "${proposal.title}" uploaded successfully to Google Drive!\nFile: ${response.data.file.name}`
+      );
+    } catch (error) {
+      console.error("Error uploading to Google Drive:", error);
+      alert(
+        "Failed to upload to Google Drive. Please ensure Google Drive is configured and try again."
+      );
+    } finally {
+      setUploadingProposalId(null);
+    }
+  };
+
+  const filteredProposals = proposals.filter((proposal) => {
+    const matchesSearch = proposal.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || proposal.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'draft': return 'warning'
-      case 'submitted': return 'success'
-      case 'in_review': return 'info'
-      default: return 'secondary'
+      case "draft":
+        return "warning";
+      case "submitted":
+        return "success";
+      case "in_review":
+        return "info";
+      default:
+        return "secondary";
     }
-  }
+  };
 
   if (loading) {
     return (
       <Layout>
         <LoadingScreen message="Loading proposals..." />
       </Layout>
-    )
+    );
   }
 
   return (
@@ -141,7 +160,7 @@ export default function Proposals() {
               Manage and track your proposal submissions
             </p>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <Badge variant="info" size="lg">
               {filteredProposals.length} Proposals
@@ -172,7 +191,7 @@ export default function Proposals() {
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent w-64"
                   />
                 </div>
-                
+
                 {/* Status Filter */}
                 <div className="flex items-center space-x-2">
                   <FunnelIcon className="h-4 w-4 text-gray-400" />
@@ -188,21 +207,25 @@ export default function Proposals() {
                   </select>
                 </div>
               </div>
-              
+
               {/* View Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => setViewMode("grid")}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    viewMode === "grid"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   <Squares2X2Icon className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode("list")}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    viewMode === "list"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
                   <ListBulletIcon className="h-4 w-4" />
@@ -224,15 +247,16 @@ export default function Proposals() {
                   </div>
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                  {searchQuery || statusFilter !== 'all' ? 'No matching proposals' : 'No proposals yet'}
+                  {searchQuery || statusFilter !== "all"
+                    ? "No matching proposals"
+                    : "No proposals yet"}
                 </h3>
                 <p className="mt-2 text-gray-600">
-                  {searchQuery || statusFilter !== 'all' 
-                    ? 'Try adjusting your search or filters' 
-                    : 'Upload an RFP first, then generate proposals based on the requirements.'
-                  }
+                  {searchQuery || statusFilter !== "all"
+                    ? "Try adjusting your search or filters"
+                    : "Upload an RFP first, then generate proposals based on the requirements."}
                 </p>
-                {!searchQuery && statusFilter === 'all' && (
+                {!searchQuery && statusFilter === "all" && (
                   <Button
                     className="mt-4"
                     variant="primary"
@@ -245,14 +269,17 @@ export default function Proposals() {
               </div>
             </CardBody>
           </Card>
-        ) : viewMode === 'grid' ? (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProposals.map((proposal) => (
               <Card key={proposal._id} hover className="group">
                 <CardBody>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Badge variant={getStatusVariant(proposal.status)} size="sm">
+                      <Badge
+                        variant={getStatusVariant(proposal.status)}
+                        size="sm"
+                      >
                         {proposal.status}
                       </Badge>
                       <div className="flex items-center space-x-1">
@@ -262,12 +289,14 @@ export default function Proposals() {
                           variant="ghost"
                           size="sm"
                           icon={<EyeIcon className="h-4 w-4" />}
+                          children={undefined}
                         />
                         <Button
                           onClick={() => handleEditProposal(proposal)}
                           variant="ghost"
                           size="sm"
                           icon={<PencilIcon className="h-4 w-4" />}
+                          children={undefined}
                         />
                         <Button
                           onClick={() => uploadToGoogleDrive(proposal)}
@@ -276,10 +305,11 @@ export default function Proposals() {
                           size="sm"
                           className="text-green-600 hover:text-green-700 hover:bg-green-50"
                           icon={<CloudArrowUpIcon className="h-4 w-4" />}
+                          children={undefined}
                         />
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
                         <Link href={`/proposals/${proposal._id}`}>
@@ -288,11 +318,12 @@ export default function Proposals() {
                       </h3>
                       {(proposal as any).rfp && (
                         <p className="text-sm text-gray-600 mt-1">
-                          For: {(proposal as any).rfp.clientName || 'Unknown Client'}
+                          For:{" "}
+                          {(proposal as any).rfp.clientName || "Unknown Client"}
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center">
@@ -317,16 +348,29 @@ export default function Proposals() {
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Proposal</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Created</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Sections</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                        Proposal
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                        Created
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                        Sections
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredProposals.map((proposal) => (
-                      <tr key={proposal._id} className="hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-pink-50/30 transition-colors group">
+                      <tr
+                        key={proposal._id}
+                        className="hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-pink-50/30 transition-colors group"
+                      >
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center group-hover:from-purple-200 group-hover:to-pink-200 transition-colors">
@@ -340,14 +384,19 @@ export default function Proposals() {
                               </p>
                               {(proposal as any).rfp && (
                                 <p className="text-sm text-gray-600">
-                                  For: {(proposal as any).rfp.clientName || 'Unknown Client'}
+                                  For:{" "}
+                                  {(proposal as any).rfp.clientName ||
+                                    "Unknown Client"}
                                 </p>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant={getStatusVariant(proposal.status)} size="sm">
+                          <Badge
+                            variant={getStatusVariant(proposal.status)}
+                            size="sm"
+                          >
                             {proposal.status}
                           </Badge>
                         </td>
@@ -373,6 +422,7 @@ export default function Proposals() {
                               variant="ghost"
                               size="sm"
                               icon={<PencilIcon className="h-4 w-4" />}
+                              children={undefined}
                             />
                             <Button
                               onClick={() => uploadToGoogleDrive(proposal)}
@@ -381,6 +431,7 @@ export default function Proposals() {
                               size="sm"
                               className="text-green-600 hover:text-green-700 hover:bg-green-50"
                               icon={<CloudArrowUpIcon className="h-4 w-4" />}
+                              children={undefined}
                             />
                             <Button
                               onClick={() => handleDeleteProposal(proposal)}
@@ -388,6 +439,7 @@ export default function Proposals() {
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               icon={<TrashIcon className="h-4 w-4" />}
+                              children={undefined}
                             />
                           </div>
                         </td>
@@ -401,5 +453,5 @@ export default function Proposals() {
         )}
       </div>
     </Layout>
-  )
+  );
 }
