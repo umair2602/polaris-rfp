@@ -31,17 +31,28 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
-    - name: Deploy Frontend Stack
-      run: |
-        aws cloudformation deploy \
-          --template-file .github/cloudformation/frontend-amplify.yml \
-          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
-          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-          --parameter-overrides \
-            RepositoryUrl=https://github.com/${{ github.repository }} \
-            BranchName=${{ github.ref_name }} \
-            Environment=production \
-            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}
+        - name: Deploy Frontend Stack
+          run: |
+            echo "Deploying frontend stack..."
+            if ! aws cloudformation deploy \
+              --template-file .github/cloudformation/frontend-amplify.yml \
+              --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+              --parameter-overrides \
+                RepositoryUrl=https://github.com/${{ github.repository }} \
+                BranchName=${{ github.ref_name }} \
+                Environment=production \
+                GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}; then
+              
+              echo "❌ Frontend stack deployment failed!"
+              echo "Getting error details..."
+              aws cloudformation describe-stack-events \
+                --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+                --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+                --output table || echo "Could not retrieve stack events"
+              exit 1
+            fi
+            echo "✅ Frontend stack deployed successfully!"
 
     - name: Get Amplify App ID
       id: get-app-id
@@ -109,7 +120,7 @@ jobs:
         
         # Deploy the stack
         echo "Deploying backend stack..."
-        aws cloudformation deploy \
+        if ! aws cloudformation deploy \
           --template-file .github/cloudformation/backend-apprunner.yml \
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
@@ -118,15 +129,51 @@ jobs:
             BranchName=${{ github.ref_name }} \
             Environment=production \
             CodeStarConnectionArn=arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016 \
-          --region ${{ env.AWS_REGION }} || {
-            echo "Stack deployment failed. Getting stack events..."
-            aws cloudformation describe-stack-events \
-              --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --region ${{ env.AWS_REGION }}; then
+          
+          echo "❌ Stack deployment failed!"
+          echo "Getting detailed error information..."
+          
+          # Get all stack events
+          echo "📋 All Stack Events:"
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.BACKEND_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackEvents[].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "Could not retrieve stack events"
+          
+          # Get failed events specifically
+          echo "🔥 Failed Events Only:"
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.BACKEND_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED` || ResourceStatus==`DELETE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "No failed events found"
+          
+          # Try to get App Runner service logs if the service was created
+          echo "🔍 Checking for App Runner service..."
+          SERVICE_ARN=$(aws apprunner list-services \
+            --region ${{ env.AWS_REGION }} \
+            --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+            --output text) || echo "No App Runner services found"
+          
+          if [ ! -z "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+            echo "📋 App Runner Service Found: $SERVICE_ARN"
+            echo "🔍 App Runner Service Details:"
+            aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
               --region ${{ env.AWS_REGION }} \
-              --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].{Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
-              --output table
-            exit 1
-          }
+              --query 'Service.{Name:ServiceName,Status:Status,SourceConfiguration:SourceConfiguration}' \
+              --output json || echo "Could not describe App Runner service"
+          else
+            echo "❌ No App Runner service found"
+          fi
+          
+          echo "❌ Deployment failed - check errors above"
+          exit 1
+        fi
+        
+        echo "✅ Backend stack deployed successfully!"
 
     - name: Get Backend URL
       id: get-backend-url
