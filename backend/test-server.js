@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 
 console.log('Starting test server...');
 console.log('NODE_ENV:', process.env.NODE_ENV);
