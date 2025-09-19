@@ -1,4 +1,4 @@
-x#!/bin/bash
+#!/bin/bash
 
 # Simple Deployment Script for Polaris RFP Proposal System
 # This script handles both create and update operations cleanly

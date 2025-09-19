@@ -51,18 +51,20 @@ Resources:
           phases:
             preBuild:
               commands:
+                - cd frontend
                 - npm ci
             build:
               commands:
+                - cd frontend
                 - npm run build
           artifacts:
-            baseDirectory: .next
+            baseDirectory: frontend/.next
             files:
               - '**/*'
           cache:
             paths:
-              - node_modules/**/*
-              - .next/cache/**/*
+              - frontend/node_modules/**/*
+              - frontend/.next/cache/**/*
       EnvironmentVariables:
         - Name: NODE_ENV
           Value: !Ref Environment
