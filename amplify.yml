@@ -6,6 +6,7 @@ frontend:
         - echo "Installing dependencies..."
         - cd frontend
         - npm ci
+        - npm install typescript @types/react @types/node --save-dev
     build:
       commands:
         - echo "Building the app..."

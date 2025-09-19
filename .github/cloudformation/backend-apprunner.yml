@@ -48,6 +48,7 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AppRunnerServicePolicyForECRAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
   # CloudWatch Log Group for App Runner
   AppRunnerLogGroup:
@@ -77,6 +78,7 @@ Resources:
                 NODE_ENV: !Ref Environment
                 PORT: '8000'
         AutoDeploymentsEnabled: true
+        ServiceRoleArn: !GetAtt AppRunnerServiceRole.Arn
       InstanceConfiguration:
         Cpu: '1024'
         Memory: '2048'

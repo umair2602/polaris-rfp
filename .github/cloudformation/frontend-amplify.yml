@@ -53,6 +53,7 @@ Resources:
               commands:
                 - cd frontend
                 - npm ci
+                - npm install typescript @types/react @types/node --save-dev
             build:
               commands:
                 - npm run build
