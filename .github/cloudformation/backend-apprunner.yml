@@ -64,8 +64,8 @@ Resources:
             ConfigurationSource: API
             CodeConfigurationValues:
               Runtime: NODEJS_18
-              BuildCommand: 'cd backend && npm install express'
-              StartCommand: 'cd backend && node test-server.js'
+              BuildCommand: 'cd backend && npm install --production'
+              StartCommand: 'cd backend && PORT=8000 node test-server.js'
               RuntimeEnvironmentVariables:
                 - Name: NODE_ENV
                   Value: production
