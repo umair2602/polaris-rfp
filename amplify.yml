@@ -9,7 +9,6 @@ frontend:
     build:
       commands:
         - echo "Building the app..."
-        - cd frontend
         - npm run build
   artifacts:
     baseDirectory: frontend/.next

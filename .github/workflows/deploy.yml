@@ -103,20 +103,11 @@ jobs:
           echo "ECR repository created successfully"
         fi
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-      with:
-        region: ${{ env.AWS_REGION }}
-
-    - name: Verify ECR login
-      run: |
-        echo "Verifying ECR login..."
-        aws ecr describe-repositories --region ${{ env.AWS_REGION }}
-        echo "ECR login successful"
-
     - name: Build and push Docker image
       run: |
+        # Get ECR login token and login
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        
         # Build Docker image
         docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ./backend
         
