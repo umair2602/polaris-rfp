@@ -725,7 +725,10 @@ router.get("/:id/export-docx", async (req, res) => {
 function renderTable(doc, content) {
   const rows = content
     .split("\n")
-    .filter((line) => line.includes("|") && !line.match(/^-+$/));
+    .filter((line) => {
+      // Keep lines that contain | but exclude separator rows (lines with only dashes, pipes, and spaces)
+      return line.includes("|") && !line.match(/^[\s\-\|]+$/);
+    });
 
   if (rows.length < 2) {
     doc.text(content);
