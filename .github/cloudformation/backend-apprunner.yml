@@ -21,7 +21,6 @@ Parameters:
 
 Resources:
 
-  # CodeStar Connection for GitHub
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
