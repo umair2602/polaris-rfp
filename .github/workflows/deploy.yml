@@ -111,15 +111,53 @@ jobs:
           --output text \
           --region ${{ env.AWS_REGION }} 2>/dev/null || echo "DOES_NOT_EXIST")
         
-        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
-          echo "Stack is in failed state, deleting..."
+        echo "Current stack status: $STACK_STATUS"
+        
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+          echo "Stack is in failed state ($STACK_STATUS), attempting deletion..."
+          
+          # If stack is in DELETE_FAILED state, we need to manually clean up resources first
+          if [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+            echo "Stack is in DELETE_FAILED state, checking for stuck resources..."
+            
+            # Get list of App Runner services that might be blocking deletion
+            echo "Checking for App Runner services..."
+            SERVICES=$(aws apprunner list-services \
+              --region ${{ env.AWS_REGION }} \
+              --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+              --output text) || echo "No services found"
+            
+            if [ ! -z "$SERVICES" ] && [ "$SERVICES" != "None" ]; then
+              echo "Found App Runner services, deleting them first..."
+              for SERVICE_ARN in $SERVICES; do
+                echo "Deleting App Runner service: $SERVICE_ARN"
+                aws apprunner delete-service \
+                  --service-arn "$SERVICE_ARN" \
+                  --region ${{ env.AWS_REGION }} || echo "Failed to delete service $SERVICE_ARN"
+              done
+              
+              echo "Waiting for App Runner services to be deleted..."
+              sleep 30
+            fi
+          fi
+          
+          # Attempt to delete the stack
           aws cloudformation delete-stack --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}
-          echo "Waiting for stack deletion..."
-          aws cloudformation wait stack-delete-complete --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}
+          echo "Waiting for stack deletion (timeout: 10 minutes)..."
+          
+          # Wait with timeout to prevent infinite waiting
+          if ! timeout 600 aws cloudformation wait stack-delete-complete --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}; then
+            echo "⚠️ Stack deletion timed out or failed, but continuing with deployment..."
+            echo "This might cause conflicts, but CloudFormation will handle existing resources"
+          else
+            echo "✅ Stack deleted successfully"
+          fi
         fi
         
         # Deploy the stack
         echo "Deploying backend stack..."
+        echo "Using connection ARN: arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016"
+        
         if ! aws cloudformation deploy \
           --template-file .github/cloudformation/backend-apprunner.yml \
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
