@@ -113,7 +113,7 @@ OPENAI_API_KEY=your-openai-api-key
 
 ### Frontend Environment
 ```
-API_BASE_URL=http://localhost:8000
+API_BASE_URL=https://wm8h6yjgim.us-east-1.awsapprunner.com
 ```
 
 ## Authentication
