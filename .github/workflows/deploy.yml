@@ -56,10 +56,23 @@ jobs:
 
     - name: Trigger Amplify Build
       run: |
-        aws amplify start-job \
+        # Check if there's already a running job
+        RUNNING_JOBS=$(aws amplify list-jobs \
           --app-id ${{ steps.get-app-id.outputs.app-id }} \
           --branch-name ${{ github.ref_name }} \
-          --job-type RELEASE
+          --max-results 1 \
+          --query 'jobSummaries[?status==`RUNNING` || status==`PENDING`]' \
+          --output text)
+        
+        if [ -z "$RUNNING_JOBS" ]; then
+          echo "No running jobs found, starting new build..."
+          aws amplify start-job \
+            --app-id ${{ steps.get-app-id.outputs.app-id }} \
+            --branch-name ${{ github.ref_name }} \
+            --job-type RELEASE
+        else
+          echo "Job already running, skipping trigger..."
+        fi
 
   deploy-backend:
     runs-on: ubuntu-latest
@@ -84,14 +97,11 @@ jobs:
         aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
         aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-      with:
-        region: ${{ env.AWS_REGION }}
-
     - name: Build and push Docker image
       run: |
+        # Get ECR login token
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        
         # Build Docker image
         docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ./backend
         
@@ -166,10 +176,23 @@ jobs:
 
     - name: Trigger Frontend Rebuild
       run: |
-        aws amplify start-job \
+        # Check if there's already a running job
+        RUNNING_JOBS=$(aws amplify list-jobs \
           --app-id ${{ steps.get-app-id.outputs.app-id }} \
           --branch-name ${{ github.ref_name }} \
-          --job-type RELEASE
+          --max-results 1 \
+          --query 'jobSummaries[?status==`RUNNING` || status==`PENDING`]' \
+          --output text)
+        
+        if [ -z "$RUNNING_JOBS" ]; then
+          echo "No running jobs found, starting new build..."
+          aws amplify start-job \
+            --app-id ${{ steps.get-app-id.outputs.app-id }} \
+            --branch-name ${{ github.ref_name }} \
+            --job-type RELEASE
+        else
+          echo "Job already running, skipping trigger..."
+        fi
 
   notify:
     runs-on: ubuntu-latest
