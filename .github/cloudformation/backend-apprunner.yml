@@ -18,15 +18,18 @@ Parameters:
     Default: 'production'
     AllowedValues: ['development', 'staging', 'production']
   
-  CodeStarConnectionArn:
-    Type: String
-    Description: ARN of the CodeStar connection for GitHub (leave empty for public repos)
-    Default: ""
-
-Conditions:
-  HasCodeStarConnection: !Not [!Equals [!Ref CodeStarConnectionArn, ""]]
 
 Resources:
+
+  # CodeStar Connection for GitHub
+  GitHubConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties:
+      ConnectionName: !Sub '${AWS::StackName}-github-connection'
+      ProviderType: GitHub
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
 
   # IAM Role for App Runner
   AppRunnerInstanceRole:
@@ -57,7 +60,7 @@ Resources:
       ServiceName: !Sub 'polaris-backend-${Environment}'
       SourceConfiguration:
         AuthenticationConfiguration:
-          ConnectionArn: !Ref CodeStarConnectionArn
+          ConnectionArn: !Ref GitHubConnection
         CodeRepository:
           RepositoryUrl: !Ref RepositoryUrl
           SourceCodeVersion:
