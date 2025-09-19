@@ -346,12 +346,21 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(4);
     }
 
-    // Submitted by section - only show if company name exists
-    if (company?.name) {
+    // Extract contact information from Title section
+    const titleSection = proposal.sections?.Title;
+    let contactInfo = {};
+    
+    if (titleSection && typeof titleSection.content === 'object') {
+      contactInfo = titleSection.content;
+    }
+
+    // Company name - use extracted data or fallback to company
+    const submittedBy = contactInfo.submittedBy || company?.name;
+    if (submittedBy) {
       doc
         .fontSize(14)
         .fillColor("#1a202c")
-        .text(`Submitted by: ${company.name}`, { 
+        .text(`Submitted by: ${submittedBy}`, { 
           align: "center",
           width: doc.page.width - doc.page.margins.left - doc.page.margins.right
         });
@@ -359,42 +368,45 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(3);
     }
 
-    // Contact details - using actual company data
-    if (company) {
-      // Contact person - using a default since it's not in the company data
+    // Contact details - using extracted contact information
+    const contactName = contactInfo.name || "Jose P, President";
+    const contactEmail = contactInfo.email || company?.email;
+    const contactPhone = contactInfo.number || company?.phone;
+
+    if (contactName) {
       doc
         .fontSize(14)
         .font("Helvetica")
         .fillColor("#1a202c")
-        .text("Jose P, President", { 
+        .text(contactName, { 
           align: "center",
           width: doc.page.width - doc.page.margins.left - doc.page.margins.right
         });
       doc.moveDown(2);
+    }
 
-      if (company.email) {
-        doc
-          .fontSize(12)
-          .font("Helvetica")
-          .fillColor("#2d3748")
-          .text(company.email, { 
-            align: "center",
-            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
-          });
-        doc.moveDown(1.5);
-      }
+    if (contactEmail) {
+      doc
+        .fontSize(12)
+        .font("Helvetica")
+        .fillColor("#2d3748")
+        .text(contactEmail, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
+      doc.moveDown(1.5);
+    }
 
-      if (company.phone) {
-        doc
-          .fontSize(12)
-          .font("Helvetica")
-          .fillColor("#2d3748")
-          .text(company.phone, { 
-            align: "center",
-            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
-          });
-        doc.moveDown(1.5);
-      }
+    if (contactPhone) {
+      doc
+        .fontSize(12)
+        .font("Helvetica")
+        .fillColor("#2d3748")
+        .text(contactPhone, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
+      doc.moveDown(1.5);
     }
 
 
@@ -514,29 +526,29 @@ router.get("/:id/export-pdf", async (req, res) => {
     doc.moveDown(2);
 
     // Contact information - only Name, Email, Number are dynamic
-    const contactName = "Name, President"; // This could be made dynamic if needed
-    const contactEmail = company?.email || "email@gmail.com";
-    const contactPhone = company?.phone || "111-222-33";
+    const coverContactName = "Name, President"; // This could be made dynamic if needed
+    const coverContactEmail = company?.email || "email@gmail.com";
+    const coverContactPhone = company?.phone || "111-222-33";
 
     doc
       .fontSize(12)
       .font("Helvetica")
       .fillColor("#000000")
-      .text(contactName, { align: "left" });
+      .text(coverContactName, { align: "left" });
     doc.moveDown(0.5);
 
     doc
       .fontSize(12)
       .font("Helvetica")
       .fillColor("#000000")
-      .text(contactEmail, { align: "left" });
+      .text(coverContactEmail, { align: "left" });
     doc.moveDown(0.5);
 
     doc
       .fontSize(12)
       .font("Helvetica")
       .fillColor("#000000")
-      .text(contactPhone, { align: "left" });
+      .text(coverContactPhone, { align: "left" });
 
     doc.addPage();
 
@@ -544,11 +556,18 @@ router.get("/:id/export-pdf", async (req, res) => {
     // Use existing sections from the proposal database
     const sections = proposal.sections || {};
 
+    let sectionCount = 0;
     Object.entries(sections).forEach(([sectionName, sectionData], index) => {
+      // Skip Title section as it's already handled on the title page
+      if (sectionName === "Title") {
+        return;
+      }
+      
       // Add a new page for each section (except the first one which already has a page)
-      if (index > 0) {
+      if (sectionCount > 0) {
         doc.addPage();
       }
+      sectionCount++;
 
       // Section title
       doc
@@ -562,11 +581,41 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(0.5);
 
       // Section content
-      if (sectionData.content && sectionData.content.includes("|")) {
+      if (sectionName === "Title" && typeof sectionData.content === 'object') {
+        // Handle Title section with object content
+        const titleData = sectionData.content;
+        let titleContent = "";
+        
+        if (titleData.submittedBy) {
+          titleContent += `Submitted by: ${titleData.submittedBy}\n`;
+        }
+        if (titleData.name) {
+          titleContent += `Name: ${titleData.name}\n`;
+        }
+        if (titleData.email) {
+          titleContent += `Email: ${titleData.email}\n`;
+        }
+        if (titleData.number) {
+          titleContent += `Number: ${titleData.number}\n`;
+        }
+        
+        doc
+          .fontSize(11)
+          .fillColor("#000000")
+          .text(titleContent || "No contact information available", {
+            align: "center",
+            lineGap: 6,
+          });
+      } else if (sectionData.content && typeof sectionData.content === 'string' && sectionData.content.includes("|")) {
         renderTable(doc, sectionData.content);
       } else {
         // Clean markdown formatting from content
         let cleanContent = sectionData.content || "No content available";
+        
+        // Ensure content is a string
+        if (typeof cleanContent !== 'string') {
+          cleanContent = String(cleanContent);
+        }
         
         // Remove markdown bold formatting (**text**)
         cleanContent = cleanContent.replace(/\*\*(.*?)\*\*/g, '$1');
