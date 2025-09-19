@@ -47,7 +47,6 @@ Resources:
               Service: build.apprunner.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AppRunnerServicePolicyForECRAccess
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
   # CloudWatch Log Group for App Runner
@@ -72,7 +71,7 @@ Resources:
             ConfigurationSource: REPOSITORY
             CodeConfigurationValues:
               Runtime: NODEJS_18
-              BuildCommand: 'cd backend && npm ci --production'
+              BuildCommand: 'cd backend && npm ci'
               StartCommand: 'cd backend && npm start'
               RuntimeEnvironmentVariables:
                 NODE_ENV: !Ref Environment
@@ -96,17 +95,6 @@ Resources:
         - Key: Service
           Value: Backend
 
-  # Auto Scaling Configuration
-  AutoScalingConfiguration:
-    Type: AWS::AppRunner::AutoScalingConfiguration
-    Properties:
-      AutoScalingConfigurationName: !Sub '${AWS::StackName}-autoscaling'
-      MaxConcurrency: 100
-      MaxSize: 10
-      MinSize: 1
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
 
 Outputs:
   AppRunnerServiceUrl:
