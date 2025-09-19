@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import Layout from "../../components/Layout";
 import TextEditor from "../../components/TextEditor";
@@ -19,6 +19,7 @@ import {
   CloudArrowUpIcon,
   ArrowDownTrayIcon,
   SparklesIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 
 export default function ProposalDetail() {
@@ -38,12 +39,29 @@ export default function ProposalDetail() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiEditingSection, setAiEditingSection] = useState<string | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState<'pdf' | 'docx'>('pdf');
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id && typeof id === "string") {
       loadProposal(id);
     }
   }, [id]);
+
+  // Close download menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setShowDownloadMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const loadProposal = async (proposalId: string) => {
     try {
@@ -179,30 +197,45 @@ export default function ProposalDetail() {
     }
   };
 
-  const downloadProposal = async () => {
+  const downloadProposal = async (format: 'pdf' | 'docx' = downloadFormat) => {
     if (!proposal) {
       alert("Proposal not loaded.");
       return;
     }
     
     setDownloading(true);
+    setShowDownloadMenu(false);
     
     // Show timeout warning after 10 seconds
     const timeoutWarning = setTimeout(() => {
       if (downloading) {
-        console.log("PDF generation is taking longer than expected...");
+        console.log(`${format.toUpperCase()} generation is taking longer than expected...`);
       }
     }, 10000);
     
     try {
-      console.log("Starting PDF generation for proposal:", proposal._id);
-      const response = await proposalApiPdf.exportPdf(proposal._id);
-      console.log("PDF generation completed, creating download link");
+      console.log(`Starting ${format.toUpperCase()} generation for proposal:`, proposal._id);
       
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      let response;
+      let mimeType;
+      let fileExtension;
+      
+      if (format === 'pdf') {
+        response = await proposalApiPdf.exportPdf(proposal._id);
+        mimeType = "application/pdf";
+        fileExtension = "pdf";
+      } else {
+        response = await proposalApiPdf.exportDocx(proposal._id);
+        mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        fileExtension = "docx";
+      }
+      
+      console.log(`${format.toUpperCase()} generation completed, creating download link`);
+      
+      const blob = new Blob([response.data], { type: mimeType });
       const link = document.createElement("a");
       link.href = window.URL.createObjectURL(blob);
-      link.download = `${proposal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+      link.download = `${proposal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${fileExtension}`;
       link.click();
       
       // Clean up the object URL after a short delay
@@ -210,7 +243,7 @@ export default function ProposalDetail() {
         window.URL.revokeObjectURL(link.href);
       }, 1000);
       
-      console.log("PDF download initiated successfully");
+      console.log(`${format.toUpperCase()} download initiated successfully`);
     } catch (err: any) {
       console.error("Download failed:", err);
       let message = "Unknown error";
@@ -221,7 +254,7 @@ export default function ProposalDetail() {
       } else if (err?.response?.data?.error) {
         message = err.response.data.error;
       }
-      alert("Failed to download proposal PDF: " + message);
+      alert(`Failed to download proposal ${format.toUpperCase()}: ` + message);
     } finally {
       clearTimeout(timeoutWarning);
       setDownloading(false);
@@ -485,26 +518,57 @@ export default function ProposalDetail() {
                 </div>
               </div>
               <div className="mt-6 flex space-x-3 md:mt-0 md:ml-4">
-                <button
-                  onClick={downloadProposal}
-                  disabled={downloading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {downloading ? (
-                    <>
-                      <div className="animate-spin -ml-1 mr-3 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                      Generating PDF...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDownTrayIcon
-                        className="-ml-1 mr-2 h-5 w-5"
-                        aria-hidden="true"
-                      />
-                      Download PDF
-                    </>
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                    disabled={downloading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {downloading ? (
+                      <>
+                        <div className="animate-spin -ml-1 mr-3 h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                        Generating {downloadFormat.toUpperCase()}...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDownTrayIcon
+                          className="-ml-1 mr-2 h-5 w-5"
+                          aria-hidden="true"
+                        />
+                        Download {downloadFormat.toUpperCase()}
+                        <ChevronDownIcon
+                          className="ml-2 h-4 w-4"
+                          aria-hidden="true"
+                        />
+                      </>
+                    )}
+                  </button>
+                  
+                  {showDownloadMenu && !downloading && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                      <button
+                        onClick={() => {
+                          setDownloadFormat('pdf');
+                          downloadProposal('pdf');
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <DocumentTextIcon className="mr-3 h-4 w-4" />
+                        Download as PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDownloadFormat('docx');
+                          downloadProposal('docx');
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <DocumentTextIcon className="mr-3 h-4 w-4" />
+                        Download as DOCX
+                      </button>
+                    </div>
                   )}
-                </button>
+                </div>
                 <button
                   onClick={uploadToGoogleDrive}
                   disabled={uploading}

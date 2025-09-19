@@ -1,5 +1,7 @@
 const express = require('express');
 const fileStorage = require('../utils/fileStorage');
+const DocxGenerator = require('../services/docxGenerator');
+const { Packer } = require('docx');
 
 const router = express.Router();
 
@@ -360,5 +362,50 @@ ${ref.outcomes.map(outcome => `• ${outcome}`).join('\n')}
 *"${ref.testimonial}"*
 `).join('\n---\n');
 }
+
+// Export proposal as DOCX
+router.get('/:id/export-docx', async (req, res) => {
+  try {
+    const proposal = await fileStorage.findProposalById(req.params.id);
+    
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Get RFP data
+    const rfp = await fileStorage.findRFPById(proposal.rfpId);
+    if (!rfp) {
+      return res.status(404).json({ error: 'RFP not found' });
+    }
+
+    // Create a mock company object for the DOCX generator
+    const company = {
+      name: 'Eighth Generation Consulting',
+      address: '123 Planning Street, City, State 12345',
+      phone: '(555) 123-4567',
+      email: 'info@eighthgen.com',
+      website: 'www.eighthgen.com',
+      description: 'Professional planning and zoning consulting services.'
+    };
+
+    // Generate DOCX document
+    const docxGenerator = new DocxGenerator();
+    const doc = await docxGenerator.generateDocx(proposal, company);
+
+    // Convert to buffer
+    const buffer = await Packer.toBuffer(doc);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${proposal.title.replace(/\s+/g, '_')}.docx"`
+    );
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting proposal as DOCX:', error);
+    res.status(500).json({ error: 'Failed to export proposal DOCX' });
+  }
+});
 
 module.exports = router;

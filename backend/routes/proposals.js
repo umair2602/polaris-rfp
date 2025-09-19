@@ -5,6 +5,8 @@ const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const { generateAIProposalSections } = require("../services/aiProposalGenerator");
+const DocxGenerator = require("../services/docxGenerator");
+const { Packer } = require("docx");
 const router = express.Router();
 
 // Generate new proposal with AI
@@ -395,55 +397,7 @@ router.get("/:id/export-pdf", async (req, res) => {
       }
     }
 
-    // // Additional proposal information
-    // doc.moveDown(1);
 
-    // // Submitted to information
-    // if (proposal.rfpId?.clientName) {
-    //   doc
-    //     .fontSize(12)
-    //     .fillColor("#4a5568")
-    //     .text(`Submitted to: ${proposal.rfpId.clientName}`, {
-    //       align: "center",
-    //     });
-    //   doc.moveDown(0.5);
-    // }
-
-    // // Project type
-    // if (proposal.rfpId?.projectType) {
-    //   doc
-    //     .fontSize(12)
-    //     .fillColor("#4a5568")
-    //     .text(
-    //       `Project Type: ${proposal.rfpId.projectType
-    //         .replace(/_/g, " ")
-    //         .toUpperCase()}`,
-    //       { align: "center" }
-    //     );
-    //   doc.moveDown(0.5);
-    // }
-
-    // // Submission deadline
-    // if (proposal.rfpId?.submissionDeadline) {
-    //   doc
-    //     .fontSize(12)
-    //     .fillColor("#4a5568")
-    //     .text(`Submission Deadline: ${proposal.rfpId.submissionDeadline}`, {
-    //       align: "center",
-    //     });
-    //   doc.moveDown(0.5);
-    // }
-
-    // // Location
-    // if (proposal.rfpId?.location) {
-    //   doc
-    //     .fontSize(12)
-    //     .fillColor("#4a5568")
-    //     .text(`Location: ${proposal.rfpId.location}`, {
-    //       align: "center",
-    //     });
-    //   doc.moveDown(0.5);
-    // }
 
     // Add a new page for the hardcoded cover letter
     doc.addPage();
@@ -641,6 +595,81 @@ router.get("/:id/export-pdf", async (req, res) => {
   } catch (error) {
     console.error("Error exporting proposal as PDF:", error);
     res.status(500).json({ error: "Failed to export proposal PDF" });
+  }
+});
+
+// Export proposal as DOCX
+router.get("/:id/export-docx", async (req, res) => {
+  console.log("🚀 Starting DOCX export request...");
+  console.log("📋 Request params:", req.params);
+  
+  try {
+    console.log("🔍 Looking up proposal with ID:", req.params.id);
+    const proposal = await Proposal.findById(req.params.id).populate(
+      "rfpId",
+      "title clientName projectType keyRequirements deliverables budgetRange submissionDeadline location contactInformation"
+    );
+
+    if (!proposal) {
+      console.error("❌ Proposal not found for ID:", req.params.id);
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    console.log("✅ Proposal found:", {
+      id: proposal._id,
+      title: proposal.title,
+      hasRfpId: !!proposal.rfpId,
+      rfpId: proposal.rfpId?._id,
+      sectionsCount: Object.keys(proposal.sections || {}).length
+    });
+
+    console.log("🏢 Looking up company information...");
+    // Get company information with fallback
+    const company = await Company.findOne().sort({ createdAt: -1 }) || {};
+    console.log("✅ Company data retrieved:", {
+      hasCompany: !!company,
+      companyId: company?._id,
+      companyName: company?.name,
+      companyKeys: company ? Object.keys(company) : []
+    });
+
+    console.log("📄 Creating DocxGenerator instance...");
+    // Generate DOCX document
+    const docxGenerator = new DocxGenerator();
+    console.log("✅ DocxGenerator created");
+
+    console.log("📝 Starting DOCX generation...");
+    const doc = await docxGenerator.generateDocx(proposal, company);
+    console.log("✅ DOCX document generated successfully");
+
+    console.log("🔄 Converting document to buffer...");
+    // Convert to buffer
+    const buffer = await Packer.toBuffer(doc);
+    console.log("✅ DOCX buffer created successfully, size:", buffer.length, "bytes");
+
+    // Ensure we have a valid filename
+    const filename = (proposal.title || "proposal").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "") + ".docx";
+    console.log("📁 Generated filename:", filename);
+
+    console.log("📤 Setting response headers...");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    console.log("📤 Sending response...");
+    res.send(buffer);
+    console.log("🎉 DOCX export completed successfully");
+  } catch (error) {
+    console.error("❌ Error exporting proposal as DOCX:", error);
+    console.error("❌ Error message:", error.message);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error name:", error.name);
+    console.error("❌ Error cause:", error.cause);
+    
+    res.status(500).json({ 
+      error: "Failed to export proposal DOCX", 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

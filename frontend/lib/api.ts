@@ -102,6 +102,8 @@ export const proposalApi = {
   delete: (id: string) => api.delete(`/api/proposals/${id}`),
   exportPdf: (id: string) =>
     api.get(`/api/proposals/${id}/export/pdf`, { responseType: "blob" }),
+  exportDocx: (id: string) =>
+    api.get(`/api/proposals/${id}/export-docx`, { responseType: "blob" }),
 };
 
 // Template API calls
@@ -152,6 +154,8 @@ export const proposalApiPdf = {
   // ✅ FIXED ENDPOINT
   exportPdf: (id: string) =>
     api.get(`/api/proposals/${id}/export-pdf`, { responseType: "blob" }),
+  exportDocx: (id: string) =>
+    api.get(`/api/proposals/${id}/export-docx`, { responseType: "blob" }),
 };
 
 export default api;
