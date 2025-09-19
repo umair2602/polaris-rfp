@@ -10,7 +10,9 @@ const {
     TableCell,
     WidthType,
     BorderStyle,
+    ImageRun,
   } = require('docx');
+const path = require('path');
   
   class DocxGenerator {
     constructor() {}
@@ -44,7 +46,91 @@ const {
       return doc;
     }
 
+    addHeaderLogos(children) {
+      try {
+        const fs = require("fs");
+    
+        const eighthGenLogoPath = path.join(__dirname, "../public/logos/Picture 1.png");
+        const villageLogoPath = path.join(__dirname, "../public/logos/Picture 2.jpg");
+    
+        const eighthGenLogo = fs.existsSync(eighthGenLogoPath)
+          ? Buffer.from(fs.readFileSync(eighthGenLogoPath))
+          : null;
+        const villageLogo = fs.existsSync(villageLogoPath)
+          ? Buffer.from(fs.readFileSync(villageLogoPath))
+          : null;
+    
+        // Only build table if at least one logo exists
+        if (eighthGenLogo || villageLogo) {
+          children.push(
+            new Table({
+              rows: [
+                new TableRow({
+                  children: [
+                    // Left cell (Village Logo)
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: villageLogo
+                            ? [
+                                new ImageRun({
+                                  data: villageLogo,
+                                  transformation: { height: 50, width: 90 }, // keep proportions
+                                }),
+                              ]
+                            : [],
+                          alignment: AlignmentType.LEFT,
+                        }),
+                      ],
+                      verticalAlign: "center",
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      borders: { top: BorderStyle.NONE, bottom: BorderStyle.NONE, left: BorderStyle.NONE, right: BorderStyle.NONE },
+                    }),
+                    // Right cell (Eighth Gen Logo)
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: eighthGenLogo
+                            ? [
+                                new ImageRun({
+                                  data: eighthGenLogo,
+                                  transformation: { height: 50, width: 90 },
+                                }),
+                              ]
+                            : [],
+                          alignment: AlignmentType.RIGHT,
+                        }),
+                      ],
+                      verticalAlign: "center",
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      borders: { top: BorderStyle.NONE, bottom: BorderStyle.NONE, left: BorderStyle.NONE, right: BorderStyle.NONE },
+                    }),
+                  ],
+                }),
+              ],
+              width: { size: 100, type: WidthType.PERCENTAGE },
+            })
+          );
+    
+          // Add spacing after logos
+          children.push(
+            new Paragraph({
+              children: [new TextRun("")],
+              spacing: { after: 400 },
+            })
+          );
+        }
+      } catch (err) {
+        console.warn("Could not load logos for DOCX:", err.message);
+      }
+    }
+    
+    
+
     addTitlePage(children, proposal, company) {
+      // Add header logos (matching PDF format)
+      this.addHeaderLogos(children);
+
       // Add proposal title (matching PDF format)
       if (proposal.title) {
         children.push(
@@ -150,6 +236,9 @@ const {
           pageBreakBefore: true,
         })
       );
+
+      // Add header logos (matching PDF format)
+      this.addHeaderLogos(children);
 
       // Cover letter title (matching PDF format)
       children.push(
@@ -707,14 +796,27 @@ const {
     }
   
     addTable(children, content) {
-      const rows = content
-        .split("\n")
-        .filter(row => row.includes('|'))
-        .map(row =>
-          row.split('|')
+      const lines = content.split("\n");
+      const rows = [];
+      
+      for (const line of lines) {
+        // Skip empty lines
+        if (!line.trim()) continue;
+        
+        // Skip markdown table separator lines (lines with only |, -, and spaces)
+        if (/^[\s\|\-]+$/.test(line)) continue;
+        
+        // Only process lines that contain | and are not separator lines
+        if (line.includes('|') && !/^[\s\|\-]+$/.test(line)) {
+          const cells = line.split('|')
             .map(cell => cell.trim())
-            .filter(Boolean)
-        );
+            .filter(cell => cell !== ''); // Remove empty cells
+          
+          if (cells.length > 0) {
+            rows.push(cells);
+          }
+        }
+      }
   
       if (!rows.length) return;
   
@@ -722,7 +824,13 @@ const {
         new TableRow({
           children: row.map(cell =>
             new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: cell, size: 12 })] })],
+              children: [new Paragraph({ 
+                children: [new TextRun({ 
+                  text: cell, 
+                  size: 12,
+                  color: "000000"
+                })] 
+              })],
               borders: {
                 top: { style: BorderStyle.SINGLE, size: 1 },
                 bottom: { style: BorderStyle.SINGLE, size: 1 },

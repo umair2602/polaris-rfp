@@ -688,13 +688,8 @@ router.get("/:id/export-docx", async (req, res) => {
     console.log("✅ DocxGenerator created");
 
     console.log("📝 Starting DOCX generation...");
-    const doc = await docxGenerator.generateDocx(proposal, company);
-    console.log("✅ DOCX document generated successfully");
-
-    console.log("🔄 Converting document to buffer...");
-    // Convert to buffer
-    const buffer = await Packer.toBuffer(doc);
-    console.log("✅ DOCX buffer created successfully, size:", buffer.length, "bytes");
+    const buffer = await docxGenerator.generateDocx(proposal, company);
+    console.log("✅ DOCX document generated successfully, size:", buffer.length, "bytes");
 
     // Ensure we have a valid filename
     const filename = (proposal.title || "proposal").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "") + ".docx";
