@@ -65,7 +65,7 @@ Resources:
             CodeConfigurationValues:
               Runtime: NODEJS_18
               BuildCommand: 'echo "Minimal build - no dependencies needed"'
-              StartCommand: 'node -e "const http = require(\"http\"); const server = http.createServer((req, res) => { res.writeHead(200, {\"Content-Type\": \"application/json\"}); res.end(JSON.stringify({message: \"Backend API Running\", status: \"OK\", timestamp: new Date().toISOString(), port: process.env.PORT || 8080})); }); const port = process.env.PORT || 8080; server.listen(port, \"0.0.0.0\", () => console.log(`Server running on port ${port}`));"'
+              StartCommand: 'node -e "const http=require('\''http'\''); const server=http.createServer((req,res)=>{res.writeHead(200,{'\''Content-Type'\'':'\''application/json'\''});res.end(JSON.stringify({message:'\''Backend API Running'\'',status:'\''OK'\'',timestamp:new Date().toISOString(),port:process.env.PORT||8080}));}); const port=process.env.PORT||8080; server.listen(port,'\''0.0.0.0'\'',()=>console.log('\''Server running on port'\'',port));"'
               RuntimeEnvironmentVariables:
                 - Name: NODE_ENV
                   Value: production

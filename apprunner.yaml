@@ -10,7 +10,7 @@ run:
   runtime-version: nodejs18
   command: cd backend && node test-server.js
   network:
-    port: 8000
+    port: 8080
     env: PORT
   env:
     - name: NODE_ENV
