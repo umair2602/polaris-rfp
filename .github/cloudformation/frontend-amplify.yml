@@ -67,6 +67,8 @@ Resources:
       EnvironmentVariables:
         - Name: NODE_ENV
           Value: !Ref Environment
+        - Name: API_BASE_URL
+          Value: 'https://wm8h6yjgim.us-east-1.awsapprunner.com'
       CustomRules:
         - Source: '**'
           Target: '/index.html'
@@ -85,6 +87,8 @@ Resources:
       EnvironmentVariables:
         - Name: NODE_ENV
           Value: !Ref Environment
+        - Name: API_BASE_URL
+          Value: 'https://wm8h6yjgim.us-east-1.awsapprunner.com'
 
   # Amplify Domain (Optional - for custom domain)
   AmplifyDomain:
