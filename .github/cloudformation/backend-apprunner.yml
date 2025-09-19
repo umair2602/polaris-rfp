@@ -25,7 +25,7 @@ Resources:
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
-      ConnectionName: !Sub '${AWS::StackName}-github-connection'
+      ConnectionName: !Sub 'polaris-backend-github'
       ProviderType: GitHub
       Tags:
         - Key: Environment
