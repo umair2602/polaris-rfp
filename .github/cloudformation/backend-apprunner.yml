@@ -83,7 +83,6 @@ Resources:
         Timeout: 5
         HealthyThreshold: 2
         UnhealthyThreshold: 5
-        Port: 8080
       Tags:
         - Key: Environment
           Value: !Ref Environment
