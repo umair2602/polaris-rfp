@@ -37,7 +37,7 @@ jobs:
         aws cloudformation deploy \
           --template-file .github/cloudformation/frontend-amplify.yml \
           --stack-name ${{ env.FRONTEND_STACK_NAME }} \
-          --capabilities CAPABILITY_IAM \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
           --parameter-overrides \
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
@@ -84,13 +84,14 @@ jobs:
         aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
         aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }}
 
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
     - name: Build and push Docker image
       run: |
         # Build Docker image
         docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ./backend
-        
-        # Get ECR login token
-        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
         
         # Tag and push image
         docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
@@ -103,7 +104,7 @@ jobs:
         aws cloudformation deploy \
           --template-file .github/cloudformation/backend-apprunner.yml \
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
-          --capabilities CAPABILITY_IAM \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
           --parameter-overrides \
             ImageUri=${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
             Environment=production
