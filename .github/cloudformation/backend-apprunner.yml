@@ -20,8 +20,8 @@ Parameters:
   
   CodeStarConnectionArn:
     Type: String
-    Description: ARN of existing CodeStar connection for GitHub
-    Default: 'arn:aws:codeconnections:us-east-1:211125621822:connection/3001d156-50df-4d38-93c2-ad120eac04fc'
+    Description: ARN of existing App Runner connection for GitHub
+    Default: 'arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016'
 
 Resources:
 
