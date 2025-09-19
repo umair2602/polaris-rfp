@@ -93,6 +93,21 @@ jobs:
 
     - name: Deploy Backend Stack
       run: |
+        # Check if stack exists and is in a failed state
+        STACK_STATUS=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].StackStatus' \
+          --output text \
+          --region ${{ env.AWS_REGION }} 2>/dev/null || echo "DOES_NOT_EXIST")
+        
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+          echo "Stack is in failed state, deleting..."
+          aws cloudformation delete-stack --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}
+          echo "Waiting for stack deletion..."
+          aws cloudformation wait stack-delete-complete --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}
+        fi
+        
+        # Deploy the stack
         aws cloudformation deploy \
           --template-file .github/cloudformation/backend-apprunner.yml \
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
@@ -100,7 +115,8 @@ jobs:
           --parameter-overrides \
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
-            Environment=production
+            Environment=production \
+          --region ${{ env.AWS_REGION }}
 
     - name: Get Backend URL
       id: get-backend-url
