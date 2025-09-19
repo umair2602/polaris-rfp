@@ -10,10 +10,10 @@ frontend:
       commands:
         - echo "Building the app..."
         - npm run build
-  artifacts:
-    baseDirectory: frontend/.next
-    files:
-      - '**/*'
+      artifacts:
+        baseDirectory: frontend/out
+        files:
+          - '**/*'
   cache:
     paths:
       - frontend/node_modules/**/*

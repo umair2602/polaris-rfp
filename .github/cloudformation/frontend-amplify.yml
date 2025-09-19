@@ -53,13 +53,13 @@ Resources:
               commands:
                 - cd frontend
                 - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: frontend/.next
-            files:
-              - '**/*'
+          build:
+            commands:
+              - npm run build
+        artifacts:
+          baseDirectory: frontend/out
+          files:
+            - '**/*'
           cache:
             paths:
               - frontend/node_modules/**/*

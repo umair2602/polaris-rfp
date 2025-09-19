@@ -14,6 +14,9 @@ const nextConfig = {
   publicRuntimeConfig: {
     API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:8000',
   },
+  // Static export for Amplify
+  output: 'export',
+  distDir: 'out',
 }
 
 module.exports = nextConfig
