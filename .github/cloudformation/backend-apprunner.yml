@@ -65,17 +65,6 @@ Resources:
             Value: !Ref BranchName
           CodeConfiguration:
             ConfigurationSource: REPOSITORY
-            CodeConfigurationValues:
-              Runtime: NODEJS_18
-              BuildCommand: 'cd backend && npm ci --only=production'
-              StartCommand: 'cd backend && node server-simple.js'
-              RuntimeEnvironmentVariables:
-                - Name: NODE_ENV
-                  Value: !Ref Environment
-                - Name: PORT
-                  Value: '8000'
-                - Name: FRONTEND_URL
-                  Value: 'https://main.d2ds3speyvmfi1.amplifyapp.com'
         AutoDeploymentsEnabled: true
       InstanceConfiguration:
         Cpu: '1024'
