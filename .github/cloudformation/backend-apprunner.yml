@@ -2,10 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS App Runner Service for Polaris Backend'
 
 Parameters:
-  ImageUri:
+  RepositoryUrl:
     Type: String
-    Description: ECR Image URI
-    Default: '123456789012.dkr.ecr.us-east-1.amazonaws.com/polaris-backend:latest'
+    Description: GitHub repository URL
+    Default: 'https://github.com/umair2602/polaris-rfp.git'
+  
+  BranchName:
+    Type: String
+    Description: Branch name to deploy
+    Default: 'main'
   
   Environment:
     Type: String
@@ -14,31 +19,6 @@ Parameters:
     AllowedValues: ['development', 'staging', 'production']
 
 Resources:
-  # ECR Repository
-  ECRRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: polaris-backend
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      LifecyclePolicy:
-        LifecyclePolicyText: |
-          {
-            "rules": [
-              {
-                "rulePriority": 1,
-                "description": "Keep last 10 images",
-                "selection": {
-                  "tagStatus": "any",
-                  "countType": "imageCountMoreThan",
-                  "countNumber": 10
-                },
-                "action": {
-                  "type": "expire"
-                }
-              }
-            ]
-          }
 
   # IAM Role for App Runner
   AppRunnerInstanceRole:
@@ -82,16 +62,21 @@ Resources:
     Properties:
       ServiceName: !Sub 'polaris-backend-${Environment}'
       SourceConfiguration:
-        ImageRepository:
-          ImageIdentifier: !Ref ImageUri
-          ImageConfiguration:
-            Port: '8000'
-            RuntimeEnvironmentVariables:
-              NODE_ENV: !Ref Environment
-              PORT: '8000'
-              FRONTEND_URL: !Sub 'https://${FrontendAmplifyAppUrl}'
-          ImageRepositoryType: ECR
-        AutoDeploymentsEnabled: false
+        CodeRepository:
+          RepositoryUrl: !Ref RepositoryUrl
+          SourceCodeVersion:
+            Type: BRANCH
+            Value: !Ref BranchName
+          CodeConfiguration:
+            ConfigurationSource: REPOSITORY
+            CodeConfigurationValues:
+              Runtime: NODEJS_18
+              BuildCommand: 'cd backend && npm ci --production'
+              StartCommand: 'cd backend && npm start'
+              RuntimeEnvironmentVariables:
+                NODE_ENV: !Ref Environment
+                PORT: '8000'
+        AutoDeploymentsEnabled: true
       InstanceConfiguration:
         Cpu: '1024'
         Memory: '2048'
@@ -134,14 +119,3 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-AppRunnerServiceArn'
 
-  ECRRepositoryUri:
-    Description: 'ECR Repository URI'
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}'
-    Export:
-      Name: !Sub '${AWS::StackName}-ECRRepositoryUri'
-
-  ECRRepositoryName:
-    Description: 'ECR Repository Name'
-    Value: !Ref ECRRepository
-    Export:
-      Name: !Sub '${AWS::StackName}-ECRRepositoryName'

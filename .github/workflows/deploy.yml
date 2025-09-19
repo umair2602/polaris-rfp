@@ -11,7 +11,6 @@ env:
   AWS_REGION: us-east-1
   FRONTEND_STACK_NAME: polaris-frontend-stack
   BACKEND_STACK_NAME: polaris-backend-stack
-  ECR_REPOSITORY: polaris-backend
 
 jobs:
   deploy-frontend:
@@ -92,31 +91,6 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
-    - name: Create ECR repository
-      run: |
-        echo "Checking if ECR repository exists..."
-        if aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }} 2>/dev/null; then
-          echo "ECR repository ${{ env.ECR_REPOSITORY }} already exists"
-        else
-          echo "Creating ECR repository ${{ env.ECR_REPOSITORY }}..."
-          aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
-          echo "ECR repository created successfully"
-        fi
-
-    - name: Build and push Docker image
-      run: |
-        # Get ECR login token and login
-        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-        
-        # Build Docker image
-        docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ./backend
-        
-        # Tag and push image
-        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
-        docker push ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-        docker push ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
-
     - name: Deploy Backend Stack
       run: |
         aws cloudformation deploy \
@@ -124,7 +98,8 @@ jobs:
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
           --parameter-overrides \
-            ImageUri=${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+            RepositoryUrl=https://github.com/${{ github.repository }} \
+            BranchName=${{ github.ref_name }} \
             Environment=production
 
     - name: Get Backend URL
