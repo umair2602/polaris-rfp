@@ -2,9 +2,9 @@ name: Deploy to AWS
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 env:
@@ -16,7 +16,7 @@ env:
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     permissions:
       id-token: write
       contents: read
@@ -63,7 +63,7 @@ jobs:
 
   deploy-backend:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     permissions:
       id-token: write
       contents: read
@@ -120,7 +120,7 @@ jobs:
 
   update-frontend-env:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     needs: [deploy-frontend, deploy-backend]
     permissions:
       id-token: write
