@@ -10,12 +10,7 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(
-      `Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${
-        config.url
-      }`,
-    )
-    return config
+    return config;
   },
   (error) => {
     console.error('Request error:', error)
@@ -106,8 +101,10 @@ export const proposalApi = {
     api.put<Proposal>(`/api/proposals/${id}`, data),
   delete: (id: string) => api.delete(`/api/proposals/${id}`),
   exportPdf: (id: string) =>
-    api.get(`/api/proposals/${id}/export/pdf`, { responseType: 'blob' }),
-}
+    api.get(`/api/proposals/${id}/export/pdf`, { responseType: "blob" }),
+  exportDocx: (id: string) =>
+    api.get(`/api/proposals/${id}/export-docx`, { responseType: "blob" }),
+};
 
 // Template API calls
 export const templateApi = {
@@ -157,7 +154,9 @@ export const proposalApiPdf = {
 
   // ✅ FIXED ENDPOINT
   exportPdf: (id: string) =>
-    api.get(`/api/proposals/${id}/export-pdf`, { responseType: 'blob' }),
-}
+    api.get(`/api/proposals/${id}/export-pdf`, { responseType: "blob" }),
+  exportDocx: (id: string) =>
+    api.get(`/api/proposals/${id}/export-docx`, { responseType: "blob" }),
+};
 
 export default api

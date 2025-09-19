@@ -4,13 +4,10 @@ const RFP = require("../models/RFP");
 const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
-const OpenAI = require("openai");
+const { generateAIProposalSections } = require("../services/aiProposalGenerator");
+const DocxGenerator = require("../services/docxGenerator");
+const { Packer } = require("docx");
 const router = express.Router();
-
-// Initialize OpenAI
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
 
 // Generate new proposal with AI
 router.post("/generate", async (req, res) => {
@@ -46,7 +43,6 @@ router.post("/generate", async (req, res) => {
     await proposal.save();
     await proposal.populate("rfpId", "title clientName projectType");
 
-    console.log("AI Proposal generated successfully:", proposal._id);
     res.status(201).json(proposal);
   } catch (error) {
     console.error("Error generating proposal:", error);
@@ -81,7 +77,6 @@ router.post("/:id/generate-sections", async (req, res) => {
     proposal.lastModifiedBy = "ai-generation";
     await proposal.save();
 
-    console.log("AI sections generated successfully for proposal:", proposal._id);
     res.json({ 
       message: "Sections generated successfully", 
       sections: sections,
@@ -231,7 +226,6 @@ router.get("/:id/export", async (req, res) => {
         version: proposal.version,
       },
     };
-    console.log("exportData", exportData);
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${proposal.title.replace(/\s+/g, "_")}.json"`
@@ -258,9 +252,6 @@ router.get("/:id/export-pdf", async (req, res) => {
     // Get company information
     const company = await Company.findOne().sort({ createdAt: -1 });
 
-    // Console log the data for debugging
-    console.log("Proposal data:", JSON.stringify(proposal, null, 2));
-    console.log("Company data:", JSON.stringify(company, null, 2));
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -348,7 +339,10 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc
         .fontSize(24)
         .fillColor("#1a202c")
-        .text(proposal.title, { align: "center" });
+        .text(proposal.title, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
       doc.moveDown(4);
     }
 
@@ -357,86 +351,53 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc
         .fontSize(14)
         .fillColor("#1a202c")
-        .text(`Submitted by: ${company.name}`, { align: "center" });
+        .text(`Submitted by: ${company.name}`, { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
 
-      doc.moveDown(1.5);
+      doc.moveDown(3);
     }
 
     // Contact details - using actual company data
     if (company) {
       // Contact person - using a default since it's not in the company data
       doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text("Jose P, President", { align: "center" });
-      doc.moveDown(0.5);
+        .fontSize(14)
+        .font("Helvetica")
+        .fillColor("#1a202c")
+        .text("Jose P, President", { 
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
+      doc.moveDown(2);
 
       if (company.email) {
         doc
           .fontSize(12)
-          .fillColor("#4a5568")
-          .text(company.email, { align: "center" });
-        doc.moveDown(0.5);
+          .font("Helvetica")
+          .fillColor("#2d3748")
+          .text(company.email, { 
+            align: "center",
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+          });
+        doc.moveDown(1.5);
       }
 
       if (company.phone) {
         doc
           .fontSize(12)
-          .fillColor("#4a5568")
-          .text(company.phone, { align: "center" });
-        doc.moveDown(0.5);
+          .font("Helvetica")
+          .fillColor("#2d3748")
+          .text(company.phone, { 
+            align: "center",
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+          });
+        doc.moveDown(1.5);
       }
     }
 
-    // Additional proposal information
-    doc.moveDown(1);
 
-    // Submitted to information
-    if (proposal.rfpId?.clientName) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Submitted to: ${proposal.rfpId.clientName}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
-
-    // Project type
-    if (proposal.rfpId?.projectType) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(
-          `Project Type: ${proposal.rfpId.projectType
-            .replace(/_/g, " ")
-            .toUpperCase()}`,
-          { align: "center" }
-        );
-      doc.moveDown(0.5);
-    }
-
-    // Submission deadline
-    if (proposal.rfpId?.submissionDeadline) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Submission Deadline: ${proposal.rfpId.submissionDeadline}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
-
-    // Location
-    if (proposal.rfpId?.location) {
-      doc
-        .fontSize(12)
-        .fillColor("#4a5568")
-        .text(`Location: ${proposal.rfpId.location}`, {
-          align: "center",
-        });
-      doc.moveDown(0.5);
-    }
 
     // Add a new page for the hardcoded cover letter
     doc.addPage();
@@ -447,22 +408,26 @@ router.get("/:id/export-pdf", async (req, res) => {
     .fontSize(20)
     .font("Helvetica-Bold")
     .fillColor("#000000")
-    .text("Zoning Code Update and Comprehensive Land Use Plan", { align: "center" });
-    doc.moveDown(2);
+    .text("Zoning Code Update and Comprehensive Land Use Plan", {
+      align: "center",
+      width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+    });
+    doc.moveDown(1);
+
     // Submitted to - dynamic
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text("Submitted to:", { align: "left" });
-    doc.moveDown(1);
+    doc.moveDown(0.5);
     
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text(proposal.rfpId?.clientName || "Town of Amherst", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // Submitted by - dynamic
     doc
@@ -470,14 +435,14 @@ router.get("/:id/export-pdf", async (req, res) => {
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text("Submitted by:", { align: "left" });
-    doc.moveDown(1);
+    doc.moveDown(0.5);
     
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
       .text(company?.name || "Eighth Generation Consulting", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // Date - hardcoded
     doc
@@ -485,7 +450,7 @@ router.get("/:id/export-pdf", async (req, res) => {
       .font("Helvetica")
       .fillColor("#000000")
       .text("09/16/2025", { align: "left" });
-    doc.moveDown(2);
+    doc.moveDown(0.5);
 
     // Title - hardcoded
 
@@ -586,7 +551,13 @@ router.get("/:id/export-pdf", async (req, res) => {
       }
 
       // Section title
-      doc.fontSize(16).fillColor("#1E4E9E").text(sectionName);
+      doc
+        .fontSize(16)
+        .fillColor("#1E4E9E")
+        .text(sectionName, {
+          align: "center",
+          width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+        });
 
       doc.moveDown(0.5);
 
@@ -619,24 +590,86 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(1.5);
     });
 
-    // ---------------- FOOTER ----------------
-    doc
-      .fontSize(10)
-      .fillColor("gray")
-      .text(
-        "Generated by Proposal Management System • Confidential",
-        50,
-        doc.page.height - 50,
-        {
-          align: "center",
-        }
-      );
-
     // End the PDF generation
     doc.end();
   } catch (error) {
     console.error("Error exporting proposal as PDF:", error);
     res.status(500).json({ error: "Failed to export proposal PDF" });
+  }
+});
+
+// Export proposal as DOCX
+router.get("/:id/export-docx", async (req, res) => {
+  console.log("🚀 Starting DOCX export request...");
+  console.log("📋 Request params:", req.params);
+  
+  try {
+    console.log("🔍 Looking up proposal with ID:", req.params.id);
+    const proposal = await Proposal.findById(req.params.id).populate(
+      "rfpId",
+      "title clientName projectType keyRequirements deliverables budgetRange submissionDeadline location contactInformation"
+    );
+
+    if (!proposal) {
+      console.error("❌ Proposal not found for ID:", req.params.id);
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    console.log("✅ Proposal found:", {
+      id: proposal._id,
+      title: proposal.title,
+      hasRfpId: !!proposal.rfpId,
+      rfpId: proposal.rfpId?._id,
+      sectionsCount: Object.keys(proposal.sections || {}).length
+    });
+
+    console.log("🏢 Looking up company information...");
+    // Get company information with fallback
+    const company = await Company.findOne().sort({ createdAt: -1 }) || {};
+    console.log("✅ Company data retrieved:", {
+      hasCompany: !!company,
+      companyId: company?._id,
+      companyName: company?.name,
+      companyKeys: company ? Object.keys(company) : []
+    });
+
+    console.log("📄 Creating DocxGenerator instance...");
+    // Generate DOCX document
+    const docxGenerator = new DocxGenerator();
+    console.log("✅ DocxGenerator created");
+
+    console.log("📝 Starting DOCX generation...");
+    const doc = await docxGenerator.generateDocx(proposal, company);
+    console.log("✅ DOCX document generated successfully");
+
+    console.log("🔄 Converting document to buffer...");
+    // Convert to buffer
+    const buffer = await Packer.toBuffer(doc);
+    console.log("✅ DOCX buffer created successfully, size:", buffer.length, "bytes");
+
+    // Ensure we have a valid filename
+    const filename = (proposal.title || "proposal").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "") + ".docx";
+    console.log("📁 Generated filename:", filename);
+
+    console.log("📤 Setting response headers...");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    console.log("📤 Sending response...");
+    res.send(buffer);
+    console.log("🎉 DOCX export completed successfully");
+  } catch (error) {
+    console.error("❌ Error exporting proposal as DOCX:", error);
+    console.error("❌ Error message:", error.message);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error name:", error.name);
+    console.error("❌ Error cause:", error.cause);
+    
+    res.status(500).json({ 
+      error: "Failed to export proposal DOCX", 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -720,329 +753,5 @@ function renderTable(doc, content) {
 }
 
 
-// AI-powered proposal section generation
-async function generateAIProposalSections(rfp, templateId, customContent) {
-  if (!openai) {
-    throw new Error("OpenAI API key not configured");
-  }
-
-  const systemPrompt = `
-You are an expert proposal writer. Generate a comprehensive proposal based on the RFP data provided. 
-Structure the proposal with the following sections and format them as markdown:
-
-1. **Project Understanding and Approach** - Detailed understanding of requirements and our methodology
-2. **Key Personnel** - Team members and their qualifications
-3. **Methodology (By Phase)** - Detailed project phases and deliverables
-4. **Project Schedule** - Timeline with milestones
-5. **Budget** - Cost breakdown by phases
-6. **References** - Relevant past projects and client experience
-
-Guidelines:
-- Use professional, persuasive language
-- Include specific details from the RFP
-- Format tables using markdown table syntax
-- Use bullet points for lists
-- Include realistic timelines and budgets
-- Make content relevant to the project type
-- Ensure each section is comprehensive but concise
-- Use **bold** for emphasis and *italics* for important details
-
-For the References section, use this exact format:
-- Start with: "We are pleased to provide the following experience from organizations with comparable scopes of work."
-- For each reference, include:
-  - Organization Name (Year-Year)
-  - Contact: [Name], [Title] of [Organization]
-  - Email: [email]
-  - Phone: [phone]
-  - Scope of Work: [Detailed description of work performed and achievements]
-- Do NOT include testimonials or quotes
-
-CRITICAL: Return the sections as a JSON object with EXACTLY these section names as keys and content as values:
-{
-  "Firm Qualifications and Experience": "content here",
-  "Relevant Comprehensive Planning & Rural Community Experience": "content here",
-  "Project Understanding and Approach": "content here",
-  "Key Personnel": "content here",
-  "Methodology (By Phase)": "content here",
-  "Project Schedule": "content here",
-  "Budget": "content here",
-  "References": "content here"
-}
-
-Each section should be a separate key-value pair in the JSON object.`;
-
-  const userPrompt = `
-RFP Information:
-- Title: ${rfp.title}
-- Client: ${rfp.clientName}
-- Project Type: ${rfp.projectType}
-- Budget Range: ${rfp.budgetRange || 'Not specified'}
-- Submission Deadline: ${rfp.submissionDeadline || 'Not specified'}
-- Location: ${rfp.location || 'Not specified'}
-- Key Requirements: ${rfp.keyRequirements?.join(', ') || 'Not specified'}
-- Deliverables: ${rfp.deliverables?.join(', ') || 'Not specified'}
-- Contact Information: ${rfp.contactInformation || 'Not specified'}
-
-${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText.substring(0, 4000)}...` : ''}
-
-Generate a comprehensive proposal with all sections formatted as markdown.`;
-
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
-      max_tokens: 4000,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    });
-
-    const raw = completion.choices[0].message.content.trim();
-    
-    console.log("AI Response length:", raw.length);
-    console.log("AI Response preview:", raw.substring(0, 200) + "...");
-    
-    // Try to parse as JSON first
-    try {
-      // Clean the response to extract JSON
-      let jsonText = raw;
-      
-      // Look for JSON object in the response
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[0];
-        console.log("Found JSON in response, length:", jsonText.length);
-      }
-      
-      const parsed = JSON.parse(jsonText);
-      console.log("Parsed JSON keys:", Object.keys(parsed));
-      
-      // Validate that we have the expected sections
-      const expectedSections = [
-        "Firm Qualifications and Experience",
-        "Relevant Comprehensive Planning & Rural Community Experience",
-        "Project Understanding and Approach", 
-        "Key Personnel",
-        "Methodology (By Phase)",
-        "Project Schedule",
-        "Budget",
-        "References"
-      ];
-      
-      // Check if we have the expected structure
-      const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
-      
-      if (hasExpectedSections) {
-        console.log("Using JSON parsing - found expected sections");
-        return formatAISections(parsed);
-      } else {
-        console.log("JSON structure doesn't match expected sections, trying markdown extraction");
-        // If structure is different, try to extract from markdown
-        return extractSectionsFromMarkdown(raw);
-      }
-    } catch (jsonError) {
-      console.log("JSON parsing failed, trying markdown extraction:", jsonError.message);
-      // If not JSON, try to extract sections from markdown
-      return extractSectionsFromMarkdown(raw);
-    }
-  } catch (error) {
-    console.error("AI proposal generation failed:", error);
-    throw new Error(`AI proposal generation failed: ${error.message}`);
-  }
-}
-
-// Format AI-generated sections for the database
-function formatAISections(sections) {
-  const formattedSections = {};
-  
-  // Add hardcoded sections first
-  formattedSections["Firm Qualifications and Experience"] = {
-    content: getFirmQualificationsContent(),
-    type: "hardcoded",
-    lastModified: new Date().toISOString(),
-  };
-  
-  formattedSections["Relevant Comprehensive Planning & Rural Community Experience"] = {
-    content: getRelevantExperienceContent(),
-    type: "hardcoded", 
-    lastModified: new Date().toISOString(),
-  };
-  
-  // Add AI-generated sections
-  Object.entries(sections).forEach(([sectionName, content]) => {
-    // Skip the hardcoded sections if they were generated by AI
-    if (sectionName !== "Firm Qualifications and Experience" && 
-        sectionName !== "Relevant Comprehensive Planning & Rural Community Experience") {
-      formattedSections[sectionName] = {
-        content: content,
-        type: "ai-generated",
-        lastModified: new Date().toISOString(),
-      };
-    }
-  });
-  
-  return formattedSections;
-}
-
-// Hardcoded content for Firm Qualifications and Experience
-function getFirmQualificationsContent() {
-  return `**Firm Qualifications and Experience**
-
-Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in land use planning, zoning, and public engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
-
-• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering zoning, land use, and stakeholder collaboration through the City of Carbondale's Sustainability Plan.
-
-• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in land use issues.
-
-• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible land use issues.
-
-• **2025:** American Made Challenge Current Semifinalist, U.S. Department of Energy.
-
-• **2025:** Verizon Disaster Resilience Prize Current Semifinalist for oneNode, a solar microgrid technology to restore connectivity, monitor hazards, and coordinate response in disaster zones.
-
-• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible land use, zoning, and privacy concerns for data center development.
-
-• **2025:** Awarded Preferred Provider by the Alliance for Tribal Clean Energy.
-
-Our core services include: Comprehensive Planning, Zoning Ordinance Updates, Rural & Agricultural Preservation, Public Facilitation, and Legal/Statutory Compliance Reviews.`;
-}
-
-// Hardcoded content for Relevant Comprehensive Planning & Rural Community Experience
-function getRelevantExperienceContent() {
-  return `**Relevant Comprehensive Planning & Rural Community Experience**
-
-Eighth Generation Consulting's staff have contributed to and led multiple comprehensive planning and sustainability initiatives in complex municipal areas, including:
-
-• **Carbondale's Sustainability Action Plan**
-  - Emphasized cross-sector collaboration, brownfield development policy, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included rural and agricultural stakeholders. Reviewed all current Zoning Land Use and restrictions, requirements, and assumptions.
-
-• **Osage Nation planning and development support**
-  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around land use, infrastructure planning, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and land usage.
-
-• **Tribal and Municipal Environmental Permitting & Siting Projects**
-  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven siting, feasibility analysis, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
-}
-
-// Extract sections from markdown text if JSON parsing fails
-function extractSectionsFromMarkdown(markdownText) {
-  console.log("Extracting sections from markdown, text length:", markdownText.length);
-  const sections = {};
-  
-  // Try multiple patterns for section headers
-  const patterns = [
-    /^##\s+(.+)$/gm,  // ## Section Name
-    /^#\s+(.+)$/gm,   // # Section Name
-    /^\*\*(.+?)\*\*\s*$/gm,  // **Section Name**
-    /^(.+?):\s*$/gm   // Section Name:
-  ];
-  
-  let foundSections = false;
-  
-  for (const pattern of patterns) {
-    const matches = [];
-    let match;
-    
-    // Reset regex
-    pattern.lastIndex = 0;
-    
-    while ((match = pattern.exec(markdownText)) !== null) {
-      matches.push({
-        name: match[1].trim(),
-        index: match.index,
-        fullMatch: match[0]
-      });
-    }
-    
-    if (matches.length > 0) {
-      foundSections = true;
-      console.log(`Found ${matches.length} sections using pattern:`, pattern);
-      
-      // Process each section
-      for (let i = 0; i < matches.length; i++) {
-        const currentMatch = matches[i];
-        const nextMatch = matches[i + 1];
-        
-        const sectionName = currentMatch.name;
-        const sectionStart = currentMatch.index + currentMatch.fullMatch.length;
-        const sectionEnd = nextMatch ? nextMatch.index : markdownText.length;
-        
-        const content = markdownText
-          .substring(sectionStart, sectionEnd)
-          .trim();
-        
-        if (content && content.length > 10) { // Only add if content is substantial
-          console.log(`Adding section: ${sectionName} (${content.length} chars)`);
-          sections[sectionName] = {
-            content: content,
-            type: "ai-generated",
-            lastModified: new Date().toISOString(),
-          };
-        }
-      }
-      break; // Use the first pattern that finds sections
-    }
-  }
-  
-  // If no sections found with patterns, try to split by common section names
-  if (!foundSections) {
-    const commonSections = [
-      "Project Understanding and Approach",
-      "Key Personnel", 
-      "Methodology",
-      "Project Schedule",
-      "Budget",
-      "References"
-    ];
-    
-    let currentContent = markdownText;
-    
-    for (const sectionName of commonSections) {
-      const regex = new RegExp(`(${sectionName}[\\s\\S]*?)(?=${commonSections.join('|')}|$)`, 'gi');
-      const match = regex.exec(currentContent);
-      
-      if (match && match[1]) {
-        const content = match[1].replace(new RegExp(`^${sectionName}\\s*:?\\s*`, 'i'), '').trim();
-        if (content && content.length > 10) {
-          sections[sectionName] = {
-            content: content,
-            type: "ai-generated", 
-            lastModified: new Date().toISOString(),
-          };
-        }
-      }
-    }
-  }
-  
-  // If still no sections found, create a single section with all content
-  if (Object.keys(sections).length === 0) {
-    console.log("No sections found, creating single 'Proposal Content' section");
-    sections["Proposal Content"] = {
-      content: markdownText,
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
-  
-  // Add hardcoded sections to the beginning
-  const hardcodedSections = {
-    "Firm Qualifications and Experience": {
-      content: getFirmQualificationsContent(),
-      type: "hardcoded",
-      lastModified: new Date().toISOString(),
-    },
-    "Relevant Comprehensive Planning & Rural Community Experience": {
-      content: getRelevantExperienceContent(),
-      type: "hardcoded", 
-      lastModified: new Date().toISOString(),
-    }
-  };
-  
-  // Merge hardcoded sections with extracted sections
-  const finalSections = { ...hardcodedSections, ...sections };
-  
-  console.log("Final sections created:", Object.keys(finalSections));
-  return finalSections;
-}
 
 module.exports = router;
