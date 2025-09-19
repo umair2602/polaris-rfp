@@ -56,13 +56,13 @@ Resources:
     Properties:
       ServiceName: !Sub 'polaris-backend-${Environment}'
       SourceConfiguration:
+        AuthenticationConfiguration:
+          ConnectionArn: !Ref CodeStarConnectionArn
         CodeRepository:
           RepositoryUrl: !Ref RepositoryUrl
           SourceCodeVersion:
             Type: BRANCH
             Value: !Ref BranchName
-          AuthenticationConfiguration:
-            ConnectionArn: !Ref CodeStarConnectionArn
           CodeConfiguration:
             ConfigurationSource: REPOSITORY
             CodeConfigurationValues:
