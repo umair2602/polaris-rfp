@@ -18,10 +18,13 @@ Parameters:
     Default: 'production'
     AllowedValues: ['development', 'staging', 'production']
   
-  GitHubToken:
+  CodeStarConnectionArn:
     Type: String
-    Description: GitHub token for repository access
-    NoEcho: true
+    Description: ARN of the CodeStar connection for GitHub (leave empty for public repos)
+    Default: ""
+
+Conditions:
+  HasCodeStarConnection: !Not [!Equals [!Ref CodeStarConnectionArn, ""]]
 
 Resources:
 
@@ -58,6 +61,8 @@ Resources:
           SourceCodeVersion:
             Type: BRANCH
             Value: !Ref BranchName
+          ConnectionConfiguration:
+            ConnectionArn: !Ref CodeStarConnectionArn
           CodeConfiguration:
             ConfigurationSource: REPOSITORY
             CodeConfigurationValues:
