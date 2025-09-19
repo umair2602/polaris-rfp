@@ -128,6 +128,7 @@ jobs:
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
             Environment=production \
+            CodeStarConnectionArn=arn:aws:codeconnections:us-east-1:211125621822:connection/3001d156-50df-4d38-93c2-ad120eac04fc \
           --region ${{ env.AWS_REGION }}; then
           
           echo "❌ Stack deployment failed!"
