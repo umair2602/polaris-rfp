@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Amplify App for Polaris Frontend'
+
+Parameters:
+  RepositoryUrl:
+    Type: String
+    Description: GitHub repository URL
+    Default: 'https://github.com/umair2602/polaris-rfp.git'
+  
+  BranchName:
+    Type: String
+    Description: Branch name to deploy
+    Default: 'main'
+  
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: 'production'
+    AllowedValues: ['development', 'staging', 'production']
+  
+  GitHubToken:
+    Type: String
+    Description: GitHub token for repository access
+    NoEcho: true
+
+Resources:
+  # IAM Role for Amplify
+  AmplifyServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-amplify-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess-Amplify
+
+  # Amplify App
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub 'polaris-frontend-${Environment}'
+      Repository: !Ref RepositoryUrl
+      AccessToken: !Ref GitHubToken
+      BuildSpec: |
+        version: 1
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: .next
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+              - .next/cache/**/*
+      EnvironmentVariables:
+        - Name: NODE_ENV
+          Value: !Ref Environment
+      CustomRules:
+        - Source: '**'
+          Target: '/index.html'
+          Status: '200'
+      Platform: WEB
+
+  # Amplify Branch
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: !Ref BranchName
+      Description: !Sub 'Main branch for ${Environment} environment'
+      EnableAutoBuild: true
+      EnablePullRequestPreview: true
+      EnvironmentVariables:
+        - Name: NODE_ENV
+          Value: !Ref Environment
+
+  # Amplify Domain (Optional - for custom domain)
+  AmplifyDomain:
+    Type: AWS::Amplify::Domain
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      DomainName: !Sub 'polaris-${Environment}.yourdomain.com'
+      SubDomainSettings:
+        - BranchName: !Ref BranchName
+          Prefix: !Ref BranchName
+
+  # CloudFront Distribution for custom domain
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt AmplifyApp.DefaultDomain
+            Id: AmplifyOrigin
+            CustomOriginConfig:
+              HTTPPort: 443
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: AmplifyOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+
+Outputs:
+  AmplifyAppId:
+    Description: 'Amplify App ID'
+    Value: !GetAtt AmplifyApp.AppId
+    Export:
+      Name: !Sub '${AWS::StackName}-AmplifyAppId'
+
+  AmplifyAppUrl:
+    Description: 'Amplify App URL'
+    Value: !Sub 'https://${BranchName}.${AmplifyApp.DefaultDomain}'
+    Export:
+      Name: !Sub '${AWS::StackName}-AmplifyAppUrl'
+
+  CloudFrontUrl:
+    Description: 'CloudFront Distribution URL'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontUrl'
+
+  AmplifyServiceRoleArn:
+    Description: 'Amplify Service Role ARN'
+    Value: !GetAtt AmplifyServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AmplifyServiceRoleArn'

@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS App Runner Service for Polaris Backend'
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR Image URI
+    Default: '123456789012.dkr.ecr.us-east-1.amazonaws.com/polaris-backend:latest'
+  
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: 'production'
+    AllowedValues: ['development', 'staging', 'production']
+
+Resources:
+  # ECR Repository
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: polaris-backend
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  # IAM Role for App Runner
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-apprunner-instance-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  # IAM Role for App Runner Service
+  AppRunnerServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-apprunner-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AppRunnerServicePolicyForECRAccess
+
+  # CloudWatch Log Group for App Runner
+  AppRunnerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apprunner/${AWS::StackName}'
+      RetentionInDays: 14
+
+  # App Runner Service
+  BackendAppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub 'polaris-backend-${Environment}'
+      SourceConfiguration:
+        ImageRepository:
+          ImageIdentifier: !Ref ImageUri
+          ImageConfiguration:
+            Port: '8000'
+            RuntimeEnvironmentVariables:
+              NODE_ENV: !Ref Environment
+              PORT: '8000'
+              FRONTEND_URL: !Sub 'https://${FrontendAmplifyAppUrl}'
+          ImageRepositoryType: ECR
+        AutoDeploymentsEnabled: false
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 2
+        UnhealthyThreshold: 5
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: Backend
+
+  # Auto Scaling Configuration
+  AutoScalingConfiguration:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      AutoScalingConfigurationName: !Sub '${AWS::StackName}-autoscaling'
+      MaxConcurrency: 100
+      MaxSize: 10
+      MinSize: 1
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  AppRunnerServiceUrl:
+    Description: 'App Runner Service URL'
+    Value: !GetAtt BackendAppRunnerService.ServiceUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-AppRunnerServiceUrl'
+
+  AppRunnerServiceArn:
+    Description: 'App Runner Service ARN'
+    Value: !GetAtt BackendAppRunnerService.ServiceArn
+    Export:
+      Name: !Sub '${AWS::StackName}-AppRunnerServiceArn'
+
+  ECRRepositoryUri:
+    Description: 'ECR Repository URI'
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ECRRepositoryUri'
+
+  ECRRepositoryName:
+    Description: 'ECR Repository Name'
+    Value: !Ref ECRRepository
+    Export:
+      Name: !Sub '${AWS::StackName}-ECRRepositoryName'

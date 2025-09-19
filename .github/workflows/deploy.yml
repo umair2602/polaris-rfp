@@ -1,0 +1,172 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  FRONTEND_STACK_NAME: polaris-frontend-stack
+  BACKEND_STACK_NAME: polaris-backend-stack
+  ECR_REPOSITORY: polaris-backend
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy Frontend Stack
+      run: |
+        aws cloudformation deploy \
+          --template-file .github/cloudformation/frontend-amplify.yml \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --capabilities CAPABILITY_IAM \
+          --parameter-overrides \
+            RepositoryUrl=https://github.com/${{ github.repository }} \
+            BranchName=${{ github.ref_name }} \
+            Environment=production \
+            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}
+
+    - name: Get Amplify App ID
+      id: get-app-id
+      run: |
+        APP_ID=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AmplifyAppId`].OutputValue' \
+          --output text)
+        echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+        echo "Amplify App ID: $APP_ID"
+
+    - name: Trigger Amplify Build
+      run: |
+        aws amplify start-job \
+          --app-id ${{ steps.get-app-id.outputs.app-id }} \
+          --branch-name ${{ github.ref_name }} \
+          --job-type RELEASE
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Create ECR repository
+      run: |
+        aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
+        aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }}
+
+    - name: Build and push Docker image
+      run: |
+        # Build Docker image
+        docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ./backend
+        
+        # Get ECR login token
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        
+        # Tag and push image
+        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+        docker push ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        docker push ${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+
+    - name: Deploy Backend Stack
+      run: |
+        aws cloudformation deploy \
+          --template-file .github/cloudformation/backend-apprunner.yml \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --capabilities CAPABILITY_IAM \
+          --parameter-overrides \
+            ImageUri=${{ env.AWS_REGION }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+            Environment=production
+
+    - name: Get Backend URL
+      id: get-backend-url
+      run: |
+        BACKEND_URL=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
+          --output text)
+        echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "Backend URL: $BACKEND_URL"
+
+  update-frontend-env:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    needs: [deploy-frontend, deploy-backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get Backend URL
+      id: get-backend-url
+      run: |
+        BACKEND_URL=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
+          --output text)
+        echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+
+    - name: Get Amplify App ID
+      id: get-app-id
+      run: |
+        APP_ID=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AmplifyAppId`].OutputValue' \
+          --output text)
+        echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+
+    - name: Update Amplify Environment Variables
+      run: |
+        aws amplify update-app \
+          --app-id ${{ steps.get-app-id.outputs.app-id }} \
+          --environment-variables API_BASE_URL=${{ steps.get-backend-url.outputs.backend-url }}
+
+    - name: Trigger Frontend Rebuild
+      run: |
+        aws amplify start-job \
+          --app-id ${{ steps.get-app-id.outputs.app-id }} \
+          --branch-name ${{ github.ref_name }} \
+          --job-type RELEASE
+
+  notify:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-frontend, deploy-backend, update-frontend-env]
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy-frontend.result }}" == "success" ] && [ "${{ needs.deploy-backend.result }}" == "success" ] && [ "${{ needs.update-frontend-env.result }}" == "success" ]; then
+          echo "✅ Deployment completed successfully!"
+        else
+          echo "❌ Deployment failed. Check the logs above."
+          exit 1
+        fi
