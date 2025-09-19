@@ -65,7 +65,7 @@ Resources:
             CodeConfigurationValues:
               Runtime: NODEJS_18
               BuildCommand: 'cd backend && npm install --production'
-              StartCommand: 'cd backend && PORT=8080 node test-server.js'
+              StartCommand: 'cd backend && PORT=8080 node server-simple.js'
               RuntimeEnvironmentVariables:
                 - Name: NODE_ENV
                   Value: production

@@ -11,7 +11,7 @@ const contentRoutes = require('./routes/content');
 const googleDriveRoutes = require('./routes/googledrive-simple');
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(helmet());
@@ -54,9 +54,9 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📚 API documentation: http://localhost:${PORT}/`);
+  console.log(`📚 API documentation: http://0.0.0.0:${PORT}/`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
   console.log(`💾 Mode: Simple (in-memory storage)`);
   console.log(`👤 Default login: admin / admin123`);
