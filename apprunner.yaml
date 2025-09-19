@@ -3,17 +3,14 @@ runtime: nodejs18
 build:
   commands:
     build:
-      - echo "Building the backend..."
-      - cd backend
-      - npm install --production
+      - echo "Installing dependencies..."
+      - cd backend && npm install express
 run:
   runtime-version: nodejs18
-  command: cd backend && node server-simple.js
+  command: cd backend && node test-server.js
   network:
     port: 8000
     env: PORT
   env:
     - name: NODE_ENV
       value: production
-    - name: PORT  
-      value: 8000
