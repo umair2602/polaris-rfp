@@ -40,20 +40,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
 
-  # IAM Role for App Runner Service
-  AppRunnerServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: build.apprunner.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-
   # CloudWatch Log Group for App Runner
   AppRunnerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -84,7 +70,6 @@ Resources:
                 - Name: PORT
                   Value: '8000'
         AutoDeploymentsEnabled: true
-        ServiceRoleArn: !GetAtt AppRunnerServiceRole.Arn
       InstanceConfiguration:
         Cpu: '1024'
         Memory: '2048'
