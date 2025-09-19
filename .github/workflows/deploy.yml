@@ -31,28 +31,28 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
-        - name: Deploy Frontend Stack
-          run: |
-            echo "Deploying frontend stack..."
-            if ! aws cloudformation deploy \
-              --template-file .github/cloudformation/frontend-amplify.yml \
-              --stack-name ${{ env.FRONTEND_STACK_NAME }} \
-              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-              --parameter-overrides \
-                RepositoryUrl=https://github.com/${{ github.repository }} \
-                BranchName=${{ github.ref_name }} \
-                Environment=production \
-                GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}; then
-              
-              echo "❌ Frontend stack deployment failed!"
-              echo "Getting error details..."
-              aws cloudformation describe-stack-events \
-                --stack-name ${{ env.FRONTEND_STACK_NAME }} \
-                --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
-                --output table || echo "Could not retrieve stack events"
-              exit 1
-            fi
-            echo "✅ Frontend stack deployed successfully!"
+    - name: Deploy Frontend Stack
+      run: |
+        echo "Deploying frontend stack..."
+        if ! aws cloudformation deploy \
+          --template-file .github/cloudformation/frontend-amplify.yml \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+            RepositoryUrl=https://github.com/${{ github.repository }} \
+            BranchName=${{ github.ref_name }} \
+            Environment=production \
+            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}; then
+          
+          echo "❌ Frontend stack deployment failed!"
+          echo "Getting error details..."
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "Could not retrieve stack events"
+          exit 1
+        fi
+        echo "✅ Frontend stack deployed successfully!"
 
     - name: Get Amplify App ID
       id: get-app-id
