@@ -61,7 +61,7 @@ Resources:
           SourceCodeVersion:
             Type: BRANCH
             Value: !Ref BranchName
-          ConnectionConfiguration:
+          AuthenticationConfiguration:
             ConnectionArn: !Ref CodeStarConnectionArn
           CodeConfiguration:
             ConfigurationSource: REPOSITORY
