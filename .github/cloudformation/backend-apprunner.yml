@@ -74,10 +74,11 @@ Resources:
               BuildCommand: 'cd backend && npm ci'
               StartCommand: 'cd backend && npm start'
               RuntimeEnvironmentVariables:
-                NODE_ENV: !Ref Environment
-                PORT: '8000'
+                - Name: NODE_ENV
+                  Value: !Ref Environment
+                - Name: PORT
+                  Value: '8000'
         AutoDeploymentsEnabled: true
-        ServiceRoleArn: !GetAtt AppRunnerServiceRole.Arn
       InstanceConfiguration:
         Cpu: '1024'
         Memory: '2048'
@@ -89,6 +90,7 @@ Resources:
         Timeout: 5
         HealthyThreshold: 2
         UnhealthyThreshold: 5
+      ServiceRoleArn: !GetAtt AppRunnerServiceRole.Arn
       Tags:
         - Key: Environment
           Value: !Ref Environment
