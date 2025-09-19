@@ -17,6 +17,9 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: Checkout code
@@ -27,6 +30,7 @@ jobs:
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
         aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ github.run_id }}
 
     - name: Deploy Frontend Stack
       run: |
@@ -60,6 +64,9 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: Checkout code
@@ -70,6 +77,7 @@ jobs:
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
         aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ github.run_id }}
 
     - name: Create ECR repository
       run: |
@@ -114,6 +122,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: [deploy-frontend, deploy-backend]
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: Checkout code
@@ -124,6 +135,7 @@ jobs:
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
         aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ github.run_id }}
 
     - name: Get Backend URL
       id: get-backend-url

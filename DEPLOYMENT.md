@@ -17,32 +17,35 @@ This guide explains how to deploy the Polaris RFP Proposal System to AWS using G
 
 ## Setup Instructions
 
-### 1. Configure AWS IAM Role
+### 1. Configure AWS IAM Role and OIDC Provider
 
-The `github-actions-role` in your AWS account needs to be updated with the following trust policy:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/YOUR_REPO:*"
-        }
-      }
-    }
-  ]
-}
+**Step 1: Create OIDC Provider (if not already exists)**
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 \
+  --client-id-list sts.amazonaws.com
 ```
+
+**Step 2: Update IAM Role Trust Policy**
+
+The `github-actions-role` in your AWS account needs to be updated with the trust policy from `iam-trust-policy.json`:
+
+```bash
+# Update the trust policy
+aws iam update-assume-role-policy \
+  --role-name github-actions-role \
+  --policy-document file://iam-trust-policy.json
+```
+
+**Required IAM Permissions for the Role:**
+The `github-actions-role` needs the following permissions:
+- CloudFormation (full access)
+- Amplify (full access) 
+- App Runner (full access)
+- ECR (full access)
+- IAM (for role creation)
+- CloudWatch Logs (full access)
 
 ### 2. Update Configuration Files
 
