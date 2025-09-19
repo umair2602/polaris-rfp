@@ -27,7 +27,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    console.log('📄 Analyzing RFP:', req.file.originalname);
     
     // Analyze the RFP
     const analysis = await rfpAnalyzer.analyzeRFP(req.file.buffer, req.file.originalname);
@@ -42,7 +41,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const rfp = await fileStorage.createRFP(rfpData);
     
-    console.log('✅ RFP saved successfully:', rfp._id);
     res.status(201).json(rfp);
     
   } catch (error) {
@@ -63,7 +61,6 @@ router.post('/analyze-url', async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    console.log('📄 Analyzing RFP from URL:', url);
     
     // Analyze the RFP from URL
     const analysis = await rfpAnalyzer.analyzeRFP(url, url);
@@ -78,7 +75,6 @@ router.post('/analyze-url', async (req, res) => {
 
     const rfp = await fileStorage.createRFP(rfpData);
     
-    console.log('✅ RFP from URL saved successfully:', rfp._id);
     res.status(201).json(rfp);
     
   } catch (error) {
