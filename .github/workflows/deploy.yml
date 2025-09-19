@@ -117,6 +117,7 @@ jobs:
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
             Environment=production \
+            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }} \
           --region ${{ env.AWS_REGION }} || {
             echo "Stack deployment failed. Getting stack events..."
             aws cloudformation describe-stack-events \
