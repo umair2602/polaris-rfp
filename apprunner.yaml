@@ -4,7 +4,8 @@ build:
   commands:
     build:
       - echo "Installing dependencies..."
-      - cd backend && npm install express
+      - cd backend
+      - npm install
 run:
   runtime-version: nodejs18
   command: cd backend && node test-server.js
