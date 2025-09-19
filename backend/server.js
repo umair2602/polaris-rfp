@@ -22,6 +22,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:3002",
+      "https://main.d2og3apq9m5dq5.amplifyapp.com",
     ],
     credentials: true,
     optionsSuccessStatus: 200,
