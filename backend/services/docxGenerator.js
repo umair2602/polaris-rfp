@@ -71,7 +71,10 @@ class DocxGenerator {
     emptyLine6.addText(" ");
 
     const title = docx.createP({ align: "center" });
-    title.addText(proposal.title || "Proposal Title", {
+    // Clean title to remove duplicate "Proposal for" text
+    let cleanTitle = proposal.title || "Proposal Title";
+    cleanTitle = cleanTitle.replace(/^Proposal for\s+Proposal for\s+/i, "Proposal for ");
+    title.addText(cleanTitle, {
       // bold: true,
       font_size: 23,
       font_face: "Calibri",
@@ -181,13 +184,18 @@ class DocxGenerator {
       // Header logos are already added in the main generation flow
 
       const heading = docx.createP({ align: "center" });
-      heading.addText(sectionName, { bold: true, font_size: 11, font_face: "Calibri" });
+      heading.addText(sectionName, { bold: true, font_size: 13, font_face: "Calibri", color: "073763" });
 
       const content = sectionData?.content || "";
       if (typeof content === "string" && content.includes("|")) {
         this.addTable(docx, content);
       } else {
-        this.addTextContent(docx, content);
+        // Use special formatting for Key Personnel section
+        if (sectionName === "Key Personnel") {
+          this.addKeyPersonnelContent(docx, content);
+        } else {
+          this.addTextContent(docx, content);
+        }
       }
 
       // Only add page break if this is not the last section
@@ -210,7 +218,27 @@ class DocxGenerator {
       .replace(/^#{1,6}\s*/gm, "")
       .replace(/\n\n+/g, "\n\n");
 
-    // Split by double newlines first to get paragraphs
+    const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
+
+    paragraphs.forEach((para) => {
+      const p = docx.createP();
+      p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+    });
+  }
+
+  // ---------------- KEY PERSONNEL CONTENT ----------------
+  addKeyPersonnelContent(docx, content) {
+    let cleanContent = content || "No content available";
+    if (typeof cleanContent !== "string") {
+      cleanContent = String(cleanContent);
+    }
+
+    cleanContent = cleanContent
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/^#{1,6}\s*/gm, "")
+      .replace(/\n\n+/g, "\n\n");
+
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
     paragraphs.forEach((para) => {
@@ -220,10 +248,15 @@ class DocxGenerator {
       if (lines.length === 1) {
         // Single line paragraph
         const p = docx.createP();
-        if (para.trim().startsWith('-')) {
+        // Only convert to bullet if line starts with dash and has content after it
+        if (para.trim().startsWith('-') && para.trim().length > 1) {
           const bulletText = para.trim().substring(1).trim();
-          p.addText('• ', { font_size: 12, font_face: "Calibri" });
-          p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+          if (bulletText) { // Only add bullet if there's content after the dash
+            p.addText('• ', { font_size: 12, font_face: "Calibri" });
+            p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+          } else {
+            p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+          }
         } else {
           p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
         }
@@ -231,10 +264,15 @@ class DocxGenerator {
         // Multi-line paragraph - check each line
         lines.forEach((line, index) => {
           const p = docx.createP();
-          if (line.trim().startsWith('-')) {
+          // Only convert to bullet if line starts with dash and has content after it
+          if (line.trim().startsWith('-') && line.trim().length > 1) {
             const bulletText = line.trim().substring(1).trim();
-            p.addText('• ', { font_size: 12, font_face: "Calibri" });
-            p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+            if (bulletText) { // Only add bullet if there's content after the dash
+              p.addText('• ', { font_size: 12, font_face: "Calibri" });
+              p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+            } else {
+              p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
+            }
           } else {
             p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
           }
@@ -257,6 +295,7 @@ class DocxGenerator {
             .split("|")
             .map((c) => c.trim())
             .map((c) => c.replace(/\*\*/g, "").replace(/\*/g, "")) // Remove ** and * markdown formatting
+            .map((c) => c.replace(/<br\s*\/?>/gi, '\n')) // Convert <br> tags to line breaks
             .filter((c) => c !== "");
           if (cells.length) table.push(cells);
         }
@@ -304,10 +343,13 @@ class DocxGenerator {
   createFormattedTable(table, tableType = 'default') {
     return table.map((row, rowIndex) => {
       return row.map((cell, cellIndex) => {
+        // Process cell content to handle line breaks
+        const processedCell = this.processTableCellContent(cell);
+        
         // Header row formatting
         if (rowIndex === 0) {
           return {
-            val: cell,
+            val: processedCell,
             opts: {
               b: true,
               sz: '24',
@@ -325,7 +367,7 @@ class DocxGenerator {
         
         // Data row formatting
         return {
-          val: cell,
+          val: processedCell,
           opts: {
             b: false,
             sz: '22',
@@ -338,10 +380,18 @@ class DocxGenerator {
     });
   }
 
+  processTableCellContent(cell) {
+    // Convert line breaks to array format for multi-line cells
+    if (typeof cell === 'string' && cell.includes('\n')) {
+      return cell.split('\n').filter(line => line.trim() !== '');
+    }
+    return cell;
+  }
+
   getHeaderAlignment(tableType, cellIndex) {
     switch (tableType) {
       case 'budget':
-        return cellIndex === 0 ? "left" : "right";
+        return "center";
       case 'timeline':
         return "center";
       case 'team':
@@ -354,7 +404,7 @@ class DocxGenerator {
   getDataAlignment(tableType, cellIndex) {
     switch (tableType) {
       case 'budget':
-        return cellIndex === 0 ? "left" : "right";
+        return "center";
       case 'timeline':
         return "center";
       case 'team':

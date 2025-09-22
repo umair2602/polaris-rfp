@@ -58,30 +58,34 @@ GUIDELINES:
 - Make content relevant to the project type as described in the RFP
 - Ensure each section is comprehensive but concise
 - Use **bold** for emphasis and *italics* for important details
+- Adapt language and examples to match the RFP's project type (e.g., "Software Development", "Financial Analysis", "Strategic Planning", "Consulting", "Engineering", etc.)
 
 For the Project Understanding and Approach section:
 - Write 4-6 comprehensive paragraphs (300-500 words total)
-- Start with the current situation/context of the client/community using specific details from the RFP
+- Start with the current situation/context of the client/organization using specific details from the RFP
 - Identify specific challenges, pressures, and opportunities mentioned in the RFP
-- Reference specific details from the RFP (population, land use patterns, community characteristics)
-- Explain why action is needed now and what happens without proper planning
-- Describe the community's valuable assets that must be protected
-- Address compliance requirements (state/federal laws, codes) mentioned in the RFP
+- Reference specific details from the RFP (project scope, requirements, constraints, objectives)
+- Explain why action is needed now and what happens without proper execution
+- Describe the organization's valuable assets and goals that must be addressed
+- Address compliance requirements (regulations, standards, policies) mentioned in the RFP
 - Conclude with our collaborative, data-driven approach
 - Use specific language from the RFP to show deep understanding
 - If specific details are not provided in the RFP, work with the general project description available
 
 For the Key Personnel section:
-- Include 3-5 key team members with realistic professional names
+- Include 3-5 key team members with actual real people who have publicly shared their work in this domain
 - Each person should have: Full Name, Credentials (MBA, PhD, etc.), Title
 - Follow this exact format for each person:
   [Full Name], [Credentials] - [Title]
-  ● [Specific achievement or experience bullet point]
-  ● [Another specific achievement or experience bullet point]
-  ● [Additional relevant experience bullet point]
+  - [Specific achievement or experience bullet point]
+  - [Another specific achievement or experience bullet point]
+  - [Additional relevant experience bullet point]
 - Use 3-5 bullet points per person describing their specific achievements, projects, and qualifications
 - Make the experience relevant to the project type as described in the RFP
 - Include specific details like years of experience, notable projects, certifications, or awards
+- ONLY use names of real people who have publicly shared their work in this specific domain
+- If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
+- Do NOT generate or make up names - only use real people or "Unknown"
 
 For the Methodology (By Phase) section:
 - Create detailed project phases based on the deliverables and requirements mentioned in the RFP
@@ -161,18 +165,23 @@ For the Budget section:
 For the References section:
 - Include 3-5 relevant past projects that demonstrate experience with similar work
 - Use this exact format for each reference:
-  - Organization Name (Year-Year)
-  - Contact: [Name], [Title] of [Organization]
-  - Email: [email]
-  - Phone: [phone]
-  - Scope of Work: [Detailed description of work performed and achievements]
+  Organization Name (Year-Year)
+  Contact: [Name], [Title] of [Organization]
+  Email: [email]
+  Phone: [phone]
+  Scope of Work: [Detailed description of work performed and achievements]
 - Make the references relevant to the project type and requirements
+- ONLY use names of real people who have publicly shared their work in this specific domain
+- If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
+- Do NOT generate or make up names - only use real people or "Unknown"
+- Focus on people who have publicly documented their work in this field
+- Do NOT use dashes at the beginning of each line in references
 
 CRITICAL: Return the sections as a JSON object with EXACTLY these section names as keys and content as values:
 {
   "Title": "Submitted by: Eighth Generation Consulting\nName: [Resource person name]\nEmail: [Resource person email]\nNumber: [Resource person contact number]",
   "Firm Qualifications and Experience": "content here",
-  "Relevant Comprehensive Planning & Rural Community Experience": "content here",
+  "Relevant Industry Experience": "content here",
   "Project Understanding and Approach": "content here",
   "Key Personnel": "content here",
   "Methodology (By Phase)": "content here",
@@ -200,36 +209,46 @@ ${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText}` : ''}
 INSTRUCTIONS:
 
 1. **Project Understanding and Approach**: 
-   - Use specific details from the RFP text when available (population numbers, land use patterns, community characteristics, challenges)
+   - Use specific details from the RFP text when available (project scope, requirements, constraints, objectives)
    - If specific details are not provided, work with the general project description and requirements
-   - Reference the client's specific situation, assets, and needs as described in the RFP
-   - Address compliance requirements mentioned in the RFP
+   - Reference the client's specific situation, goals, and needs as described in the Document
+   - Address compliance requirements mentioned in the Document
    - Write 4-6 comprehensive paragraphs that demonstrate understanding of the project
+   - Adapt language and context to match the project type (e.g., software development, financial analysis, strategic planning, etc.)
 
 2. **Key Personnel**: 
-   - Create realistic professional profiles relevant to the project requirements
-   - Use realistic names and credentials appropriate for the project type
-   - Focus on experience relevant to the specific project requirements mentioned in the RFP
+   - ONLY use names of real people who have publicly shared their work in this specific domain
+   - If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
+   - Do NOT generate or make up names - only use real people or "Unknown"
+   - Focus on people who have publicly documented their work in this field
+   - Ensure team members have expertise in the project domain
 
 3. **Methodology (By Phase)**: 
    - Create detailed phases based on the deliverables and requirements mentioned in the RFP
    - If specific methodology is mentioned, follow that structure
    - If not specified, create logical phases based on the project type and deliverables
+   - Ensure methodology is appropriate for the project domain
 
 4. **Project Schedule**: 
    - Create a realistic timeline based on the project requirements
    - If specific deadlines are mentioned in the RFP, incorporate those
    - If not specified, create a logical timeline based on the project scope
+   - Consider project complexity and industry standards for timeline
 
 5. **Budget**: 
    - Create detailed cost breakdown based on the project phases and deliverables
    - If budget range is provided in the RFP, work within that range
    - If specific budget requirements are mentioned, follow those guidelines
    - Use markdown table format for clear presentation
+   - Ensure costs are realistic for the project type and scope
 
 6. **References**: 
    - Include relevant past projects that demonstrate experience with similar work
    - Make the references relevant to the project type and requirements
+   - Ensure references showcase expertise in the project domain
+   - ONLY use names of real people who have publicly shared their work in this specific domain
+   - If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
+   - Do NOT generate or make up names - only use real people or "Unknown"
 
 Generate a comprehensive proposal with all sections formatted as markdown, using the information provided in the RFP data.`;
 
@@ -263,7 +282,7 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
       const expectedSections = [
         "Title",
         "Firm Qualifications and Experience",
-        "Relevant Comprehensive Planning & Rural Community Experience",
+        "Relevant Industry Experience",
         "Project Understanding and Approach", 
         "Key Personnel",
         "Methodology (By Phase)",
@@ -412,8 +431,6 @@ function cleanContent(content) {
     .replace(/[%Ï]/g, '')
     // Remove brackets around names and credentials
     .replace(/\[([^\]]+)\]/g, '$1')
-    // Fix bullet points that might have been corrupted
-    .replace(/[●•]/g, '-')
     // Remove duplicate section titles (common patterns)
     .replace(/^#+\s*[^#\n]+\s*$/gm, '') // Remove markdown headers
     .replace(/^\*\*([^*]+)\*\*\s*$/gm, '') // Remove bold titles
@@ -447,7 +464,7 @@ function formatAISections(sections) {
     lastModified: new Date().toISOString(),
   };
   
-  formattedSections["Relevant Comprehensive Planning & Rural Community Experience"] = {
+  formattedSections["Relevant Industry Experience"] = {
     content: getRelevantExperienceContent(),
     type: "hardcoded", 
     lastModified: new Date().toISOString(),
@@ -457,7 +474,7 @@ function formatAISections(sections) {
   Object.entries(sections).forEach(([sectionName, content]) => {
     // Skip the hardcoded sections and Title if they were generated by AI
     if (sectionName !== "Firm Qualifications and Experience" && 
-        sectionName !== "Relevant Comprehensive Planning & Rural Community Experience" &&
+        sectionName !== "Relevant Industry Experience" &&
         sectionName !== "Title") {
       
       // Apply content cleaning to all sections except Key Personnel
@@ -518,39 +535,39 @@ function extractTitleContactInfo(content) {
  * Hardcoded content for Firm Qualifications and Experience
  */
 function getFirmQualificationsContent() {
-  return `Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in land use planning, zoning, and public engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
+  return `Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in strategic planning, project management, and stakeholder engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
 
-• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering zoning, land use, and stakeholder collaboration through the City of Carbondale's Sustainability Plan.
+• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering strategic planning, stakeholder collaboration, and sustainable development through the City of Carbondale's Sustainability Plan.
 
-• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in land use issues.
+• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in strategic planning initiatives.
 
-• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible land use issues.
+• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible development issues.
 
 • **2025:** American Made Challenge Current Semifinalist, U.S. Department of Energy.
 
 • **2025:** Verizon Disaster Resilience Prize Current Semifinalist for oneNode, a solar microgrid technology to restore connectivity, monitor hazards, and coordinate response in disaster zones.
 
-• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible land use, zoning, and privacy concerns for data center development.
+• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible development, strategic planning, and privacy concerns for data center development.
 
 • **2025:** Awarded Preferred Provider by the Alliance for Tribal Clean Energy.
 
-Our core services include: Comprehensive Planning, Zoning Ordinance Updates, Rural & Agricultural Preservation, Public Facilitation, and Legal/Statutory Compliance Reviews.`;
+Our core services include: Strategic Planning, Project Management, Stakeholder Engagement, Public Facilitation, and Regulatory Compliance Reviews.`;
 }
 
 /**
- * Hardcoded content for Relevant Comprehensive Planning & Rural Community Experience
+ * Hardcoded content for Relevant Industry Experience
  */
 function getRelevantExperienceContent() {
-  return `Eighth Generation Consulting's staff have contributed to and led multiple comprehensive planning and sustainability initiatives in complex municipal areas, including:
+  return `Eighth Generation Consulting's staff have contributed to and led multiple strategic planning and sustainability initiatives in complex organizational environments, including:
 
 • **Carbondale's Sustainability Action Plan**
-  - Emphasized cross-sector collaboration, brownfield development policy, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included rural and agricultural stakeholders. Reviewed all current Zoning Land Use and restrictions, requirements, and assumptions.
+  - Emphasized cross-sector collaboration, policy development, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included diverse community stakeholders. Reviewed all current policies, restrictions, requirements, and assumptions.
 
 • **Osage Nation planning and development support**
-  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around land use, infrastructure planning, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and land usage.
+  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around strategic planning, infrastructure development, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and development strategies.
 
 • **Tribal and Municipal Environmental Permitting & Siting Projects**
-  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven siting, feasibility analysis, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
+  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven analysis, feasibility studies, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
 }
 
 /**
@@ -673,7 +690,7 @@ function extractSectionsFromMarkdown(markdownText) {
       type: "hardcoded",
       lastModified: new Date().toISOString(),
     },
-    "Relevant Comprehensive Planning & Rural Community Experience": {
+    "Relevant Industry Experience": {
       content: getRelevantExperienceContent(),
       type: "hardcoded", 
       lastModified: new Date().toISOString(),
