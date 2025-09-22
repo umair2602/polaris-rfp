@@ -228,9 +228,10 @@ class DocxGenerator {
       }
 
       if (table.length > 0) {
-        // Create table with advanced formatting
-        const tableData = this.createFormattedTable(table);
-        const tableStyle = this.createTableStyle();
+        // Determine table type and width based on content
+        const tableType = this.determineTableType(table, content);
+        const tableData = this.createFormattedTable(table, tableType);
+        const tableStyle = this.createTableStyle(tableType);
         
         docx.createTable(tableData, tableStyle);
       }
@@ -241,8 +242,31 @@ class DocxGenerator {
     }
   }
 
+  // ---------------- TABLE TYPE DETECTION ----------------
+  determineTableType(table, content) {
+    const columnCount = table[0] ? table[0].length : 0;
+    const rowCount = table.length;
+    
+    // Check for specific keywords in content to determine table type
+    const contentLower = content.toLowerCase();
+    
+    if (contentLower.includes('budget') || contentLower.includes('cost') || contentLower.includes('price')) {
+      return 'budget';
+    } else if (contentLower.includes('timeline') || contentLower.includes('schedule') || contentLower.includes('phase')) {
+      return 'timeline';
+    } else if (contentLower.includes('team') || contentLower.includes('member') || contentLower.includes('staff')) {
+      return 'team';
+    } else if (columnCount >= 4) {
+      return 'wide';
+    } else if (columnCount === 2) {
+      return 'narrow';
+    } else {
+      return 'default';
+    }
+  }
+
   // ---------------- TABLE FORMATTING ----------------
-  createFormattedTable(table) {
+  createFormattedTable(table, tableType = 'default') {
     return table.map((row, rowIndex) => {
       return row.map((cell, cellIndex) => {
         // Header row formatting
@@ -253,10 +277,10 @@ class DocxGenerator {
               b: true,
               sz: '24',
               font_face: "Calibri",
-              align: "center",
+              align: this.getHeaderAlignment(tableType, cellIndex),
               vAlign: "center",
               shd: {
-                fill: "D9D9D9",
+                fill: this.getHeaderColor(tableType),
                 themeFill: "text1",
                 "themeFillTint": "80"
               }
@@ -271,7 +295,7 @@ class DocxGenerator {
             b: false,
             sz: '22',
             font_face: "Calibri",
-            align: "left",
+            align: this.getDataAlignment(tableType, cellIndex),
             vAlign: "top"
           }
         };
@@ -279,9 +303,47 @@ class DocxGenerator {
     });
   }
 
-  createTableStyle() {
-    return {
-      tableColWidth: 2000,
+  getHeaderAlignment(tableType, cellIndex) {
+    switch (tableType) {
+      case 'budget':
+        return cellIndex === 0 ? "left" : "right";
+      case 'timeline':
+        return "center";
+      case 'team':
+        return "left";
+      default:
+        return "center";
+    }
+  }
+
+  getDataAlignment(tableType, cellIndex) {
+    switch (tableType) {
+      case 'budget':
+        return cellIndex === 0 ? "left" : "right";
+      case 'timeline':
+        return "center";
+      case 'team':
+        return "left";
+      default:
+        return "left";
+    }
+  }
+
+  getHeaderColor(tableType) {
+    switch (tableType) {
+      case 'budget':
+        return "E6F3FF"; // Light blue
+      case 'timeline':
+        return "E6FFE6"; // Light green
+      case 'team':
+        return "FFF0E6"; // Light orange
+      default:
+        return "D9D9D9"; // Light gray
+    }
+  }
+
+  createTableStyle(tableType = 'default') {
+    const baseStyle = {
       tableSize: 24,
       tableColor: "000000",
       tableAlign: "left",
@@ -291,10 +353,48 @@ class DocxGenerator {
       spacingLine: 240,
       spacingLineRule: 'atLeast',
       indent: 0,
-      fixedLayout: false,
+      fixedLayout: true,
       borders: true,
       borderSize: 4
     };
+
+    switch (tableType) {
+      case 'budget':
+        return {
+          ...baseStyle,
+          tableColWidth: 3000,
+          columns: [{ width: 2000 }, { width: 1000 }, { width: 300 }]
+        };
+      case 'timeline':
+        return {
+          ...baseStyle,
+          tableColWidth: 4200,
+          columns: [{ width: 800 }, { width: 1600 }, { width: 1800 }]
+        };
+      case 'team':
+        return {
+          ...baseStyle,
+          tableColWidth: 4000,
+          columns: [{ width: 2000 }, { width: 2000 }]
+        };
+      case 'wide':
+        return {
+          ...baseStyle,
+          tableColWidth: 8000,
+          fixedLayout: false
+        };
+      case 'narrow':
+        return {
+          ...baseStyle,
+          tableColWidth: 3000,
+          columns: [{ width: 1500 }, { width: 1500 }]
+        };
+      default:
+        return {
+          ...baseStyle,
+          tableColWidth: 4000
+        };
+    }
   }
 }
 
