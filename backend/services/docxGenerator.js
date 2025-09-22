@@ -53,7 +53,7 @@ class DocxGenerator {
     }
 
     // Add manual spaces (or tabs) between left & right logos
-    para.addText(" ".repeat(90)); // adjust the repeat number until logos push apart
+    para.addText(" ".repeat(80)); // adjust the repeat number until logos push apart
 
     if (fs.existsSync(eighthGenLogoPath)) {
       para.addImage(eighthGenLogoPath, { cx: 100, cy: 90 });
