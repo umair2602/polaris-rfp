@@ -8,7 +8,7 @@ class DocxGenerator {
   async generateDocx(proposal, company) {
     return new Promise((resolve, reject) => {
       const docx = officegen("docx");
-      const { PassThrough } = require('stream');
+      const { PassThrough } = require("stream");
       const stream = new PassThrough();
       const buffer = [];
 
@@ -17,7 +17,7 @@ class DocxGenerator {
       stream.on("error", (err) => reject(err));
 
       docx.on("error", (err) => reject(err));
-      
+
       this.addHeaderLogos(docx);
       // ==== TITLE PAGE ====
       this.addTitlePage(docx, proposal, company);
@@ -33,45 +33,76 @@ class DocxGenerator {
     });
   }
 
- // ---------------- HEADER LOGOS ----------------
-addHeaderLogos(docx) {
-  const eighthGenLogoPath = path.join(__dirname, "../public/logos/Picture 1.png");
-  const villageLogoPath = path.join(__dirname, "../public/logos/Picture 2.jpg");
+  // ---------------- HEADER LOGOS ----------------
+  addHeaderLogos(docx) {
+    const eighthGenLogoPath = path.join(
+      __dirname,
+      "../public/logos/Picture 1.png"
+    );
+    const villageLogoPath = path.join(
+      __dirname,
+      "../public/logos/Picture 2.jpg"
+    );
 
-  // Global header for all pages
-  const header = docx.getHeader();
-  const para = header.createP();
+    // Global header for all pages
+    const header = docx.getHeader();
+    const para = header.createP();
 
-  if (fs.existsSync(villageLogoPath)) {
-    para.addImage(villageLogoPath, { cx: 110, cy: 80 });
+    if (fs.existsSync(villageLogoPath)) {
+      para.addImage(villageLogoPath, { cx: 120, cy: 80 });
+    }
+
+    // Add manual spaces (or tabs) between left & right logos
+    para.addText(" ".repeat(90)); // adjust the repeat number until logos push apart
+
+    if (fs.existsSync(eighthGenLogoPath)) {
+      para.addImage(eighthGenLogoPath, { cx: 100, cy: 90 });
+    }
   }
-
-  // Add manual spaces (or tabs) between left & right logos
-  para.addText(" ".repeat(100)); // adjust the repeat number until logos push apart
-
-  if (fs.existsSync(eighthGenLogoPath)) {
-    para.addImage(eighthGenLogoPath, { cx: 100, cy: 90 });
-  }
-}
 
   // ---------------- TITLE PAGE ----------------
   addTitlePage(docx, proposal, company) {
     // Header logos are already added in the main generation flow
+    const emptyLine4 = docx.createP();
+    emptyLine4.addText(" ");
+    const emptyLine5 = docx.createP();
+    emptyLine5.addText(" ");
+    const emptyLine6 = docx.createP();
+    emptyLine6.addText(" ");
 
     const title = docx.createP({ align: "center" });
-    title.addText(proposal.title || "Proposal Title", { bold: true, font_size: 32 });
+    title.addText(proposal.title || "Proposal Title", {
+      // bold: true,
+      font_size: 23,
+      font_face: "Calibri",
+    });
+
+    const emptyLine = docx.createP();
+    emptyLine.addText(" ");
+    const emptyLine2 = docx.createP();
+    emptyLine2.addText(" ");
+    const emptyLine3 = docx.createP();
+    emptyLine3.addText(" ");
 
     const submittedBy = docx.createP({ align: "center" });
-    submittedBy.addText(`Submitted by: ${company?.name || "Eighth Generation Consulting"}`, {
-      bold: true,
-      font_size: 16,
+    submittedBy.addText(`Submitted by: ${company?.name || "Unknown Company"}`, {
+      font_size: 13,
+      font_face: "Calibri",
     });
 
     const contact = docx.createP({ align: "center" });
-    contact.addText(
-      `Contact: ${company?.contact || "Jose P, President"}\nEmail: ${company?.email || "N/A"}\nPhone: ${company?.phone || "N/A"}`,
-      { font_size: 14 }
-    );
+    contact.addText(`Contact: ${company?.contact || "Jose P, President"}`, {
+      font_size: 14,
+      font_face: "Calibri",
+    });
+    contact.addLineBreak();
+    contact.addText(" ", { font_size: 6, font_face: "Calibri" }); // <-- fake blank line for spacing
+
+    contact.addText(`Email: ${company?.email || "N/A"}`, { font_size: 14, font_face: "Calibri" });
+    contact.addLineBreak();
+    contact.addText(" ", { font_size: 6, font_face: "Calibri" }); // spacing again
+
+    contact.addText(`Phone: ${company?.phone || "N/A"}`, { font_size: 14, font_face: "Calibri" });
 
     docx.putPageBreak();
   }
@@ -83,46 +114,53 @@ addHeaderLogos(docx) {
     const title = docx.createP({ align: "center" });
     title.addText("Zoning Code Update and Comprehensive Land Use Plan", {
       bold: true,
-      font_size: 20,
+      font_size: 11,
+      font_face: "Calibri",
     });
 
     const submittedTo = docx.createP();
-    submittedTo.addText("Submitted to:", { bold: true });
+    submittedTo.addText("Submitted to:", { bold: true, font_face: "Calibri" });
     submittedTo.addLineBreak();
-    submittedTo.addText(proposal.rfpId?.clientName || "Town of Amherst", { bold: true });
+    submittedTo.addText(proposal.rfpId?.clientName || "Town of Amherst", {
+      bold: true,
+      font_face: "Calibri",
+    });
 
     const submittedBy = docx.createP();
-    submittedBy.addText("Submitted by:", { bold: true });
+    submittedBy.addText("Submitted by:", { bold: true, font_face: "Calibri" });
     submittedBy.addLineBreak();
-    submittedBy.addText(company?.name || "Eighth Generation Consulting", { bold: true });
+    submittedBy.addText(company?.name || "Eighth Generation Consulting", {
+      bold: true,
+      font_face: "Calibri",
+    });
 
     const date = docx.createP();
-    date.addText("09/16/2025");
+    date.addText("09/16/2025", { font_face: "Calibri" });
 
     const salutation = docx.createP();
-    salutation.addText("Dear Town Board and Planning Commission,");
+    salutation.addText("Dear Town Board and Planning Commission,", { font_face: "Calibri" });
 
     const bodyParagraphs = [
-      "On behalf of Eighth Generation Consulting, we are pleased to submit our proposal...",
-      "Our team brings extensive experience in rural township planning...",
-      "We are committed to delivering a clear, implementable plan...",
-      "We appreciate your consideration and look forward to working together.",
+      "On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
+      "Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.",
+      "We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.",
+      "We appreciate your consideration and look forward to working together. Sincerely,"
     ];
 
     bodyParagraphs.forEach((para) => {
       const p = docx.createP();
-      p.addText(para, { font_size: 12 });
+      p.addText(para, { font_size: 12, font_face: "Calibri" });
     });
 
     const closing = docx.createP();
-    closing.addText("Sincerely,");
+    closing.addText("Sincerely,", { font_face: "Calibri" });
 
     const contact = docx.createP();
-    contact.addText("Name, President");
+    contact.addText("Name, President", { font_face: "Calibri" });
     contact.addLineBreak();
-    contact.addText(company?.email || "email@gmail.com");
+    contact.addText(company?.email || "email@gmail.com", { font_face: "Calibri" });
     contact.addLineBreak();
-    contact.addText(company?.phone || "111-222-33");
+    contact.addText(company?.phone || "111-222-33", { font_face: "Calibri" });
 
     docx.putPageBreak();
   }
@@ -137,7 +175,7 @@ addHeaderLogos(docx) {
       // Header logos are already added in the main generation flow
 
       const heading = docx.createP({ align: "center" });
-      heading.addText(sectionName, { bold: true, font_size: 18 });
+      heading.addText(sectionName, { bold: true, font_size: 11, font_face: "Calibri" });
 
       const content = sectionData?.content || "";
       if (typeof content === "string" && content.includes("|")) {
@@ -167,7 +205,7 @@ addHeaderLogos(docx) {
 
     paragraphs.forEach((para) => {
       const p = docx.createP();
-      p.addText(para.trim(), { font_size: 12 });
+      p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
     });
   }
 
@@ -191,28 +229,29 @@ addHeaderLogos(docx) {
 
       if (table.length > 0) {
         // Create a simple table with proper formatting
-        const tableData = table.map(row => 
-          row.map(cell => ({
+        const tableData = table.map((row) =>
+          row.map((cell) => ({
             val: cell,
             opts: {
               cellColWidth: 2000, // Fixed width for all columns
               b: false,
-              sz: '24'
-            }
+              sz: "24",
+              font_face: "Calibri",
+            },
           }))
         );
-        
+
         docx.createTable(tableData, {
           tableColWidth: 2000,
           tableSize: 24,
           tableColor: "000000",
-          tableAlign: "left"
+          tableAlign: "left",
         });
       }
     } catch (error) {
       console.error("Error creating table:", error);
       // Fallback: just add the content as text
-      docx.createP().addText(content);
+      docx.createP().addText(content, { font_face: "Calibri" });
     }
   }
 }
