@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS App Runner Service for Polaris Backend'
+
+Parameters:
+  RepositoryUrl:
+    Type: String
+    Description: GitHub repository URL
+    Default: 'https://github.com/umair2602/polaris-rfp.git'
+  
+  BranchName:
+    Type: String
+    Description: Branch name to deploy
+    Default: 'main'
+  
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: 'production'
+    AllowedValues: ['development', 'staging', 'production']
+  
+  CodeStarConnectionArn:
+    Type: String
+    Description: ARN of existing App Runner connection for GitHub
+    Default: 'arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016'
+
+Resources:
+
+  # IAM Role for App Runner
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  # CloudWatch Log Group for App Runner
+  AppRunnerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apprunner/${AWS::StackName}'
+      RetentionInDays: 14
+
+  # App Runner Service
+  BackendAppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub 'polaris-backend-${Environment}'
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          ConnectionArn: !Ref CodeStarConnectionArn
+        CodeRepository:
+          RepositoryUrl: !Ref RepositoryUrl
+          SourceCodeVersion:
+            Type: BRANCH
+            Value: !Ref BranchName
+          CodeConfiguration:
+            ConfigurationSource: API
+            CodeConfigurationValues:
+              Runtime: NODEJS_18
+              BuildCommand: 'npm install --prefix backend'
+              StartCommand: 'npm start --prefix backend'
+              RuntimeEnvironmentVariables:
+                - Name: NODE_ENV
+                  Value: production
+                - Name: PORT
+                  Value: '8080'
+                - Name: FRONTEND_URL
+                  Value: 'https://main.d2ds3speyvmfi1.amplifyapp.com'
+                - Name: TMPDIR
+                  Value: '/tmp'
+        AutoDeploymentsEnabled: true
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 2
+        UnhealthyThreshold: 5
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: Backend
+
+
+Outputs:
+  AppRunnerServiceUrl:
+    Description: 'App Runner Service URL'
+    Value: !GetAtt BackendAppRunnerService.ServiceUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-AppRunnerServiceUrl'
+
+  AppRunnerServiceArn:
+    Description: 'App Runner Service ARN'
+    Value: !GetAtt BackendAppRunnerService.ServiceArn
+    Export:
+      Name: !Sub '${AWS::StackName}-AppRunnerServiceArn'
+
