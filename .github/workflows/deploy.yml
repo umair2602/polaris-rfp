@@ -116,6 +116,45 @@ jobs:
         if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
           echo "Stack is in failed state ($STACK_STATUS), attempting deletion..."
           
+          # First, try to get App Runner service logs before deletion
+          echo "🔍 Attempting to retrieve App Runner logs before deletion..."
+          SERVICE_ARN=$(aws apprunner list-services \
+            --region ${{ env.AWS_REGION }} \
+            --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+            --output text) || echo "No App Runner services found"
+          
+          if [ ! -z "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+            echo "📋 Found App Runner Service: $SERVICE_ARN"
+            echo "🔍 Getting service details and logs..."
+            
+            # Get service details
+            aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.{Name:ServiceName,Status:Status,ServiceUrl:ServiceUrl}' \
+              --output json || echo "Could not describe service"
+            
+            # Try to get logs from CloudWatch
+            LOG_GROUP="/aws/apprunner/${{ env.BACKEND_STACK_NAME }}"
+            echo "🔍 Checking CloudWatch logs in group: $LOG_GROUP"
+            aws logs describe-log-streams \
+              --log-group-name "$LOG_GROUP" \
+              --region ${{ env.AWS_REGION }} \
+              --order-by LastEventTime \
+              --descending \
+              --max-items 5 \
+              --query 'logStreams[].logStreamName' \
+              --output text || echo "No log streams found"
+            
+            # Get recent log events
+            aws logs filter-log-events \
+              --log-group-name "$LOG_GROUP" \
+              --region ${{ env.AWS_REGION }} \
+              --start-time $(date -d '10 minutes ago' +%s)000 \
+              --query 'events[].message' \
+              --output text || echo "No recent log events found"
+          fi
+          
           # If stack is in DELETE_FAILED state, we need to manually clean up resources first
           if [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
             echo "Stack is in DELETE_FAILED state, checking for stuck resources..."

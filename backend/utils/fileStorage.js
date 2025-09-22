@@ -4,7 +4,7 @@ const path = require('path');
 // File-based persistent storage
 class FileStorage {
   constructor() {
-    this.dataDir = path.join(__dirname, '../data');
+    this.dataDir = path.join('/tmp', 'polaris-data');
     this.rfpFile = path.join(this.dataDir, 'rfps.json');
     this.proposalFile = path.join(this.dataDir, 'proposals.json');
     this.userFile = path.join(this.dataDir, 'users.json');
