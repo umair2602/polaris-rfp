@@ -63,9 +63,9 @@ Resources:
           CodeConfiguration:
             ConfigurationSource: API
             CodeConfigurationValues:
-              Runtime: NODEJS_18
+              Runtime: NODEJS_20
               BuildCommand: 'cd backend && npm install'
-              StartCommand: 'cd backend && node server.js'
+              StartCommand: 'cd backend && npm start'
               RuntimeEnvironmentVariables:
                 - Name: NODE_ENV
                   Value: production
