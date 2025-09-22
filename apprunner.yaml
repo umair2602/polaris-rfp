@@ -4,11 +4,10 @@ build:
   commands:
     build:
       - echo "Installing dependencies..."
-      - cd backend
-      - npm install
+      - npm install --prefix backend
 run:
   runtime-version: nodejs18
-  command: cd backend && npm start
+  command: npm start --prefix backend
   network:
     port: 8080
     env: PORT
