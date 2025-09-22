@@ -13,16 +13,12 @@ env:
   BACKEND_STACK_NAME: polaris-backend-stack
 
 jobs:
-  # Deploy backend first since frontend needs its URL
-  deploy-backend:
+  deploy-frontend:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
       id-token: write
       contents: read
-    
-    outputs:
-      backend-url: ${{ steps.get-backend-url.outputs.backend-url }}
     
     steps:
     - name: Checkout code
@@ -35,51 +31,80 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
-    - name: Check App Runner Service Status Before Deployment
-      id: check-service
+    - name: Deploy Frontend Stack
       run: |
-        # Check for existing App Runner services
-        echo "Checking for existing App Runner services..."
-        SERVICES=$(aws apprunner list-services \
-          --region ${{ env.AWS_REGION }} \
-          --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].{ServiceArn:ServiceArn,Status:Status}' \
-          --output json)
-        
-        echo "Existing services: $SERVICES"
-        
-        # Check if any service is in OPERATION_IN_PROGRESS
-        IN_PROGRESS=$(echo "$SERVICES" | jq -r '.[] | select(.Status == "OPERATION_IN_PROGRESS") | .ServiceArn')
-        
-        if [ ! -z "$IN_PROGRESS" ]; then
-          echo "⚠️ App Runner service is in OPERATION_IN_PROGRESS state: $IN_PROGRESS"
-          echo "This will likely cause deployment to fail. Consider:"
-          echo "1. Waiting for the operation to complete (can take hours)"
-          echo "2. Using a different service name"
-          echo "3. Contacting AWS support if stuck for >24 hours"
+        echo "Deploying frontend stack..."
+        if ! aws cloudformation deploy \
+          --template-file .github/cloudformation/frontend-amplify.yml \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+            RepositoryUrl=https://github.com/${{ github.repository }} \
+            BranchName=${{ github.ref_name }} \
+            Environment=production \
+            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}; then
           
-          # Wait a bit and check again
-          echo "Waiting 2 minutes before proceeding..."
-          sleep 120
-          
-          STATUS=$(aws apprunner describe-service \
-            --service-arn "$IN_PROGRESS" \
-            --query 'Service.Status' \
-            --output text)
-          
-          if [ "$STATUS" = "OPERATION_IN_PROGRESS" ]; then
-            echo "❌ Service still in progress. Deployment will likely fail."
-            echo "service-stuck=true" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Service operation completed. Status: $STATUS"
-            echo "service-stuck=false" >> $GITHUB_OUTPUT
-          fi
+          echo "❌ Frontend stack deployment failed!"
+          echo "Getting error details..."
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "Could not retrieve stack events"
+          exit 1
+        fi
+        echo "✅ Frontend stack deployed successfully!"
+
+    - name: Get Amplify App ID
+      id: get-app-id
+      run: |
+        APP_ID=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AmplifyAppId`].OutputValue' \
+          --output text)
+        echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+        echo "Amplify App ID: $APP_ID"
+
+    - name: Trigger Amplify Build
+      run: |
+        # Check if there's already a running job
+        RUNNING_JOBS=$(aws amplify list-jobs \
+          --app-id ${{ steps.get-app-id.outputs.app-id }} \
+          --branch-name ${{ github.ref_name }} \
+          --max-results 1 \
+          --query 'jobSummaries[?status==`RUNNING` || status==`PENDING`]' \
+          --output text)
+        
+        if [ -z "$RUNNING_JOBS" ]; then
+          echo "No running jobs found, starting new build..."
+          aws amplify start-job \
+            --app-id ${{ steps.get-app-id.outputs.app-id }} \
+            --branch-name ${{ github.ref_name }} \
+            --job-type RELEASE
         else
-          echo "service-stuck=false" >> $GITHUB_OUTPUT
+          echo "Job already running, skipping trigger..."
         fi
 
-    - name: Deploy Backend Stack with Improved Error Handling
+  deploy-backend:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-${{ github.run_id }}
+
+    - name: Deploy Backend Stack
       run: |
-        # Check stack status with better error handling
+        # Check if stack exists and is in a failed state
         STACK_STATUS=$(aws cloudformation describe-stacks \
           --stack-name ${{ env.BACKEND_STACK_NAME }} \
           --query 'Stacks[0].StackStatus' \
@@ -88,45 +113,50 @@ jobs:
         
         echo "Current stack status: $STACK_STATUS"
         
-        # Handle failed states more robustly
-        case $STACK_STATUS in
-          "DELETE_FAILED")
-            echo "Stack is in DELETE_FAILED state. Attempting cleanup with longer timeout..."
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+          echo "Stack is in failed state ($STACK_STATUS), attempting deletion..."
+          
+          # If stack is in DELETE_FAILED state, we need to manually clean up resources first
+          if [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+            echo "Stack is in DELETE_FAILED state, checking for stuck resources..."
             
-            # Try to delete stack with retain-resources if it fails
-            if ! timeout 1800 aws cloudformation delete-stack \
-              --stack-name ${{ env.BACKEND_STACK_NAME }} \
-              --region ${{ env.AWS_REGION }}; then
+            # Get list of App Runner services that might be blocking deletion
+            echo "Checking for App Runner services..."
+            SERVICES=$(aws apprunner list-services \
+              --region ${{ env.AWS_REGION }} \
+              --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+              --output text) || echo "No services found"
+            
+            if [ ! -z "$SERVICES" ] && [ "$SERVICES" != "None" ]; then
+              echo "Found App Runner services, deleting them first..."
+              for SERVICE_ARN in $SERVICES; do
+                echo "Deleting App Runner service: $SERVICE_ARN"
+                aws apprunner delete-service \
+                  --service-arn "$SERVICE_ARN" \
+                  --region ${{ env.AWS_REGION }} || echo "Failed to delete service $SERVICE_ARN"
+              done
               
-              echo "Normal deletion failed, trying with retain-resources..."
-              aws cloudformation delete-stack \
-                --stack-name ${{ env.BACKEND_STACK_NAME }} \
-                --retain-resources BackendAppRunnerService \
-                --region ${{ env.AWS_REGION }}
+              echo "Waiting for App Runner services to be deleted..."
+              sleep 30
             fi
-            
-            # Wait for deletion with extended timeout
-            timeout 1800 aws cloudformation wait stack-delete-complete \
-              --stack-name ${{ env.BACKEND_STACK_NAME }} \
-              --region ${{ env.AWS_REGION }} || echo "Stack deletion timed out"
-            ;;
-            
-          "ROLLBACK_COMPLETE"|"CREATE_FAILED"|"UPDATE_ROLLBACK_COMPLETE")
-            echo "Stack is in failed state, deleting..."
-            aws cloudformation delete-stack \
-              --stack-name ${{ env.BACKEND_STACK_NAME }} \
-              --region ${{ env.AWS_REGION }}
-            
-            aws cloudformation wait stack-delete-complete \
-              --stack-name ${{ env.BACKEND_STACK_NAME }} \
-              --region ${{ env.AWS_REGION }}
-            ;;
-        esac
+          fi
+          
+          # Attempt to delete the stack
+          aws cloudformation delete-stack --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}
+          echo "Waiting for stack deletion (timeout: 10 minutes)..."
+          
+          # Wait with timeout to prevent infinite waiting
+          if ! timeout 600 aws cloudformation wait stack-delete-complete --stack-name ${{ env.BACKEND_STACK_NAME }} --region ${{ env.AWS_REGION }}; then
+            echo "⚠️ Stack deletion timed out or failed, but continuing with deployment..."
+            echo "This might cause conflicts, but CloudFormation will handle existing resources"
+          else
+            echo "✅ Stack deleted successfully"
+          fi
+        fi
         
-        # Deploy with fixed connection ARN
+        # Deploy the stack
         echo "Deploying backend stack..."
-        CONNECTION_ARN="arn:aws:apprunner:us-east-1:${{ secrets.AWS_ACCOUNT_ID }}:connection/polaris-rfp/577729d32ae34e1380983e866e425016"
-        echo "Using connection ARN: $CONNECTION_ARN"
+        echo "Using connection ARN: arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016"
         
         if ! aws cloudformation deploy \
           --template-file .github/cloudformation/backend-apprunner.yml \
@@ -136,56 +166,71 @@ jobs:
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
             Environment=production \
-            CodeStarConnectionArn="$CONNECTION_ARN" \
+            CodeStarConnectionArn=arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016 \
           --region ${{ env.AWS_REGION }}; then
           
           echo "❌ Stack deployment failed!"
-          # [Error reporting code remains the same...]
+          echo "Getting detailed error information..."
+          
+          # Get all stack events
+          echo "📋 All Stack Events:"
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.BACKEND_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackEvents[].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "Could not retrieve stack events"
+          
+          # Get failed events specifically
+          echo "🔥 Failed Events Only:"
+          aws cloudformation describe-stack-events \
+            --stack-name ${{ env.BACKEND_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED` || ResourceStatus==`DELETE_FAILED`].{Time:Timestamp,Resource:LogicalResourceId,Status:ResourceStatus,Reason:ResourceStatusReason}' \
+            --output table || echo "No failed events found"
+          
+          # Try to get App Runner service logs if the service was created
+          echo "🔍 Checking for App Runner service..."
+          SERVICE_ARN=$(aws apprunner list-services \
+            --region ${{ env.AWS_REGION }} \
+            --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+            --output text) || echo "No App Runner services found"
+          
+          if [ ! -z "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+            echo "📋 App Runner Service Found: $SERVICE_ARN"
+            echo "🔍 App Runner Service Details:"
+            aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.{Name:ServiceName,Status:Status,SourceConfiguration:SourceConfiguration}' \
+              --output json || echo "Could not describe App Runner service"
+          else
+            echo "❌ No App Runner service found"
+          fi
+          
+          echo "❌ Deployment failed - check errors above"
           exit 1
         fi
         
         echo "✅ Backend stack deployed successfully!"
 
-    - name: Get Backend URL with Validation
+    - name: Get Backend URL
       id: get-backend-url
       run: |
-        # Wait a moment for stack outputs to be available
-        sleep 10
-        
-        # Get backend URL with retry logic
-        for i in {1..5}; do
-          BACKEND_URL=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.BACKEND_STACK_NAME }} \
-            --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
-            --output text 2>/dev/null)
-          
-          if [ ! -z "$BACKEND_URL" ] && [ "$BACKEND_URL" != "None" ]; then
-            echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
-            echo "Backend URL: $BACKEND_URL"
-            break
-          fi
-          
-          echo "Attempt $i: Backend URL not available yet, waiting..."
-          sleep 10
-        done
-        
-        if [ -z "$BACKEND_URL" ] || [ "$BACKEND_URL" = "None" ]; then
-          echo "❌ Failed to get backend URL after 5 attempts"
-          exit 1
-        fi
+        BACKEND_URL=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
+          --output text)
+        echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "Backend URL: $BACKEND_URL"
 
-  # Deploy frontend AFTER backend is ready
-  deploy-frontend:
+  update-frontend-env:
     runs-on: ubuntu-latest
-    needs: deploy-backend  # Wait for backend
     if: github.ref == 'refs/heads/main'
+    needs: [deploy-frontend, deploy-backend]
     permissions:
       id-token: write
       contents: read
-    
-    outputs:
-      app-id: ${{ steps.get-app-id.outputs.app-id }}
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -197,88 +242,61 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
-    - name: Deploy Frontend Stack with Backend URL
+    - name: Get Backend URL
+      id: get-backend-url
       run: |
-        echo "Deploying frontend stack with backend URL: ${{ needs.deploy-backend.outputs.backend-url }}"
-        
-        if ! aws cloudformation deploy \
-          --template-file .github/cloudformation/frontend-amplify.yml \
-          --stack-name ${{ env.FRONTEND_STACK_NAME }} \
-          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-          --parameter-overrides \
-            RepositoryUrl=https://github.com/${{ github.repository }} \
-            BranchName=${{ github.ref_name }} \
-            Environment=production \
-            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }} \
-            BackendApiUrl=${{ needs.deploy-backend.outputs.backend-url }}; then
-          
-          echo "❌ Frontend stack deployment failed!"
-          # [Error reporting code...]
-          exit 1
-        fi
-        echo "✅ Frontend stack deployed successfully!"
+        BACKEND_URL=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
+          --output text)
+        echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
 
-    - name: Get Amplify App ID with Validation
+    - name: Get Amplify App ID
       id: get-app-id
       run: |
         APP_ID=$(aws cloudformation describe-stacks \
           --stack-name ${{ env.FRONTEND_STACK_NAME }} \
           --query 'Stacks[0].Outputs[?OutputKey==`AmplifyAppId`].OutputValue' \
           --output text)
-        
-        if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
-          echo "❌ Failed to get Amplify App ID"
-          exit 1
-        fi
-        
         echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
-        echo "Amplify App ID: $APP_ID"
 
-    - name: Update Environment Variables and Trigger Single Build
+    - name: Update Amplify Environment Variables
       run: |
-        # Update environment variables
         aws amplify update-app \
           --app-id ${{ steps.get-app-id.outputs.app-id }} \
-          --environment-variables API_BASE_URL=${{ needs.deploy-backend.outputs.backend-url }}
+          --environment-variables API_BASE_URL=${{ steps.get-backend-url.outputs.backend-url }}
+
+    - name: Trigger Frontend Rebuild
+      run: |
+        # Check if there's already a running job
+        RUNNING_JOBS=$(aws amplify list-jobs \
+          --app-id ${{ steps.get-app-id.outputs.app-id }} \
+          --branch-name ${{ github.ref_name }} \
+          --max-results 1 \
+          --query 'jobSummaries[?status==`RUNNING` || status==`PENDING`]' \
+          --output text)
         
-        # Wait for any existing jobs to complete before starting new one
-        echo "Checking for running jobs..."
-        while true; do
-          RUNNING_JOBS=$(aws amplify list-jobs \
+        if [ -z "$RUNNING_JOBS" ]; then
+          echo "No running jobs found, starting new build..."
+          aws amplify start-job \
             --app-id ${{ steps.get-app-id.outputs.app-id }} \
             --branch-name ${{ github.ref_name }} \
-            --max-results 5 \
-            --query 'jobSummaries[?status==`RUNNING` || status==`PENDING`]' \
-            --output text)
-          
-          if [ -z "$RUNNING_JOBS" ]; then
-            echo "No running jobs, starting build..."
-            aws amplify start-job \
-              --app-id ${{ steps.get-app-id.outputs.app-id }} \
-              --branch-name ${{ github.ref_name }} \
-              --job-type RELEASE
-            break
-          else
-            echo "Jobs still running, waiting 30 seconds..."
-            sleep 30
-          fi
-        done
+            --job-type RELEASE
+        else
+          echo "Job already running, skipping trigger..."
+        fi
 
   notify:
     runs-on: ubuntu-latest
     if: always()
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-frontend, deploy-backend, update-frontend-env]
     
     steps:
     - name: Notify deployment status
       run: |
-        if [ "${{ needs.deploy-backend.result }}" == "success" ] && [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+        if [ "${{ needs.deploy-frontend.result }}" == "success" ] && [ "${{ needs.deploy-backend.result }}" == "success" ] && [ "${{ needs.update-frontend-env.result }}" == "success" ]; then
           echo "✅ Deployment completed successfully!"
-          echo "Backend URL: ${{ needs.deploy-backend.outputs.backend-url }}"
-          echo "Frontend App ID: ${{ needs.deploy-frontend.outputs.app-id }}"
         else
-          echo "❌ Deployment failed:"
-          echo "  Backend: ${{ needs.deploy-backend.result }}"
-          echo "  Frontend: ${{ needs.deploy-frontend.result }}"
+          echo "❌ Deployment failed. Check the logs above."
           exit 1
         fi
