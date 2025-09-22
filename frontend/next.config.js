@@ -4,6 +4,7 @@ const nextConfig = {
   swcMinify: true,
   env: {
     API_BASE_URL: process.env.API_BASE_URL || 'https://wm8h6yjgim.us-east-1.awsapprunner.com',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://wm8h6yjgim.us-east-1.awsapprunner.com',
   },
   // Amplify configuration
   trailingSlash: true,
@@ -13,6 +14,7 @@ const nextConfig = {
   // Environment variables for build time
   publicRuntimeConfig: {
     API_BASE_URL: process.env.API_BASE_URL || 'https://wm8h6yjgim.us-east-1.awsapprunner.com',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://wm8h6yjgim.us-east-1.awsapprunner.com',
   },
   // Static export for Amplify
   output: 'export',
