@@ -16,6 +16,7 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    needs: [deploy-backend]
     permissions:
       id-token: write
       contents: read
@@ -31,6 +32,16 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-${{ github.run_id }}
 
+    - name: Get Backend URL
+      id: get-backend-url
+      run: |
+        BACKEND_URL=$(aws cloudformation describe-stacks \
+          --stack-name ${{ env.BACKEND_STACK_NAME }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerServiceUrl`].OutputValue' \
+          --output text)
+        echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "Backend URL: $BACKEND_URL"
+
     - name: Deploy Frontend Stack
       run: |
         echo "Deploying frontend stack..."
@@ -42,7 +53,8 @@ jobs:
             RepositoryUrl=https://github.com/${{ github.repository }} \
             BranchName=${{ github.ref_name }} \
             Environment=production \
-            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }}; then
+            GitHubToken=${{ secrets.GH_PERSONAL_TOKEN }} \
+            BackendUrl=${{ steps.get-backend-url.outputs.backend-url }}; then
           
           echo "❌ Frontend stack deployment failed!"
           echo "Getting error details..."
