@@ -89,20 +89,26 @@ class DocxGenerator {
       font_size: 13,
       font_face: "Calibri",
     });
+    const emptyLine9 = docx.createP();
+    emptyLine9.addText(" ");
 
     const contact = docx.createP({ align: "center" });
     contact.addText(`Contact: ${company?.contact || "Jose P, President"}`, {
       font_size: 14,
       font_face: "Calibri",
     });
-    contact.addLineBreak();
-    contact.addText(" ", { font_size: 6, font_face: "Calibri" }); // <-- fake blank line for spacing
 
-    contact.addText(`Email: ${company?.email || "N/A"}`, { font_size: 14, font_face: "Calibri" });
-    contact.addLineBreak();
-    contact.addText(" ", { font_size: 6, font_face: "Calibri" }); // spacing again
+    const emptyLine10 = docx.createP();
+    emptyLine10.addText(" ");
 
-    contact.addText(`Phone: ${company?.phone || "N/A"}`, { font_size: 14, font_face: "Calibri" });
+    const email = docx.createP({ align: "center" });
+    email.addText(`Email: ${company?.email || "N/A"}`, { font_size: 14, font_face: "Calibri" });
+
+    const emptyLine11 = docx.createP();
+    emptyLine11.addText(" ");
+
+    const phone = docx.createP({ align: "center" });
+    phone.addText(`Phone: ${company?.phone || "N/A"}`, { font_size: 14, font_face: "Calibri" });
 
     docx.putPageBreak();
   }
@@ -169,9 +175,9 @@ class DocxGenerator {
   addSections(docx, sections = {}) {
     if (!sections || typeof sections !== "object") return;
 
-    Object.entries(sections).forEach(([sectionName, sectionData]) => {
-      if (sectionName === "Title") return;
-
+    const sectionEntries = Object.entries(sections).filter(([sectionName]) => sectionName !== "Title");
+    
+    sectionEntries.forEach(([sectionName, sectionData], index) => {
       // Header logos are already added in the main generation flow
 
       const heading = docx.createP({ align: "center" });
@@ -184,7 +190,10 @@ class DocxGenerator {
         this.addTextContent(docx, content);
       }
 
-      docx.putPageBreak();
+      // Only add page break if this is not the last section
+      if (index < sectionEntries.length - 1) {
+        docx.putPageBreak();
+      }
     });
   }
 
@@ -201,11 +210,36 @@ class DocxGenerator {
       .replace(/^#{1,6}\s*/gm, "")
       .replace(/\n\n+/g, "\n\n");
 
+    // Split by double newlines first to get paragraphs
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
     paragraphs.forEach((para) => {
-      const p = docx.createP();
-      p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+      // Check if paragraph contains lines that start with dashes
+      const lines = para.split('\n');
+      
+      if (lines.length === 1) {
+        // Single line paragraph
+        const p = docx.createP();
+        if (para.trim().startsWith('-')) {
+          const bulletText = para.trim().substring(1).trim();
+          p.addText('• ', { font_size: 12, font_face: "Calibri" });
+          p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+        } else {
+          p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+        }
+      } else {
+        // Multi-line paragraph - check each line
+        lines.forEach((line, index) => {
+          const p = docx.createP();
+          if (line.trim().startsWith('-')) {
+            const bulletText = line.trim().substring(1).trim();
+            p.addText('• ', { font_size: 12, font_face: "Calibri" });
+            p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+          } else {
+            p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
+          }
+        });
+      }
     });
   }
 
@@ -222,6 +256,7 @@ class DocxGenerator {
           const cells = line
             .split("|")
             .map((c) => c.trim())
+            .map((c) => c.replace(/\*\*/g, "").replace(/\*/g, "")) // Remove ** and * markdown formatting
             .filter((c) => c !== "");
           if (cells.length) table.push(cells);
         }
@@ -368,8 +403,8 @@ class DocxGenerator {
       case 'timeline':
         return {
           ...baseStyle,
-          tableColWidth: 4200,
-          columns: [{ width: 800 }, { width: 1600 }, { width: 1800 }]
+          tableColWidth: 4500,
+          columns: [{ width: 800 }, { width: 1600 }, { width: 2100 }]
         };
       case 'team':
         return {
