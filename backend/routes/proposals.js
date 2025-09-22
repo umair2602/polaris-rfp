@@ -606,6 +606,29 @@ router.get("/:id/export-pdf", async (req, res) => {
             align: "center",
             lineGap: 6,
           });
+      } else if (sectionName === "Project Schedule") {
+        // Project Schedule should always be rendered as text content with headings and paragraphs
+        let cleanContent = sectionData.content || "No content available";
+        
+        // Ensure content is a string
+        if (typeof cleanContent !== 'string') {
+          cleanContent = String(cleanContent);
+        }
+        
+        // Process markdown formatting for Project Schedule
+        cleanContent = cleanContent
+          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
+          .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
+          .replace(/^##\s*(.*)$/gm, '\n$1\n') // Convert ## headings to plain text with spacing
+          .replace(/\n\n+/g, '\n\n'); // Clean up multiple newlines
+        
+        doc
+          .fontSize(11)
+          .fillColor("#000000")
+          .text(cleanContent, {
+            align: "justify",
+            lineGap: 6,
+          });
       } else if (sectionData.content && typeof sectionData.content === 'string' && sectionData.content.includes("|")) {
         renderTable(doc, sectionData.content);
       } else {
@@ -720,44 +743,59 @@ function renderTable(doc, content) {
   const rows = content
     .split("\n")
     .filter((line) => {
+      const trimmedLine = line.trim();
       // Keep lines that contain | but exclude separator rows (lines with only dashes, pipes, and spaces)
-      return line.includes("|") && !line.match(/^[\s\-\|]+$/);
+      return trimmedLine.includes("|") && !trimmedLine.match(/^[\s\-\|]+$/) && trimmedLine.length > 0;
     });
 
   if (rows.length < 2) {
+    // Fallback to text if not enough rows for a table
     doc.text(content);
     return;
   }
 
-  const headers = rows[0]
-    .split("|")
-    .map((c) => c.trim())
-    .filter(Boolean);
-  const dataRows = rows.slice(1).map((row) =>
-    row
+  // Parse table data more robustly
+  const tableData = rows.map((row) => {
+    return row
       .split("|")
       .map((c) => c.trim())
-      .filter(Boolean)
-  );
+      .filter((c) => c !== "");
+  });
+
+  // Ensure all rows have the same number of columns
+  const maxCols = Math.max(...tableData.map(row => row.length));
+  const paddedData = tableData.map(row => {
+    while (row.length < maxCols) {
+      row.push("");
+    }
+    return row;
+  });
+
+  const headers = paddedData[0];
+  const dataRows = paddedData.slice(1);
 
   const tableTop = doc.y;
-  const cellPadding = 6;
-  const colWidth =
-    (doc.page.width - doc.page.margins.left - doc.page.margins.right) /
-    headers.length;
+  const cellPadding = 8;
+  const availableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const colWidth = availableWidth / maxCols;
 
-  // Header row
+  // Header row with better styling
   headers.forEach((header, i) => {
+    const cellX = doc.page.margins.left + i * colWidth;
+    
+    // Header background
     doc
-      .rect(doc.page.margins.left + i * colWidth, tableTop, colWidth, 25)
-      .fillAndStroke("#f7fafc", "#e2e8f0");
+      .rect(cellX, tableTop, colWidth, 30)
+      .fillAndStroke("#f8f9fa", "#dee2e6");
 
+    // Header text
     doc
       .fontSize(11)
-      .fillColor("#2d3748")
+      .font("Helvetica-Bold")
+      .fillColor("#212529")
       .text(
-        header,
-        doc.page.margins.left + i * colWidth + cellPadding,
+        header.replace(/<br\s*\/?>/gi, '\n'), // Handle <br> tags
+        cellX + cellPadding,
         tableTop + 8,
         {
           width: colWidth - 2 * cellPadding,
@@ -766,35 +804,53 @@ function renderTable(doc, content) {
       );
   });
 
-  let y = tableTop + 25;
+  let y = tableTop + 30;
 
-  // Data rows
-  dataRows.forEach((row) => {
-    let maxHeight = 25;
+  // Data rows with improved styling
+  dataRows.forEach((row, rowIndex) => {
+    let maxHeight = 30;
+    
+    // Calculate maximum height needed for this row
     row.forEach((cell, i) => {
-      const textHeight = doc.heightOfString(cell, {
+      const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n').trim();
+      const textHeight = doc.heightOfString(cleanCell, {
         width: colWidth - 2 * cellPadding,
       });
-      maxHeight = Math.max(maxHeight, textHeight + 12);
+      maxHeight = Math.max(maxHeight, textHeight + 16);
     });
 
+    // Draw row with alternating background colors
+    const backgroundColor = rowIndex % 2 === 0 ? "#ffffff" : "#f8f9fa";
+    
     row.forEach((cell, i) => {
+      const cellX = doc.page.margins.left + i * colWidth;
+      const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n').trim();
+      
+      // Cell background
       doc
-        .rect(doc.page.margins.left + i * colWidth, y, colWidth, maxHeight)
-        .stroke();
+        .rect(cellX, y, colWidth, maxHeight)
+        .fillAndStroke(backgroundColor, "#dee2e6");
 
+      // Cell text
       doc
-        .fontSize(11)
-        .fillColor("#1a202c")
-        .text(cell, doc.page.margins.left + i * colWidth + cellPadding, y + 6, {
-          width: colWidth - 2 * cellPadding,
-          align: "left",
-        });
+        .fontSize(10)
+        .font("Helvetica")
+        .fillColor("#212529")
+        .text(
+          cleanCell || " ", // Empty cells get a space
+          cellX + cellPadding,
+          y + 8,
+          {
+            width: colWidth - 2 * cellPadding,
+            align: "left",
+          }
+        );
     });
 
     y += maxHeight;
   });
 
+  // Add some space after the table
   doc.y = y + 20;
 }
 

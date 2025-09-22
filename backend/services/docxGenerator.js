@@ -228,31 +228,73 @@ class DocxGenerator {
       }
 
       if (table.length > 0) {
-        // Create a simple table with proper formatting
-        const tableData = table.map((row) =>
-          row.map((cell) => ({
-            val: cell,
-            opts: {
-              cellColWidth: 2000, // Fixed width for all columns
-              b: false,
-              sz: "24",
-              font_face: "Calibri",
-            },
-          }))
-        );
-
-        docx.createTable(tableData, {
-          tableColWidth: 2000,
-          tableSize: 24,
-          tableColor: "000000",
-          tableAlign: "left",
-        });
+        // Create table with advanced formatting
+        const tableData = this.createFormattedTable(table);
+        const tableStyle = this.createTableStyle();
+        
+        docx.createTable(tableData, tableStyle);
       }
     } catch (error) {
       console.error("Error creating table:", error);
       // Fallback: just add the content as text
       docx.createP().addText(content, { font_face: "Calibri" });
     }
+  }
+
+  // ---------------- TABLE FORMATTING ----------------
+  createFormattedTable(table) {
+    return table.map((row, rowIndex) => {
+      return row.map((cell, cellIndex) => {
+        // Header row formatting
+        if (rowIndex === 0) {
+          return {
+            val: cell,
+            opts: {
+              b: true,
+              sz: '24',
+              font_face: "Calibri",
+              align: "center",
+              vAlign: "center",
+              shd: {
+                fill: "D9D9D9",
+                themeFill: "text1",
+                "themeFillTint": "80"
+              }
+            }
+          };
+        }
+        
+        // Data row formatting
+        return {
+          val: cell,
+          opts: {
+            b: false,
+            sz: '22',
+            font_face: "Calibri",
+            align: "left",
+            vAlign: "top"
+          }
+        };
+      });
+    });
+  }
+
+  createTableStyle() {
+    return {
+      tableColWidth: 2000,
+      tableSize: 24,
+      tableColor: "000000",
+      tableAlign: "left",
+      tableFontFamily: "Calibri",
+      spacingBefore: 100,
+      spacingAfter: 100,
+      spacingLine: 240,
+      spacingLineRule: 'atLeast',
+      indent: 0,
+      fixedLayout: false,
+      borders: true,
+      borderSize: 4
+    };
   }
 }
 

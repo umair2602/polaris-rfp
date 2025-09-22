@@ -107,18 +107,36 @@ For the Project Schedule section:
 - If specific deadlines are mentioned in the RFP, incorporate those
 - If not specified, create a logical timeline based on the project scope
 - Include key milestones and deliverables
-- CRITICAL: Format as a proper markdown table with exactly 3 columns: "Phase", "Timeline", "Key Milestones"
-- Use this exact table format:
-  | Phase | Timeline | Key Milestones |
-  |-------|----------|----------------|
-  | Phase 1: [Phase Name] | [Duration] | [Milestone 1], [Milestone 2] |
-  | Phase 2: [Phase Name] | [Duration] | [Milestone 1], [Milestone 2] |
-  | Phase 3: [Phase Name] | [Duration] | [Milestone 1], [Milestone 2] |
-  | Phase 4: [Phase Name] | [Duration] | [Milestone 1], [Milestone 2] |
-  | Phase 5: [Phase Name] | [Duration] | [Milestone 1], [Milestone 2] |
-- Each phase should have realistic timeline and 2-3 key milestones
-- Use <br> tags for line breaks within table cells if needed
-- Ensure the table is properly formatted and readable
+- CRITICAL: Format as simple headings and paragraphs, NOT as a table
+- Use this exact format:
+  ## Phase 1: [Phase Name]
+  **Timeline:** [Duration]
+  
+  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
+  
+  ## Phase 2: [Phase Name]
+  **Timeline:** [Duration]
+  
+  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
+  
+  ## Phase 3: [Phase Name]
+  **Timeline:** [Duration]
+  
+  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
+  
+  ## Phase 4: [Phase Name]
+  **Timeline:** [Duration]
+  
+  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
+  
+  ## Phase 5: [Phase Name]
+  **Timeline:** [Duration]
+  
+  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
+- Each phase should have realistic timeline and detailed paragraph descriptions
+- Use **bold** for "Timeline:" labels
+- Use ## for phase headings
+- Write comprehensive paragraphs that explain what will be accomplished in each phase
 
 For the Budget section:
 - Create a detailed cost breakdown based on the project phases and deliverables
