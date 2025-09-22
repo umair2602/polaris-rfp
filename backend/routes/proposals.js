@@ -651,7 +651,7 @@ router.get("/:id/export-pdf", async (req, res) => {
 router.get("/:id/export-docx", async (req, res) => {
   console.log("🚀 Starting DOCX export request...");
   console.log("📋 Request params:", req.params);
-  
+
   try {
     console.log("🔍 Looking up proposal with ID:", req.params.id);
     const proposal = await Proposal.findById(req.params.id).populate(
@@ -673,7 +673,6 @@ router.get("/:id/export-docx", async (req, res) => {
     });
 
     console.log("🏢 Looking up company information...");
-    // Get company information with fallback
     const company = await Company.findOne().sort({ createdAt: -1 }) || {};
     console.log("✅ Company data retrieved:", {
       hasCompany: !!company,
@@ -683,36 +682,36 @@ router.get("/:id/export-docx", async (req, res) => {
     });
 
     console.log("📄 Creating DocxGenerator instance...");
-    // Generate DOCX document
-    const docxGenerator = new DocxGenerator();
+    const docxGenerator = new DocxGenerator(); // <-- now uses officegen inside
     console.log("✅ DocxGenerator created");
 
-    console.log("📝 Starting DOCX generation...");
+    console.log("📝 Starting DOCX generation with officegen...");
     const buffer = await docxGenerator.generateDocx(proposal, company);
     console.log("✅ DOCX document generated successfully, size:", buffer.length, "bytes");
 
-    // Ensure we have a valid filename
-    const filename = (proposal.title || "proposal").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "") + ".docx";
+    // Ensure filename is safe
+    const filename =
+      (proposal.title || "proposal")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "") + ".docx";
     console.log("📁 Generated filename:", filename);
 
-    console.log("📤 Setting response headers...");
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    // Set headers before sending
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-    console.log("📤 Sending response...");
+    console.log("📤 Sending DOCX buffer to response...");
     res.send(buffer);
     console.log("🎉 DOCX export completed successfully");
   } catch (error) {
     console.error("❌ Error exporting proposal as DOCX:", error);
-    console.error("❌ Error message:", error.message);
-    console.error("❌ Error stack:", error.stack);
-    console.error("❌ Error name:", error.name);
-    console.error("❌ Error cause:", error.cause);
-    
-    res.status(500).json({ 
-      error: "Failed to export proposal DOCX", 
+    res.status(500).json({
+      error: "Failed to export proposal DOCX",
       message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
