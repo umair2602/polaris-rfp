@@ -73,6 +73,8 @@ Resources:
                   Value: '8080'
                 - Name: FRONTEND_URL
                   Value: 'https://main.d2ds3speyvmfi1.amplifyapp.com'
+                - Name: TMPDIR
+                  Value: '/tmp'
         AutoDeploymentsEnabled: true
       InstanceConfiguration:
         Cpu: '1024'
