@@ -1,28 +1,3 @@
-# ISSUE 1: Race Condition - Both jobs trigger Amplify builds
-# Current problematic flow:
-# deploy-frontend → triggers build
-# update-frontend-env → also triggers build (while first might still be running)
-
-# ISSUE 2: Hardcoded Account ID in Connection ARN
-# Current:
-CodeStarConnectionArn=arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016
-
-# Should be:
-CodeStarConnectionArn=arn:aws:apprunner:us-east-1:${{ secrets.AWS_ACCOUNT_ID }}:connection/polaris-rfp/577729d32ae34e1380983e866e425016
-
-# ISSUE 3: Missing Error Handling for Stack Outputs
-# Current: Directly uses outputs without validation
-# Risk: If stack deployment succeeds but outputs are missing, job fails
-
-# ISSUE 4: Insufficient Timeout for App Runner Operations
-# Current: 600 seconds (10 minutes)
-# App Runner operations can take 20-30 minutes when stuck
-
-# ISSUE 5: Jobs Run in Parallel But Have Dependencies
-# frontend and backend jobs run in parallel, but frontend should wait for backend URL
-
-# FIXED VERSION BELOW:
-
 name: Deploy to AWS
 
 on:
