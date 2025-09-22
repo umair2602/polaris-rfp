@@ -114,8 +114,47 @@ jobs:
         
         echo "Current stack status: $STACK_STATUS"
         
-        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ]; then
           echo "Stack is in failed state ($STACK_STATUS), attempting deletion..."
+        elif [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+          echo "Stack is in UPDATE_ROLLBACK_COMPLETE state, checking if App Runner service is operational..."
+          
+          # Check if App Runner service is running and operational
+          SERVICE_ARN=$(aws apprunner list-services \
+            --region ${{ env.AWS_REGION }} \
+            --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+            --output text) || echo "No App Runner services found"
+          
+          if [ ! -z "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+            SERVICE_STATUS=$(aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.Status' \
+              --output text) || echo "UNKNOWN"
+            
+            echo "App Runner service status: $SERVICE_STATUS"
+            
+            if [ "$SERVICE_STATUS" = "RUNNING" ]; then
+              echo "App Runner service is running, skipping deletion and proceeding with update..."
+              SKIP_DELETION=true
+            else
+              echo "App Runner service is not running ($SERVICE_STATUS), attempting deletion..."
+              SKIP_DELETION=false
+            fi
+          else
+            echo "No App Runner service found, attempting deletion..."
+            SKIP_DELETION=false
+          fi
+        elif [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
+          echo "Stack is in DELETE_FAILED state, attempting cleanup..."
+          SKIP_DELETION=false
+        else
+          echo "Stack is in state: $STACK_STATUS, proceeding with deployment..."
+          SKIP_DELETION=true
+        fi
+        
+        # Only attempt deletion if not skipping
+        if [ "$SKIP_DELETION" != "true" ]; then
           
           # First, try to get App Runner service logs before deletion
           echo "🔍 Attempting to retrieve App Runner logs before deletion..."
@@ -191,6 +230,44 @@ jobs:
             echo "This might cause conflicts, but CloudFormation will handle existing resources"
           else
             echo "✅ Stack deleted successfully"
+          fi
+        else
+          echo "Skipping deletion, proceeding with deployment..."
+        fi
+        
+        # Wait for any ongoing App Runner operations to complete
+        echo "Checking for ongoing App Runner operations..."
+        SERVICE_ARN=$(aws apprunner list-services \
+          --region ${{ env.AWS_REGION }} \
+          --query 'ServiceSummaryList[?contains(ServiceName, `polaris-backend`)].ServiceArn' \
+          --output text) || echo "No App Runner services found"
+        
+        if [ ! -z "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+          SERVICE_STATUS=$(aws apprunner describe-service \
+            --service-arn "$SERVICE_ARN" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Service.Status' \
+            --output text) || echo "UNKNOWN"
+          
+          echo "Current App Runner service status: $SERVICE_STATUS"
+          
+          if [ "$SERVICE_STATUS" = "OPERATION_IN_PROGRESS" ]; then
+            echo "App Runner service is in OPERATION_IN_PROGRESS state, waiting for completion..."
+            echo "This may take a few minutes..."
+            
+            # Wait for the service to be in a stable state
+            aws apprunner wait service-updated \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} || echo "Wait timed out, proceeding anyway..."
+            
+            # Check final status
+            FINAL_STATUS=$(aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.Status' \
+              --output text) || echo "UNKNOWN"
+            
+            echo "App Runner service final status: $FINAL_STATUS"
           fi
         fi
         
