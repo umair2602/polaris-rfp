@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://wm8h6yjgim.us-east-1.awsapprunner.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://cvsmuhhazj.us-east-1.awsapprunner.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,

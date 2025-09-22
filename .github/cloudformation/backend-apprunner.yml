@@ -72,7 +72,7 @@ Resources:
                 - Name: PORT
                   Value: '8080'
                 - Name: FRONTEND_URL
-                  Value: 'https://main.d2ds3speyvmfi1.amplifyapp.com'
+                  Value: 'https://rfp.polariseco.com'
                 - Name: TMPDIR
                   Value: '/tmp'
         AutoDeploymentsEnabled: true
