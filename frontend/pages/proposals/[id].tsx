@@ -334,21 +334,38 @@ export default function ProposalDetail() {
   };
 
   // Helper function to render content with proper table formatting
-  const renderSectionContent = (content: string, sectionName: string) => {
+  const renderSectionContent = (content: any, sectionName: string) => {
     if (!content) return "No content available";
+
+    // Handle Title section with object content
+    if (sectionName === "Title" && typeof content === "object") {
+      const titleData = content as { submittedBy?: string; name?: string; email?: string; number?: string };
+      return `
+        <div class="title-section">
+          ${titleData.submittedBy ? `<p><strong>Submitted by:</strong> ${titleData.submittedBy}</p>` : ''}
+          ${titleData.name ? `<p><strong>Name:</strong> ${titleData.name}</p>` : ''}
+          ${titleData.email ? `<p><strong>Email:</strong> ${titleData.email}</p>` : ''}
+          ${titleData.number ? `<p><strong>Number:</strong> ${titleData.number}</p>` : ''}
+        </div>
+      `;
+    }
+
+    // Ensure content is a string for other sections
+    const contentStr = typeof content === 'string' ? content : String(content);
+    if (!contentStr) return "No content available";
 
     // Check if this section contains table data (Budget Estimate or Project Timeline)
     const isTableSection =
       sectionName.toLowerCase().includes("budget") ||
       sectionName.toLowerCase().includes("timeline") ||
-      content.includes("|"); // Contains pipe characters (markdown table)
+      contentStr.includes("|"); // Contains pipe characters (markdown table)
 
-    if (isTableSection && content.includes("|")) {
-      return renderMarkdownTable(content);
+    if (isTableSection && contentStr.includes("|")) {
+      return renderMarkdownTable(contentStr);
     }
 
     // Regular content formatting
-    return content
+    return contentStr
       .replace(/\n/g, "<br>")
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
