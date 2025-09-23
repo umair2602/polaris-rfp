@@ -1,6 +1,8 @@
 // services/RFPAnalyzer.js
 const pdf = require("pdf-parse");
 const OpenAI = require("openai");
+const cheerio = require("cheerio");
+const axios = require("axios");
 
 class RFPAnalyzer {
   constructor() {
@@ -31,6 +33,76 @@ class RFPAnalyzer {
       return text;
     } catch (err) {
       throw new Error(`PDF extraction failed: ${err.message || err}`);
+    }
+  }
+
+  // ------------------------------
+  // Web URL text extraction
+  // ------------------------------
+  async extractTextFromURL(url) {
+    try {
+      console.log("Fetching content from URL:", url);
+      
+      // Fetch the web page
+      const response = await axios.get(url, {
+        timeout: 30000, // 30 second timeout
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      // Load HTML into Cheerio
+      const $ = cheerio.load(response.data);
+
+      // Remove unwanted elements (scripts, styles, navigation, etc.)
+      $('script, style, nav, header, footer, .nav, .navigation, .menu, .sidebar, .ads, .advertisement, .cookie-banner, .popup, .modal').remove();
+
+      // Extract text content from main content areas
+      let text = '';
+      
+      // Try to find main content areas first
+      const mainSelectors = [
+        'main',
+        'article', 
+        '.content',
+        '.main-content',
+        '.post-content',
+        '.entry-content',
+        '#content',
+        '#main',
+        '.container .row',
+        '.page-content'
+      ];
+
+      let mainContent = '';
+      for (const selector of mainSelectors) {
+        const element = $(selector);
+        if (element.length > 0) {
+          mainContent = element.text();
+          break;
+        }
+      }
+
+      // If no main content found, extract from body
+      if (!mainContent.trim()) {
+        mainContent = $('body').text();
+      }
+
+      // Clean up the text
+      text = mainContent
+        .replace(/\r\n|\r/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0) // Remove empty lines
+        .join("\n")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+
+      console.log(`Extracted ${text.length} characters from URL`);
+      return text;
+    } catch (err) {
+      throw new Error(`URL extraction failed: ${err.message || err}`);
     }
   }
 
@@ -98,8 +170,24 @@ Rules:
   // ------------------------------
   async analyzeRFP(input, source = "uploaded_rfp.pdf") {
     try {
-      // Extract text from PDF
-      const text = await this.extractTextFromPDF(input);
+      let text = '';
+      let extractionMethod = '';
+
+      // Detect input type and extract text accordingly
+      if (typeof input === 'string' && (input.startsWith('http://') || input.startsWith('https://'))) {
+        // Input is a URL
+        console.log("Detected URL input, extracting text from web page...");
+        text = await this.extractTextFromURL(input);
+        extractionMethod = "web-scraping";
+        source = input; // Use URL as source
+      } else if (Buffer.isBuffer(input)) {
+        // Input is a PDF buffer
+        console.log("Detected PDF buffer, extracting text from PDF...");
+        text = await this.extractTextFromPDF(input);
+        extractionMethod = "pdf-parsing";
+      } else {
+        throw new Error("Invalid input type. Expected URL string or PDF buffer.");
+      }
 
       if (!text || text.length < 50) {
         throw new Error("Content appears empty or unreadable.");
@@ -133,8 +221,8 @@ Rules:
         parsedSections: {
           textLength: text.length,
           aiEnhanced: true,
-          extractionMethod: "AI-only",
-          fileName: source,
+          extractionMethod: extractionMethod,
+          source: source,
           analyzedAt: new Date(),
         },
       };
