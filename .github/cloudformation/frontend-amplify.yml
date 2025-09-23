@@ -22,6 +22,11 @@ Parameters:
     Type: String
     Description: GitHub token for repository access
     NoEcho: true
+  
+  BackendUrl:
+    Type: String
+    Description: Backend API URL
+    Default: 'https://cvsmuhhazj.us-east-1.awsapprunner.com'
 
 Resources:
   # IAM Role for Amplify
@@ -68,7 +73,9 @@ Resources:
         - Name: NODE_ENV
           Value: !Ref Environment
         - Name: API_BASE_URL
-          Value: 'https://wm8h6yjgim.us-east-1.awsapprunner.com'
+          Value: !Ref BackendUrl
+        - Name: NEXT_PUBLIC_API_BASE_URL
+          Value: !Ref BackendUrl
       CustomRules:
         - Source: '**'
           Target: '/index.html'
@@ -88,17 +95,19 @@ Resources:
         - Name: NODE_ENV
           Value: !Ref Environment
         - Name: API_BASE_URL
-          Value: 'https://wm8h6yjgim.us-east-1.awsapprunner.com'
+          Value: !Ref BackendUrl
+        - Name: NEXT_PUBLIC_API_BASE_URL
+          Value: !Ref BackendUrl
 
   # Amplify Domain (Optional - for custom domain)
   AmplifyDomain:
     Type: AWS::Amplify::Domain
     Properties:
       AppId: !GetAtt AmplifyApp.AppId
-      DomainName: !Sub 'polaris-${Environment}.yourdomain.com'
+      DomainName: 'polariseco.com'
       SubDomainSettings:
         - BranchName: !Ref BranchName
-          Prefix: !Ref BranchName
+          Prefix: 'rfp'
 
   # CloudFront Distribution for custom domain
   CloudFrontDistribution:
