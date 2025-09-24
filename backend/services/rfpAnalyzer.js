@@ -45,7 +45,7 @@ class RFPAnalyzer {
       
       // Fetch the web page
       const response = await axios.get(url, {
-        timeout: 30000, // 30 second timeout
+        // timeout: 30000, // 30 second timeout
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
