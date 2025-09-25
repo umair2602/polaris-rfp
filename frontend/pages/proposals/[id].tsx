@@ -4,6 +4,7 @@ import Head from "next/head";
 import Layout from "../../components/Layout";
 import TextEditor from "../../components/TextEditor";
 import AIModal from "../../components/AIModal";
+import Modal from "../../components/ui/Modal";
 import { proposalApi, proposalApiPdf, Proposal, aiApi } from "../../lib/api";
 import api from "../../lib/api";
 import {
@@ -42,6 +43,20 @@ export default function ProposalDetail() {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState<'pdf' | 'docx'>('pdf');
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string>("");
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const [infoModalTitle, setInfoModalTitle] = useState("");
+  const [infoModalMessage, setInfoModalMessage] = useState("");
+  const [infoModalVariant, setInfoModalVariant] = useState<'info' | 'success' | 'error'>("info");
+
+  const openInfo = (title: string, message: string, variant: 'info' | 'success' | 'error' = 'info') => {
+    setInfoModalTitle(title);
+    setInfoModalMessage(message);
+    setInfoModalVariant(variant);
+    setInfoModalOpen(true);
+  };
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -66,7 +81,10 @@ export default function ProposalDetail() {
   const loadProposal = async (proposalId: string) => {
     try {
       const response = await proposalApi.get(proposalId);
-      setProposal(response.data);
+      const proposalData = (response as any)?.data?.data
+        ? (response as any).data.data
+        : response.data;
+      setProposal(proposalData as Proposal);
     } catch (error) {
       console.error("Error loading proposal:", error);
       setError("Failed to load proposal details");
@@ -107,31 +125,35 @@ export default function ProposalDetail() {
       setEditContent("");
     } catch (error) {
       console.error("Error saving section:", error);
-      alert("Failed to save section. Please try again.");
+      openInfo("Save failed", "Failed to save section. Please try again.", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteSection = async (sectionName: string) => {
-    if (!proposal) return;
-    if (
-      !confirm(`Are you sure you want to delete the "${sectionName}" section?`)
-    )
-      return;
+  const deleteSection = (sectionName: string) => {
+    setSectionToDelete(sectionName);
+    setDeleteError("");
+    setShowDeleteModal(true);
+  };
 
+  const performDeleteSection = async () => {
+    if (!proposal || !sectionToDelete) return;
     setSaving(true);
     try {
       const updatedSections = { ...proposal.sections };
-      delete updatedSections[sectionName];
+      delete updatedSections[sectionToDelete];
 
       const response = await proposalApi.update(proposal._id, {
         sections: updatedSections,
       });
       setProposal(response.data);
+      setShowDeleteModal(false);
+      setSectionToDelete(null);
+      setDeleteError("");
     } catch (error) {
       console.error("Error deleting section:", error);
-      alert("Failed to delete section. Please try again.");
+      setDeleteError("Failed to delete section. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -161,7 +183,7 @@ export default function ProposalDetail() {
       setEditContent("");
     } catch (error) {
       console.error("Error adding section:", error);
-      alert("Failed to add section. Please try again.");
+      openInfo("Add section failed", "Failed to add section. Please try again.", "error");
     } finally {
       setSaving(false);
     }
@@ -184,14 +206,10 @@ export default function ProposalDetail() {
         }
       );
 
-      alert(
-        `Proposal uploaded successfully to Google Drive!\nFile: ${response.data.file.name}`
-      );
+      openInfo("Upload successful", `Proposal uploaded to Google Drive. File: ${response.data.file.name}`, "success");
     } catch (error) {
       console.error("Error uploading to Google Drive:", error);
-      alert(
-        "Failed to upload to Google Drive. Please ensure Google Drive is configured and try again."
-      );
+      openInfo("Upload failed", "Failed to upload to Google Drive. Please ensure Google Drive is configured and try again.", "error");
     } finally {
       setUploading(false);
     }
@@ -254,7 +272,7 @@ export default function ProposalDetail() {
       } else if (err?.response?.data?.error) {
         message = err.response.data.error;
       }
-      alert(`Failed to download proposal ${format.toUpperCase()}: ` + message);
+      openInfo("Download failed", `Failed to download proposal ${format.toUpperCase()}: ${message}`, "error");
     } finally {
       clearTimeout(timeoutWarning);
       setDownloading(false);
@@ -271,10 +289,10 @@ export default function ProposalDetail() {
       // Update the proposal with new sections
       setProposal(response.data.proposal);
       
-      alert("AI sections generated successfully!");
+      openInfo("AI sections", "AI sections generated successfully!", "success");
     } catch (error) {
       console.error("Error generating AI sections:", error);
-      alert("Failed to generate AI sections. Please try again.");
+      openInfo("AI generation failed", "Failed to generate AI sections. Please try again.", "error");
     } finally {
       setGenerating(false);
     }
@@ -322,7 +340,7 @@ export default function ProposalDetail() {
         error.response?.data?.error ||
         error.message ||
         "AI edit failed. Please try again.";
-      alert(errorMessage);
+      openInfo("AI edit failed", errorMessage, "error");
     } finally {
       setIsAILoading(false);
     }
@@ -586,7 +604,7 @@ export default function ProposalDetail() {
                     </div>
                   )}
                 </div>
-                <button
+                {/* <button
                   onClick={uploadToGoogleDrive}
                   disabled={uploading}
                   className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
@@ -605,7 +623,7 @@ export default function ProposalDetail() {
                       Upload to Drive
                     </>
                   )}
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
@@ -857,6 +875,58 @@ export default function ProposalDetail() {
         onApply={handleAIEdit}
         isLoading={isAILoading}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete section?"
+        footer={
+          <>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={performDeleteSection}
+              disabled={saving}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+            >
+              {saving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : null}
+              Confirm
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700">Are you sure you want to delete{sectionToDelete ? ` "${sectionToDelete}"` : ''}?</p>
+          <p className="text-xs text-gray-500">This action cannot be undone.</p>
+          {deleteError && (
+            <p className="text-sm text-red-600">{deleteError}</p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Info Modal */}
+      <Modal
+        isOpen={infoModalOpen}
+        onClose={() => setInfoModalOpen(false)}
+        title={infoModalTitle}
+        footer={
+          <button
+            onClick={() => setInfoModalOpen(false)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          >
+            OK
+          </button>
+        }
+      >
+        <p className={`text-sm ${infoModalVariant === 'error' ? 'text-red-700' : infoModalVariant === 'success' ? 'text-green-700' : 'text-gray-700'}`}>{infoModalMessage}</p>
+      </Modal>
     </Layout>
   );
 }

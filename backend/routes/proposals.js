@@ -8,6 +8,7 @@ const { generateAIProposalSections } = require("../services/aiProposalGenerator"
 const DocxGenerator = require("../services/docxGenerator");
 const { Packer } = require("docx");
 const router = express.Router();
+const Template = require("../models/Template");
 
 // Generate new proposal with AI
 router.post("/generate", async (req, res) => {
@@ -48,6 +49,110 @@ router.post("/generate", async (req, res) => {
     console.error("Error generating proposal:", error);
     res.status(500).json({
       error: "Failed to generate proposal",
+      message: error.message,
+    });
+  }
+});
+
+// Create new proposal with EMPTY sections from a template (no AI)
+router.post("/create-empty", async (req, res) => {
+  try {
+    const { rfpId, templateId, title } = req.body || {};
+
+    // If rfpId and templateId are provided, create empty based on template structure
+    if (rfpId && templateId && title) {
+      const rfp = await RFP.findById(rfpId);
+      if (!rfp) {
+        return res.status(404).json({ error: "RFP not found" });
+      }
+
+      const template = await Template.findById(templateId).lean();
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      const sections = {};
+      (template.sections || [])
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .forEach((section) => {
+          const sectionName = section.name || section.title || "Section";
+          sections[sectionName] = {
+            content: "",
+            type: section.contentType || "static",
+            required: typeof section.isRequired === "boolean" ? section.isRequired : true,
+            lastModified: new Date().toISOString(),
+          };
+        });
+
+      const proposal = new Proposal({
+        rfpId,
+        templateId: template._id.toString(),
+        title,
+        sections,
+        customContent: {},
+        lastModifiedBy: "system",
+      });
+
+      await proposal.save();
+      await proposal.populate("rfpId", "title clientName projectType");
+      return res.status(201).json(proposal);
+    }
+
+    // Otherwise, create a placeholder RFP and proposal with ONLY the specified keys as empty sections
+    const placeholderTitle = title && typeof title === 'string' ? title : 'Untitled Proposal';
+
+    // Create minimal placeholder RFP to satisfy schema constraints
+    const placeholderRfp = await RFP.create({
+      title: `Auto: ${placeholderTitle}`,
+      clientName: "Client",
+      projectType: "general",
+      submissionDeadline: "",
+      budgetRange: "",
+      location: "",
+      keyRequirements: [],
+      deliverables: [],
+      contactInformation: "",
+    });
+
+    // Only use these keys, in this order
+    const sectionKeys = [
+      "Title",
+      "Client",
+      "Project Type",
+      "Budget Range",
+      "Submission Deadline",
+      "Location",
+      "Key Requirements",
+      "Deliverables",
+      "Contact Information",
+    ];
+
+    const sections = {};
+    sectionKeys.forEach((key) => {
+      sections[key] = {
+        content: "",
+        type: "static",
+        required: true,
+        lastModified: new Date().toISOString(),
+      };
+    });
+
+    const proposal = new Proposal({
+      rfpId: placeholderRfp._id,
+      templateId: templateId || "manual_basic",
+      title: placeholderTitle,
+      sections,
+      customContent: {},
+      lastModifiedBy: "system",
+    });
+
+    await proposal.save();
+    await proposal.populate("rfpId", "title clientName projectType");
+    return res.status(201).json(proposal);
+  } catch (error) {
+    console.error("Error creating empty proposal:", error);
+    return res.status(500).json({
+      error: "Failed to create empty proposal",
       message: error.message,
     });
   }

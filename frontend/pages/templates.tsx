@@ -2,7 +2,8 @@ import Head from 'next/head'
 import Layout from '../components/Layout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { templateApi, Template } from '../lib/api'
+import { templateApi, Template, proposalApi } from '../lib/api'
+import CreateProposalModal from '../components/proposals/CreateProposalModal'
 import { 
   CogIcon, 
   EyeIcon, 
@@ -19,6 +20,8 @@ export default function Templates() {
   const [templateDetails, setTemplateDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [showTitleModal, setShowTitleModal] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     loadTemplates()
@@ -80,7 +83,7 @@ export default function Templates() {
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
-            <button className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
+            <button onClick={() => setShowTitleModal(true)} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
               Create Template
             </button>
@@ -215,6 +218,25 @@ export default function Templates() {
           </div>
         </div>
       </div>
+      <CreateProposalModal
+        isOpen={showTitleModal}
+        onClose={() => { if (!creating) setShowTitleModal(false) }}
+        loading={creating}
+        onCreate={async (title: string) => {
+          setCreating(true)
+          try {
+            const res = await proposalApi.createEmpty({ title })
+            const id = (res as any)?.data?._id || (res as any)?._id
+            if (id) router.push(`/proposals/${id}`)
+            else alert('Proposal created but ID not returned')
+          } catch (e) {
+            alert('Failed to create empty proposal')
+          } finally {
+            setCreating(false)
+            setShowTitleModal(false)
+          }
+        }}
+      />
     </Layout>
   )
 }

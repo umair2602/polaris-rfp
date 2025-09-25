@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import { useState, useEffect } from 'react'
 import { rfpApi, RFP } from '../lib/api'
 import Link from 'next/link'
+import Modal from '../components/ui/Modal'
 import { 
   DocumentTextIcon, 
   PlusIcon, 
@@ -21,6 +22,8 @@ export default function RFPs() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProjectType, setSelectedProjectType] = useState<string>('all')
   const [loading, setLoading] = useState(true)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [rfpToDelete, setRfpToDelete] = useState<RFP | null>(null)
 
   useEffect(() => {
     loadRFPs()
@@ -29,7 +32,11 @@ export default function RFPs() {
   const loadRFPs = async () => {
     try {
       const response = await rfpApi.list()
-      const rfpData = Array.isArray(response.data) ? response.data : []
+      const rfpData = Array.isArray((response as any).data?.data)
+        ? (response as any).data.data
+        : Array.isArray(response.data)
+        ? response.data
+        : []
       setRfps(rfpData)
       setFilteredRfps(rfpData)
     } catch (error) {
@@ -60,18 +67,23 @@ export default function RFPs() {
 
   const projectTypes = Array.from(new Set(rfps.map(rfp => rfp.projectType)))
 
-  const handleDeleteRFP = async (rfp: RFP) => {
-    if (confirm(`Are you sure you want to delete "${rfp.title}"?`)) {
-      try {
-        // In a real app, this would make an API call
-        const updatedRfps = rfps.filter(r => r._id !== rfp._id)
-        setRfps(updatedRfps)
-        setFilteredRfps(updatedRfps)
-        alert('RFP deleted successfully!')
-      } catch (error) {
-        console.error('Error deleting RFP:', error)
-        alert('Failed to delete RFP')
-      }
+  const handleDeleteRFP = (rfp: RFP) => {
+    setRfpToDelete(rfp)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteRFP = async () => {
+    if (!rfpToDelete) return
+    try {
+      await rfpApi.delete(rfpToDelete._id)
+      const updatedRfps = rfps.filter(r => r._id !== rfpToDelete._id)
+      setRfps(updatedRfps)
+      setFilteredRfps(updatedRfps)
+    } catch (error) {
+      console.error('Error deleting RFP:', error)
+    } finally {
+      setShowDeleteModal(false)
+      setRfpToDelete(null)
     }
   }
 
@@ -123,7 +135,7 @@ export default function RFPs() {
                   placeholder="Search RFPs by title or client name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 bg-gray-100 text-gray-900"
                 />
               </div>
             </div>
@@ -133,7 +145,7 @@ export default function RFPs() {
                 <select
                   value={selectedProjectType}
                   onChange={(e) => setSelectedProjectType(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 appearance-none"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 appearance-none bg-grey-100 "
                 >
                   <option value="all">All Project Types</option>
                   {projectTypes.map(type => (
@@ -171,7 +183,9 @@ export default function RFPs() {
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center flex-1 min-w-0">
-                        <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center mr-3">
+                          <DocumentTextIcon className="h-5 w-5 text-purple-600" />
+                        </div>
                         <Link 
                           href={`/rfps/${rfp._id}`}
                           className="text-sm font-medium text-primary-600 truncate hover:text-primary-800"
@@ -244,6 +258,30 @@ export default function RFPs() {
             </div>
           )}
         </div>
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => { setShowDeleteModal(false); setRfpToDelete(null) }}
+          title={rfpToDelete ? `Delete "${rfpToDelete.title}"?` : 'Delete RFP'}
+          size="sm"
+          footer={
+            <div className="flex items-center space-x-3">
+              <button
+                className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
+                onClick={() => { setShowDeleteModal(false); setRfpToDelete(null) }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700"
+                onClick={confirmDeleteRFP}
+              >
+                Delete
+              </button>
+            </div>
+          }
+        >
+          <p className="text-gray-700">This action cannot be undone.</p>
+        </Modal>
       </div>
     </Layout>
   )

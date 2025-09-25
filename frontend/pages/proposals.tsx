@@ -5,9 +5,11 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import { LoadingScreen } from "../components/ui/LoadingSpinner";
 import { useState, useEffect } from "react";
-import { proposalApi, Proposal } from "../lib/api";
+import { proposalApi, proposalApiPdf, Proposal } from "../lib/api";
 import api from "../lib/api";
 import Link from "next/link";
+import Modal from "../components/ui/Modal";
+import DownloadMenu from "../components/ui/DownloadMenu";
 import {
   DocumentTextIcon,
   CalendarDaysIcon,
@@ -35,6 +37,9 @@ export default function Proposals() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
+  const [downloadMenuForId, setDownloadMenuForId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposals();
@@ -43,7 +48,12 @@ export default function Proposals() {
   const loadProposals = async () => {
     try {
       const response = await proposalApi.list();
-      setProposals(Array.isArray(response.data) ? response.data : []);
+      const proposalsData = (response as any)?.data?.data
+        ? (response as any).data.data
+        : Array.isArray(response.data)
+        ? response.data
+        : [];
+      setProposals(proposalsData as unknown as Proposal[]);
     } catch (error) {
       console.error("Error loading proposals:", error);
     } finally {
@@ -72,44 +82,45 @@ export default function Proposals() {
     }
   };
 
-  const handleDeleteProposal = async (proposal: Proposal) => {
-    if (confirm(`Are you sure you want to delete "${proposal.title}"?`)) {
-      try {
-        // In a real app, this would make an API call
-        setProposals(proposals.filter((p) => p._id !== proposal._id));
-        alert("Proposal deleted successfully!");
-      } catch (error) {
-        console.error("Error deleting proposal:", error);
-        alert("Failed to delete proposal");
-      }
+  const handleDeleteProposal = (proposal: Proposal) => {
+    setProposalToDelete(proposal);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteProposal = async () => {
+    if (!proposalToDelete) return;
+    try {
+      await proposalApi.delete(proposalToDelete._id);
+      setProposals(proposals.filter((p) => p._id !== proposalToDelete._id));
+    } catch (error) {
+      console.error("Error deleting proposal:", error);
+    } finally {
+      setShowDeleteModal(false);
+      setProposalToDelete(null);
     }
   };
 
-  const uploadToGoogleDrive = async (proposal: Proposal) => {
-    setUploadingProposalId(proposal._id);
+  const downloadProposalFile = async (proposal: Proposal, format: 'pdf' | 'docx') => {
     try {
-      const fileName = `${proposal.title.replace(
-        /[^a-z0-9]/gi,
-        "_"
-      )}_Proposal.json`;
-
-      const response = await api.post(
-        `/googledrive/upload-proposal/${proposal._id}`,
-        {
-          fileName,
-        }
-      );
-
-      alert(
-        `Proposal "${proposal.title}" uploaded successfully to Google Drive!\nFile: ${response.data.file.name}`
-      );
+      setUploadingProposalId(proposal._id);
+      const resp = format === 'pdf'
+        ? await proposalApiPdf.exportPdf(proposal._id)
+        : await proposalApiPdf.exportDocx(proposal._id);
+      const blob = new Blob([resp.data], { type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const safeTitle = proposal.title.replace(/[^a-z0-9]/gi, '_');
+      link.download = `${safeTitle}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error uploading to Google Drive:", error);
-      alert(
-        "Failed to upload to Google Drive. Please ensure Google Drive is configured and try again."
-      );
+      console.error('Error downloading proposal:', error);
     } finally {
       setUploadingProposalId(null);
+      setDownloadMenuForId(null);
     }
   };
 
@@ -292,21 +303,28 @@ export default function Proposals() {
                           children={undefined}
                         />
                         <Button
-                          onClick={() => handleEditProposal(proposal)}
+                          as={Link}
+                          href={`/proposals/${proposal._id}`}
                           variant="ghost"
                           size="sm"
                           icon={<PencilIcon className="h-4 w-4" />}
                           children={undefined}
                         />
-                        <Button
-                          onClick={() => uploadToGoogleDrive(proposal)}
-                          loading={uploadingProposalId === proposal._id}
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          icon={<CloudArrowUpIcon className="h-4 w-4" />}
-                          children={undefined}
-                        />
+                        <div className="relative">
+                          <Button
+                            onClick={() => setDownloadMenuForId(downloadMenuForId === proposal._id ? null : proposal._id)}
+                            loading={uploadingProposalId === proposal._id}
+                            variant="ghost"
+                            size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            icon={<CloudArrowUpIcon className="h-4 w-4" />}
+                            children={undefined}
+                          />
+                          <DownloadMenu
+                            isOpen={downloadMenuForId === proposal._id}
+                            onSelect={(format) => downloadProposalFile(proposal, format)}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -357,9 +375,6 @@ export default function Proposals() {
                       <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                         Created
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
-                        Sections
-                      </th>
                       <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
                         Actions
                       </th>
@@ -403,9 +418,6 @@ export default function Proposals() {
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {new Date(proposal.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {Object.keys(proposal.sections || {}).length} sections
-                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end space-x-2">
                             <Button
@@ -418,21 +430,28 @@ export default function Proposals() {
                               View
                             </Button>
                             <Button
-                              onClick={() => handleEditProposal(proposal)}
+                              as={Link}
+                              href={`/proposals/${proposal._id}`}
                               variant="ghost"
                               size="sm"
                               icon={<PencilIcon className="h-4 w-4" />}
                               children={undefined}
                             />
-                            <Button
-                              onClick={() => uploadToGoogleDrive(proposal)}
-                              loading={uploadingProposalId === proposal._id}
-                              variant="ghost"
-                              size="sm"
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              icon={<CloudArrowUpIcon className="h-4 w-4" />}
-                              children={undefined}
-                            />
+                            <div className="relative">
+                              <Button
+                                onClick={() => setDownloadMenuForId(downloadMenuForId === proposal._id ? null : proposal._id)}
+                                loading={uploadingProposalId === proposal._id}
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                icon={<CloudArrowUpIcon className="h-4 w-4" />}
+                                children={undefined}
+                              />
+                              <DownloadMenu
+                                isOpen={downloadMenuForId === proposal._id}
+                                onSelect={(format) => downloadProposalFile(proposal, format)}
+                              />
+                            </div>
                             <Button
                               onClick={() => handleDeleteProposal(proposal)}
                               variant="ghost"
@@ -451,6 +470,37 @@ export default function Proposals() {
             </CardBody>
           </Card>
         )}
+
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setProposalToDelete(null)
+          }}
+          title={proposalToDelete ? `Delete "${proposalToDelete.title}"?` : "Delete proposal"}
+          size="sm"
+          footer={
+            <div className="flex items-center space-x-3">
+              <button
+                className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setProposalToDelete(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700"
+                onClick={confirmDeleteProposal}
+              >
+                Delete
+              </button>
+            </div>
+          }
+        >
+          <p className="text-gray-700">This action cannot be undone.</p>
+        </Modal>
       </div>
     </Layout>
   );
