@@ -7,7 +7,18 @@ class DocxGenerator {
 
   async generateDocx(proposal, company) {
     return new Promise((resolve, reject) => {
-      const docx = officegen("docx");
+        const docx = officegen({
+          type: "docx",
+          orientation: "portrait",
+          pageMargins: {
+            top: 1440,    // 1 inch (1440 twips = 1 inch)
+            right: 1440,  // 1 inch
+            bottom: 1440, // 1 inch
+            left: 1440    // 1 inch
+          },
+          pageSize: "A4",
+        });
+
       const { PassThrough } = require("stream");
       const stream = new PassThrough();
       const buffer = [];
@@ -53,7 +64,7 @@ class DocxGenerator {
     }
 
     // Add manual spaces (or tabs) between left & right logos
-    para.addText(" ".repeat(80)); // adjust the repeat number until logos push apart
+    para.addText(" ".repeat(110)); // adjust the repeat number until logos push apart
 
     if (fs.existsSync(eighthGenLogoPath)) {
       para.addImage(eighthGenLogoPath, { cx: 100, cy: 90 });
@@ -73,7 +84,10 @@ class DocxGenerator {
     const title = docx.createP({ align: "center" });
     // Clean title to remove duplicate "Proposal for" text
     let cleanTitle = proposal.title || "Proposal Title";
-    cleanTitle = cleanTitle.replace(/^Proposal for\s+Proposal for\s+/i, "Proposal for ");
+    cleanTitle = cleanTitle.replace(
+      /^Proposal for\s+Proposal for\s+/i,
+      "Proposal for "
+    );
     title.addText(cleanTitle, {
       // bold: true,
       font_size: 23,
@@ -105,13 +119,19 @@ class DocxGenerator {
     emptyLine10.addText(" ");
 
     const email = docx.createP({ align: "center" });
-    email.addText(`Email: ${company?.email || "N/A"}`, { font_size: 14, font_face: "Calibri" });
+    email.addText(`Email: ${company?.email || "N/A"}`, {
+      font_size: 14,
+      font_face: "Calibri",
+    });
 
     const emptyLine11 = docx.createP();
     emptyLine11.addText(" ");
 
     const phone = docx.createP({ align: "center" });
-    phone.addText(`Phone: ${company?.phone || "N/A"}`, { font_size: 14, font_face: "Calibri" });
+    phone.addText(`Phone: ${company?.phone || "N/A"}`, {
+      font_size: 14,
+      font_face: "Calibri",
+    });
 
     docx.putPageBreak();
   }
@@ -147,13 +167,15 @@ class DocxGenerator {
     date.addText("09/16/2025", { font_face: "Calibri" });
 
     const salutation = docx.createP();
-    salutation.addText("Dear Town Board and Planning Commission,", { font_face: "Calibri" });
+    salutation.addText("Dear Town Board and Planning Commission,", {
+      font_face: "Calibri",
+    });
 
     const bodyParagraphs = [
       "On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
       "Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.",
       "We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.",
-      "We appreciate your consideration and look forward to working together. Sincerely,"
+      "We appreciate your consideration and look forward to working together. Sincerely,",
     ];
 
     bodyParagraphs.forEach((para) => {
@@ -167,7 +189,9 @@ class DocxGenerator {
     const contact = docx.createP();
     contact.addText("Name, President", { font_face: "Calibri" });
     contact.addLineBreak();
-    contact.addText(company?.email || "email@gmail.com", { font_face: "Calibri" });
+    contact.addText(company?.email || "email@gmail.com", {
+      font_face: "Calibri",
+    });
     contact.addLineBreak();
     contact.addText(company?.phone || "111-222-33", { font_face: "Calibri" });
 
@@ -178,13 +202,20 @@ class DocxGenerator {
   addSections(docx, sections = {}) {
     if (!sections || typeof sections !== "object") return;
 
-    const sectionEntries = Object.entries(sections).filter(([sectionName]) => sectionName !== "Title");
-    
+    const sectionEntries = Object.entries(sections).filter(
+      ([sectionName]) => sectionName !== "Title"
+    );
+
     sectionEntries.forEach(([sectionName, sectionData], index) => {
       // Header logos are already added in the main generation flow
 
       const heading = docx.createP({ align: "center" });
-      heading.addText(sectionName, { bold: true, font_size: 13, font_face: "Calibri", color: "073763" });
+      heading.addText(sectionName, {
+        bold: true,
+        font_size: 13,
+        font_face: "Calibri",
+        color: "073763",
+      });
 
       const content = sectionData?.content || "";
       if (typeof content === "string" && content.includes("|")) {
@@ -243,16 +274,17 @@ class DocxGenerator {
 
     paragraphs.forEach((para) => {
       // Check if paragraph contains lines that start with dashes
-      const lines = para.split('\n');
-      
+      const lines = para.split("\n");
+
       if (lines.length === 1) {
         // Single line paragraph
         const p = docx.createP();
         // Only convert to bullet if line starts with dash and has content after it
-        if (para.trim().startsWith('-') && para.trim().length > 1) {
+        if (para.trim().startsWith("-") && para.trim().length > 1) {
           const bulletText = para.trim().substring(1).trim();
-          if (bulletText) { // Only add bullet if there's content after the dash
-            p.addText('• ', { font_size: 12, font_face: "Calibri" });
+          if (bulletText) {
+            // Only add bullet if there's content after the dash
+            p.addText("• ", { font_size: 12, font_face: "Calibri" });
             p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
           } else {
             p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
@@ -265,10 +297,11 @@ class DocxGenerator {
         lines.forEach((line, index) => {
           const p = docx.createP();
           // Only convert to bullet if line starts with dash and has content after it
-          if (line.trim().startsWith('-') && line.trim().length > 1) {
+          if (line.trim().startsWith("-") && line.trim().length > 1) {
             const bulletText = line.trim().substring(1).trim();
-            if (bulletText) { // Only add bullet if there's content after the dash
-              p.addText('• ', { font_size: 12, font_face: "Calibri" });
+            if (bulletText) {
+              // Only add bullet if there's content after the dash
+              p.addText("• ", { font_size: 12, font_face: "Calibri" });
               p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
             } else {
               p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
@@ -295,7 +328,7 @@ class DocxGenerator {
             .split("|")
             .map((c) => c.trim())
             .map((c) => c.replace(/\*\*/g, "").replace(/\*/g, "")) // Remove ** and * markdown formatting
-            .map((c) => c.replace(/<br\s*\/?>/gi, '\n')) // Convert <br> tags to line breaks
+            .map((c) => c.replace(/<br\s*\/?>/gi, "\n")) // Convert <br> tags to line breaks
             .filter((c) => c !== "");
           if (cells.length) table.push(cells);
         }
@@ -306,7 +339,7 @@ class DocxGenerator {
         const tableType = this.determineTableType(table, content);
         const tableData = this.createFormattedTable(table, tableType);
         const tableStyle = this.createTableStyle(tableType);
-        
+
         docx.createTable(tableData, tableStyle);
       }
     } catch (error) {
@@ -319,82 +352,136 @@ class DocxGenerator {
   // ---------------- TABLE TYPE DETECTION ----------------
   determineTableType(table, content) {
     const columnCount = table[0] ? table[0].length : 0;
-    const rowCount = table.length;
-    
-    // Check for specific keywords in content to determine table type
+    const firstRow = table[0] ? table[0].join(" ").toLowerCase() : "";
     const contentLower = content.toLowerCase();
-    
-    if (contentLower.includes('budget') || contentLower.includes('cost') || contentLower.includes('price')) {
-      return 'budget';
-    } else if (contentLower.includes('timeline') || contentLower.includes('schedule') || contentLower.includes('phase')) {
-      return 'timeline';
-    } else if (contentLower.includes('team') || contentLower.includes('member') || contentLower.includes('staff')) {
-      return 'team';
-    } else if (columnCount >= 4) {
-      return 'wide';
-    } else if (columnCount === 2) {
-      return 'narrow';
+
+    // Budget table detection - look for cost/price columns
+    if (
+      (firstRow.includes("phase") &&
+        (firstRow.includes("cost") || firstRow.includes("price"))) ||
+      firstRow.includes("budget") ||
+      firstRow.includes("$") ||
+      contentLower.includes("budget") ||
+      contentLower.includes("cost breakdown")
+    ) {
+      return "budget";
+    }
+    // Timeline table detection - look for schedule/timeline columns
+    else if (
+      firstRow.includes("timeline") ||
+      firstRow.includes("schedule") ||
+      firstRow.includes("milestone") ||
+      firstRow.includes("deadline") ||
+      contentLower.includes("project schedule")
+    ) {
+      return "timeline";
+    }
+    // Methodology table detection - Phase | Deliverables format
+    else if (
+      (firstRow.includes("phase") && firstRow.includes("deliverable")) ||
+      (columnCount === 2 &&
+        (firstRow.includes("phase") || firstRow.includes("deliverable"))) ||
+      contentLower.includes("methodology")
+    ) {
+      return "methodology";
+    }
+    // Team table detection - look for personnel/team columns
+    else if (
+      firstRow.includes("team") ||
+      firstRow.includes("personnel") ||
+      firstRow.includes("member") ||
+      firstRow.includes("staff") ||
+      (firstRow.includes("name") && firstRow.includes("experience"))
+    ) {
+      return "team";
+    }
+    // Wide table for 3+ columns
+    else if (columnCount >= 3) {
+      return "wide";
+    }
+    // Narrow table for 2 columns
+    else if (columnCount === 2) {
+      return "narrow";
     } else {
-      return 'default';
+      return "default";
     }
   }
 
   // ---------------- TABLE FORMATTING ----------------
-  createFormattedTable(table, tableType = 'default') {
+  createFormattedTable(table, tableType = "default") {
     return table.map((row, rowIndex) => {
       return row.map((cell, cellIndex) => {
         // Process cell content to handle line breaks
         const processedCell = this.processTableCellContent(cell);
-        
+
         // Header row formatting
         if (rowIndex === 0) {
           return {
             val: processedCell,
             opts: {
               b: true,
-              sz: '24',
+              sz: "24",
               font_face: "Calibri",
               align: this.getHeaderAlignment(tableType, cellIndex),
               vAlign: "center",
               shd: {
                 fill: this.getHeaderColor(tableType),
                 themeFill: "text1",
-                "themeFillTint": "80"
-              }
-            }
+                themeFillTint: "80",
+              },
+            },
           };
         }
-        
+
         // Data row formatting
         return {
           val: processedCell,
           opts: {
             b: false,
-            sz: '22',
+            sz: "22",
             font_face: "Calibri",
             align: this.getDataAlignment(tableType, cellIndex),
-            vAlign: "top"
-          }
+            vAlign: "top",
+          },
         };
       });
     });
   }
 
   processTableCellContent(cell) {
-    // Convert line breaks to array format for multi-line cells
-    if (typeof cell === 'string' && cell.includes('\n')) {
-      return cell.split('\n').filter(line => line.trim() !== '');
+    if (typeof cell === "string") {
+      // Convert line breaks to array format for multi-line cells
+      if (cell.includes("\n")) {
+        return cell.split("\n").filter((line) => line.trim() !== "");
+      }
+
+      // Handle <br> tags
+      if (cell.includes("<br")) {
+        return cell
+          .replace(/<br\s*\/?>/gi, "\n")
+          .split("\n")
+          .filter((line) => line.trim() !== "");
+      }
+
+      // For very long text, add some basic word wrapping
+      if (cell.length > 100) {
+        // Split on periods, semicolons, or other natural breaks
+        const sentences = cell.split(/(?<=[.!?;])\s+/);
+        if (sentences.length > 1) {
+          return sentences;
+        }
+      }
     }
     return cell;
   }
 
   getHeaderAlignment(tableType, cellIndex) {
     switch (tableType) {
-      case 'budget':
+      case "budget":
         return "center";
-      case 'timeline':
+      case "timeline":
         return "center";
-      case 'team':
+      case "team":
         return "left";
       default:
         return "center";
@@ -403,11 +490,11 @@ class DocxGenerator {
 
   getDataAlignment(tableType, cellIndex) {
     switch (tableType) {
-      case 'budget':
+      case "budget":
         return "center";
-      case 'timeline':
+      case "timeline":
         return "center";
-      case 'team':
+      case "team":
         return "left";
       default:
         return "left";
@@ -416,68 +503,100 @@ class DocxGenerator {
 
   getHeaderColor(tableType) {
     switch (tableType) {
-      case 'budget':
+      case "budget":
         return "E6F3FF"; // Light blue
-      case 'timeline':
+      case "timeline":
         return "E6FFE6"; // Light green
-      case 'team':
+      case "team":
         return "FFF0E6"; // Light orange
       default:
         return "D9D9D9"; // Light gray
     }
   }
 
-  createTableStyle(tableType = 'default') {
+  createTableStyle(tableType = "default") {
     const baseStyle = {
       tableSize: 24,
       tableColor: "000000",
-      tableAlign: "left",
+      tableAlign: "center", // Center tables on the page
       tableFontFamily: "Calibri",
       spacingBefore: 100,
       spacingAfter: 100,
       spacingLine: 240,
-      spacingLineRule: 'atLeast',
+      spacingLineRule: "atLeast",
       indent: 0,
-      fixedLayout: true,
+      fixedLayout: false, // Changed to false for better Google Docs compatibility
       borders: true,
-      borderSize: 4
+      borderSize: 4,
+      tableColWidth: 9000, // Moderate increase for better centering
     };
 
     switch (tableType) {
-      case 'budget':
+      case "budget":
         return {
           ...baseStyle,
-          tableColWidth: 3000,
-          columns: [{ width: 2000 }, { width: 1000 }, { width: 300 }]
+          tableColWidth: 9000, // Moderate increase for better centering
+          columns: [
+            { width: 3000 }, // Phase column - wider for descriptions
+            { width: 4500 }, // Description column - widest for content
+            { width: 1500 }, // Cost column - wider for numbers
+          ],
         };
-      case 'timeline':
+      case "timeline":
         return {
           ...baseStyle,
-          tableColWidth: 4500,
-          columns: [{ width: 800 }, { width: 1600 }, { width: 2100 }]
+          tableColWidth: 9000, // Moderate increase for better centering
+          columns: [
+            { width: 2500 }, // Phase column
+            { width: 3000 }, // Timeline column
+            { width: 3500 }, // Description column
+          ],
         };
-      case 'team':
+      case "team":
         return {
           ...baseStyle,
-          tableColWidth: 4000,
-          columns: [{ width: 2000 }, { width: 2000 }]
+          tableColWidth: 9000, // Moderate increase for better centering
+          columns: [
+            { width: 4000 }, // Name/Title column
+            { width: 5000 }, // Experience/Qualifications column
+          ],
         };
-      case 'wide':
+      case "wide":
         return {
           ...baseStyle,
-          tableColWidth: 8000,
-          fixedLayout: false
+          tableColWidth: 10000, // Moderate increase for wide tables
+          fixedLayout: false,
+          columns: [
+            { width: 5000 }, // Equal width columns
+            { width: 5000 },
+          ],
         };
-      case 'narrow':
+      case "narrow":
         return {
           ...baseStyle,
-          tableColWidth: 3000,
-          columns: [{ width: 1500 }, { width: 1500 }]
+          tableColWidth: 8000, // Moderate increase for narrow tables
+          columns: [
+            { width: 4000 }, // Equal width columns
+            { width: 4000 },
+          ],
+        };
+      case "methodology":
+        return {
+          ...baseStyle,
+          tableColWidth: 9000, // Moderate increase for better centering
+          columns: [
+            { width: 3000 }, // Phase column
+            { width: 6000 }, // Deliverables column - wider for content
+          ],
         };
       default:
         return {
           ...baseStyle,
-          tableColWidth: 4000
+          tableColWidth: 9000, // Moderate increase for default tables
+          columns: [
+            { width: 4500 }, // Equal width columns
+            { width: 4500 },
+          ],
         };
     }
   }
