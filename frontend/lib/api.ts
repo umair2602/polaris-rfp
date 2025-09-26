@@ -97,8 +97,6 @@ export const proposalApi = {
     title: string
     customContent?: any
   }) => api.post<Proposal>('/api/proposals/generate', data),
-  createEmpty: (data: { rfpId?: string; templateId?: string; title?: string }) =>
-    api.post<Proposal>('/api/proposals/create-empty', data),
   list: () => api.get<{ data: Proposal[] }>('/api/proposals'),
   get: (id: string) => api.get<Proposal>(`/api/proposals/${id}`),
   update: (id: string, data: any) =>

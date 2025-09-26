@@ -23,6 +23,7 @@ export default function TextEditor({
   placeholder = "Enter content...",
   className = "",
 }: TextEditorProps) {
+  const safeValue = typeof value === "string" ? value : String(value ?? "");
   const [isPreview, setIsPreview] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
@@ -107,7 +108,7 @@ export default function TextEditor({
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
 
-      setSelectedText(value.substring(start, end));
+      setSelectedText(safeValue.substring(start, end));
       setShowAITab(true);
     }, 0); // 100ms debounce
   };
@@ -117,7 +118,7 @@ export default function TextEditor({
     setIsAILoading(true);
 
     try {
-      let editedText = value;
+      let editedText = safeValue;
 
       if (selectedText) {
         // If text is selected, apply AI to that specific text
@@ -127,14 +128,14 @@ export default function TextEditor({
         });
 
         if (response.data.success) {
-          editedText = value.replace(selectedText, response.data.editedText);
+          editedText = safeValue.replace(selectedText, response.data.editedText);
         } else {
           throw new Error(response.data.error || "AI edit failed");
         }
       } else {
         // If no text selected, apply AI to entire content
         const response = await aiApi.editText({
-          text: value,
+          text: safeValue,
           prompt,
         });
 
@@ -166,10 +167,10 @@ export default function TextEditor({
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
+    const selectedText = safeValue.substring(start, end);
 
     let formattedText = selectedText;
-    let newValue = value;
+    let newValue = safeValue;
 
     switch (format) {
       case "bold":
@@ -196,7 +197,7 @@ export default function TextEditor({
         break;
     }
 
-    newValue = value.substring(0, start) + formattedText + value.substring(end);
+    newValue = safeValue.substring(0, start) + formattedText + safeValue.substring(end);
     onChange(newValue);
 
     // Restore cursor position
@@ -319,14 +320,14 @@ export default function TextEditor({
         {isPreview ? (
           <div
             className="min-h-40 p-4 prose max-w-none text-sm text-gray-700"
-            dangerouslySetInnerHTML={{ __html: renderPreview(value) }}
+            dangerouslySetInnerHTML={{ __html: renderPreview(safeValue) }}
           />
         ) : (
           <div className="relative">
             <textarea
               ref={textareaRef}
               id="editor-textarea"
-              value={value}
+              value={safeValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
               className="w-full min-h-40 p-4 border-0 resize-none focus:ring-0 focus:outline-none text-sm"

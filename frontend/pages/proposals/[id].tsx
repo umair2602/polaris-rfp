@@ -93,9 +93,44 @@ export default function ProposalDetail() {
     }
   };
 
-  const startEdit = (sectionName: string, content: string) => {
+  // Helpers to handle Title section which stores an object
+  const formatTitleObjectToText = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return '';
+    const { submittedBy, name, email, number } = obj as {
+      submittedBy?: string; name?: string; email?: string; number?: string;
+    };
+    const parts: string[] = [];
+    if (submittedBy) parts.push(`Submitted by: ${submittedBy}`);
+    if (name) parts.push(`Name: ${name}`);
+    if (email) parts.push(`Email: ${email}`);
+    if (number) parts.push(`Number: ${number}`);
+    return parts.join("\n");
+  };
+
+  const parseTitleTextToObject = (text: string) => {
+    const lines = (text || '').split(/\r?\n/);
+    const result: any = {};
+    for (const line of lines) {
+      const idx = line.indexOf(":");
+      if (idx === -1) continue;
+      const key = line.slice(0, idx).trim().toLowerCase();
+      const val = line.slice(idx + 1).trim();
+      if (!val) continue;
+      if (key.startsWith('submitted')) result.submittedBy = val;
+      else if (key === 'name') result.name = val;
+      else if (key === 'email') result.email = val;
+      else if (key === 'number' || key === 'phone') result.number = val;
+    }
+    return result;
+  };
+
+  const startEdit = (sectionName: string, content: any) => {
     setEditingSection(sectionName);
-    setEditContent(content);
+    if (sectionName === 'Title' && content && typeof content === 'object') {
+      setEditContent(formatTitleObjectToText(content));
+    } else {
+      setEditContent(typeof content === 'string' ? content : String(content ?? ''));
+    }
   };
 
   const cancelEdit = () => {
@@ -108,11 +143,16 @@ export default function ProposalDetail() {
 
     setSaving(true);
     try {
+      const isTitle = editingSection === 'Title';
+      const newContent = isTitle
+        ? parseTitleTextToObject(editContent)
+        : editContent;
+
       const updatedSections = {
         ...proposal.sections,
         [editingSection]: {
           ...proposal.sections[editingSection],
-          content: editContent,
+          content: newContent,
           lastModified: new Date().toISOString(),
         },
       };
@@ -705,7 +745,7 @@ export default function ProposalDetail() {
                       placeholder="Section title"
                       value={newSectionTitle}
                       onChange={(e) => setNewSectionTitle(e.target.value)}
-                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 bg-gray-100 focus:border-primary-500"
                       onKeyPress={(e) => e.key === "Enter" && addSection()}
                     />
                     <button

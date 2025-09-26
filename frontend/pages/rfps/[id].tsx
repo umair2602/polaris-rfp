@@ -49,17 +49,18 @@ export default function RFPDetail() {
     
     setGeneratingTemplate(templateId)
     try {
-      const response = await proposalApi.createEmpty({
+      const response = await proposalApi.generate({
         rfpId: rfp._id,
         templateId,
         title: `Proposal for ${rfp.title}`,
+        customContent: {}
       })
       
       // Navigate to the generated proposal
       router.push(`/proposals/${response.data._id}`)
     } catch (error) {
-      console.error('Error creating empty proposal:', error)
-      alert('Failed to create proposal. Please try again.')
+      console.error('Error generating proposal:', error)
+      alert('Failed to generate proposal. Please try again.')
     } finally {
       setGeneratingTemplate(null)
     }
@@ -331,7 +332,7 @@ export default function RFPDetail() {
                           ) : (
                             <>
                               <PlusIcon className="h-4 w-4 mr-1" />
-                              Create Empty
+                              Generate
                             </>
                           )}
                         </button>
