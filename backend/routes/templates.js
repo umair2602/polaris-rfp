@@ -253,26 +253,52 @@ router.post('/:templateId/preview', (req, res) => {
   }
 });
 
-// Update template
-router.put('/:templateId', (req, res) => {
+// Update template (MongoDB-backed)
+router.put('/:templateId', async (req, res) => {
   try {
-    const templateId = req.params.templateId;
-    const updates = req.body;
-    
-    if (!templates[templateId]) {
+    const allowedUpdates = [
+      'name',
+      'description',
+      'projectType',
+      'sections',
+      'isActive',
+      'tags',
+      'version'
+    ];
+
+    const updates = {};
+    Object.keys(req.body || {}).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    updates.lastModifiedBy = req.user?.id || 'system';
+
+    const updated = await Template.findByIdAndUpdate(
+      req.params.templateId,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    // Update the template
-    templates[templateId] = {
-      ...templates[templateId],
-      ...updates,
-      id: templateId, // Preserve ID
-      sectionCount: updates.sections ? updates.sections.length : templates[templateId].sections.length
+    const formattedTemplate = {
+      id: updated._id.toString(),
+      name: updated.name,
+      description: updated.description,
+      projectType: updated.projectType,
+      sections: updated.sections,
+      version: updated.version,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt
     };
 
-    console.log(`✅ Template updated: ${templateId}`);
-    res.json(templates[templateId]);
+    console.log(`✅ Template updated: ${updated._id}`);
+    res.json(formattedTemplate);
   } catch (error) {
     console.error('Error updating template:', error);
     res.status(500).json({ error: 'Failed to update template' });
