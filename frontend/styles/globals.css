@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Default form control colors */
+  input,
+  textarea,
+  select {
+    @apply bg-gray-100 text-gray-900;
+  }
+
+  /* Placeholder readability */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-gray-500;
+  }
+}
+
 html,
 body {
   padding: 0;
@@ -23,4 +38,20 @@ a {
   html {
     color-scheme: dark;
   }
+}
+
+/* Ensure autofill/suggestion text stays gray-900 (not white) */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #111827 !important; /* gray-900 */
+  caret-color: #111827;
+  -webkit-box-shadow: 0 0 0px 1000px #f3f4f6 inset; /* bg-gray-100 */
+  box-shadow: 0 0 0px 1000px #f3f4f6 inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Keep selected text readable */
+::selection {
+  color: #111827; /* gray-900 */
 }

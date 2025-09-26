@@ -145,16 +145,7 @@ router.get('/', async (req, res) => {
       .select('name projectType sections isActive version')
       .lean();
 
-    // If no templates in database, seed with defaults
-    if (templateList.length === 0) {
-      await seedDefaultTemplates();
-      templateList = await Template.find({ isActive: true })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .select('name projectType sections isActive version')
-        .lean();
-    }
+    // If no templates in database, return empty list (no auto-seeding)
 
     const total = await Template.countDocuments({ isActive: true });
 
@@ -289,29 +280,57 @@ router.put('/:templateId', (req, res) => {
 });
 
 // Create new template
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { id, name, projectType, sections = [] } = req.body;
+    const { name, templateType } = req.body;
     
-    if (!id || !name || !projectType) {
-      return res.status(400).json({ error: 'Missing required fields: id, name, projectType' });
+    if (!name || !templateType) {
+      return res.status(400).json({ error: 'Missing required fields: name, templateType' });
     }
 
-    if (templates[id]) {
-      return res.status(409).json({ error: 'Template with this ID already exists' });
+    // Get the predefined template structure
+    const predefinedTemplate = templates[templateType];
+    if (!predefinedTemplate) {
+      return res.status(400).json({ error: 'Invalid template type' });
     }
 
-    const newTemplate = {
-      id,
+    // Convert predefined sections to database format
+    const templateSections = predefinedTemplate.sections.map((section, index) => ({
+      name: section.title,
+      content: `Default content for ${section.title}`,
+      contentType: section.contentType || 'static',
+      isRequired: section.required !== false,
+      order: index + 1,
+      placeholders: []
+    }));
+
+    const newTemplate = new Template({
       name,
-      projectType,
-      sections,
-      sectionCount: sections.length
+      description: `Template: ${name}`,
+      projectType: predefinedTemplate.projectType,
+      sections: templateSections,
+      isActive: true,
+      createdBy: 'user',
+      lastModifiedBy: 'user',
+      version: 1
+    });
+
+    await newTemplate.save();
+
+    const formattedTemplate = {
+      id: newTemplate._id.toString(),
+      name: newTemplate.name,
+      description: newTemplate.description,
+      projectType: newTemplate.projectType,
+      sections: newTemplate.sections,
+      version: newTemplate.version,
+      isActive: newTemplate.isActive,
+      createdAt: newTemplate.createdAt,
+      updatedAt: newTemplate.updatedAt
     };
 
-    templates[id] = newTemplate;
-    console.log(`✅ Template created: ${id}`);
-    res.status(201).json(newTemplate);
+    console.log(`✅ Template created: ${newTemplate._id}`);
+    res.status(201).json(formattedTemplate);
   } catch (error) {
     console.error('Error creating template:', error);
     res.status(500).json({ error: 'Failed to create template' });
@@ -336,32 +355,6 @@ router.delete('/:templateId', (req, res) => {
   }
 });
 
-// Seed default templates
-async function seedDefaultTemplates() {
-  try {
-    const defaultTemplates = Object.values(templates).map(template => ({
-      name: template.name,
-      description: `Default ${template.name} template`,
-      projectType: template.projectType,
-      sections: template.sections.map((section, index) => ({
-        name: section.title,
-        content: `Default content for ${section.title}`,
-        contentType: section.contentType || 'static',
-        isRequired: section.required || true,
-        order: index + 1,
-        placeholders: []
-      })),
-      isActive: true,
-      createdBy: 'system',
-      lastModifiedBy: 'system',
-      version: 1
-    }));
-
-    await Template.insertMany(defaultTemplates);
-    console.log('✅ Default templates seeded successfully');
-  } catch (error) {
-    console.error('Error seeding default templates:', error);
-  }
-}
+// Note: Auto-seeding removed by request; templates will not be created automatically
 
 module.exports = router;

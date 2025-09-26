@@ -8,6 +8,7 @@ const { generateAIProposalSections } = require("../services/aiProposalGenerator"
 const DocxGenerator = require("../services/docxGenerator");
 const { Packer } = require("docx");
 const router = express.Router();
+const Template = require("../models/Template");
 
 // Generate new proposal with AI
 router.post("/generate", async (req, res) => {
@@ -52,6 +53,7 @@ router.post("/generate", async (req, res) => {
     });
   }
 });
+
 
 // Generate proposal sections using AI
 router.post("/:id/generate-sections", async (req, res) => {

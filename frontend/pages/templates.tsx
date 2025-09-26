@@ -2,7 +2,9 @@ import Head from 'next/head'
 import Layout from '../components/Layout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { useToast } from '../components/ui/Toast'
 import { templateApi, Template } from '../lib/api'
+import CreateProposalModal from '../components/proposals/CreateProposalModal'
 import { 
   CogIcon, 
   EyeIcon, 
@@ -14,11 +16,15 @@ import {
 
 export default function Templates() {
   const router = useRouter()
+  const { success, error: showError, info } = useToast()
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [templateDetails, setTemplateDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [showTitleModal, setShowTitleModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [selectedTemplateType, setSelectedTemplateType] = useState<string | null>(null)
 
   useEffect(() => {
     loadTemplates()
@@ -80,7 +86,7 @@ export default function Templates() {
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
-            <button className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
+            <button onClick={() => setShowTitleModal(true)} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
               Create Template
             </button>
@@ -89,7 +95,7 @@ export default function Templates() {
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Templates List */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {templates.length > 0 ? templates.map((template) => (
                 <div 
@@ -139,7 +145,7 @@ export default function Templates() {
                   </div>
                 </div>
               )) : (
-                <div className="col-span-2 text-center py-12 bg-white rounded-lg shadow">
+                <div className="col-span-1 sm:col-span-2 text-center py-12 bg-white rounded-lg shadow">
                   <CogIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No Templates</h3>
                   <p className="mt-1 text-sm text-gray-500">
@@ -150,71 +156,40 @@ export default function Templates() {
             </div>
           </div>
 
-          {/* Template Details Panel */}
-          <div className="lg:col-span-1">
-            <div className="bg-white shadow rounded-lg sticky top-6">
-              <div className="px-6 py-5 border-b border-gray-200">
-                <div className="flex items-center">
-                  <InformationCircleIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Template Details
-                  </h3>
-                </div>
-              </div>
-              <div className="px-6 py-4">
-                {selectedTemplate ? (
-                  <div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-900">{selectedTemplate.name}</h4>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {selectedTemplate.projectType.replace('_', ' ')}
-                      </p>
-                    </div>
-
-                    {loadingDetails ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                      </div>
-                    ) : templateDetails ? (
-                      <div>
-                        <div className="mb-4">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2">Sections ({templateDetails.sections?.length || 0})</h5>
-                          <ul className="space-y-2">
-                            {(templateDetails.sections || []).map((section: any, index: number) => (
-                              <li key={index} className="flex items-start space-x-2">
-                                <DocumentTextIcon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div>
-                                  <p className="text-sm text-gray-900">{section.name || section.title}</p>
-                                  <p className="text-xs text-gray-500">
-                                    {(section.contentType || 'static').replace('_', ' ')} • {section.isRequired || section.required ? 'Required' : 'Optional'}
-                                  </p>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="pt-4 border-t border-gray-200">
-                          <p className="text-xs text-gray-500">
-                            This template is optimized for {selectedTemplate.projectType.replace('_', ' ')} projects 
-                            and includes {templateDetails.sections?.length || 0} structured sections.
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <CogIcon className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">
-                      Select a template to view its structure and sections
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+      
         </div>
       </div>
+      <CreateProposalModal
+        isOpen={showTitleModal}
+        onClose={() => { if (!creating) setShowTitleModal(false) }}
+        loading={creating}
+        selectedTemplateType={selectedTemplateType}
+        onTemplateTypeSelect={setSelectedTemplateType}
+        onCreate={async (title: string) => {
+          if (!selectedTemplateType) {
+            info('Please select a template type')
+            return
+          }
+          setCreating(true)
+          try {
+            const res = await templateApi.create({ name: title, templateType: selectedTemplateType })
+            const id = (res as any)?.data?.id || (res as any)?.id
+            if (id) {
+              // Reload templates to show the new one
+              await loadTemplates()
+              success('Template created successfully')
+            } else {
+              showError('Template created but ID not returned')
+            }
+          } catch (e) {
+            showError('Failed to create template')
+          } finally {
+            setCreating(false)
+            setShowTitleModal(false)
+            setSelectedTemplateType(null)
+          }
+        }}
+      />
     </Layout>
   )
 }
