@@ -12,14 +12,33 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
     throw new Error("OpenAI API key not configured");
   }
 
+  // Build dynamic section titles using RFP's stored titles
+  const storedTitles = Array.isArray(rfp.sectionTitles) ? rfp.sectionTitles : [];
+  const compulsory = ["Title", "Cover Letter"];
+  const seen = new Set();
+  const orderedTitles = [];
+  [...compulsory, ...storedTitles].forEach((t) => {
+    const k = String(t || '').trim();
+    const key = k.toLowerCase();
+    if (!k || seen.has(key)) return;
+    seen.add(key);
+    orderedTitles.push(k);
+  });
+  const dynamicList = orderedTitles.map((t, i) => `${i + 1}. **${t}**`).join('\n');
+
   const systemPrompt = `
 You are an expert proposal writer. Generate a comprehensive proposal based on the RFP document provided. 
 Structure the proposal with the following sections and format them as markdown:
 
+${dynamicList}
+
+CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
+${JSON.stringify(orderedTitles)}
+
 1. **Title** - ENHANCED CONTACT INFORMATION EXTRACTION:
    Carefully scan the entire text for ANY contact information and extract the following:
    
-   - **Submitted by**: [Your company name - "Eighth Generation Consulting" - this should ALWAYS be included]
+  - **Submitted by**: [Organization submitting the proposal; if not found, use "Not specified"]
    - **Name**: Look for contact person, project manager, point of contact, or any individual name mentioned for correspondence
    - **Email**: Search for any email addresses in the text (look for @ symbols)
    - **Number**: Find any phone numbers, contact numbers, or telephone references
@@ -38,17 +57,18 @@ Structure the proposal with the following sections and format them as markdown:
    EXTRACTION RULES:
    - If multiple contacts exist, prioritize the PRIMARY contact or project-specific contact
    - If no specific contact info is found, use "Not specified" for that field
-   - For "Submitted by", ALWAYS use "Eighth Generation Consulting" 
+  - For "Submitted by", if not found in the RFP, use "Not specified"
    - Look throughout the entire text, including headers, footers, and appendices
    - Extract the most relevant contact for proposal submission/communication
    - Clean extracted data (remove extra spaces, formatting)
 
-2. **Project Understanding and Approach** - Comprehensive analysis based on information provided in the RFP
-3. **Key Personnel** - Team members with qualifications relevant to the project requirements
-4. **Methodology (By Phase)** - Detailed project phases and deliverables based on RFP requirements
-5. **Project Schedule** - Timeline with milestones based on RFP specifications
-6. **Budget** - Cost breakdown by phases based on RFP budget information
-7. **References** - Relevant past projects and client experience
+2. **Cover Letter** - Personalized cover letter with contextual details and company-specific information
+3. **Project Understanding and Approach** - Comprehensive analysis based on information provided in the RFP
+4. **Key Personnel** - Team members with qualifications relevant to the project requirements
+5. **Methodology (By Phase)** - Detailed project phases and deliverables based on RFP requirements
+6. **Project Schedule** - Timeline with milestones based on RFP specifications
+7. **Budget** - Cost breakdown by phases based on RFP budget information
+8. **References** - Relevant past projects and client experience
 
 GUIDELINES:
 - Use professional, persuasive language
@@ -72,6 +92,31 @@ For the Project Understanding and Approach section:
 - Use specific language from the RFP to show deep understanding
 - If specific details are not provided in the RFP, work with the general project description available
 
+For the Cover Letter section:
+- Create a personalized, professional cover letter
+- Include contextual details like: school connections, recent work in the area, company location, etc.
+- Use this EXACT format structure:
+  **Submitted to:** [Client Name from RFP]
+  **Submitted by:** [Company Name from context]
+  **Date:** [Current date in MM/DD/YYYY format]
+  
+  Dear [Appropriate salutation based on RFP context],
+  
+  [Personalized opening paragraph mentioning specific connections or relevant experience]
+  
+  [2-3 body paragraphs explaining understanding of the project and approach]
+  
+  [Closing paragraph expressing commitment and looking forward to working together]
+  
+  Sincerely,
+  
+  [Generated Name], [Generated Title]
+  [Generated Email]
+  [Generated Phone]
+- Generate realistic contact information based on company context
+- Make the letter feel personal and specific to the RFP
+- Include specific details from the RFP when available
+
 For the Key Personnel section:
 - Include 3-5 key team members with actual real people who have publicly shared their work in this domain
 - Each person should have: Full Name, Credentials (MBA, PhD, etc.), Title
@@ -87,7 +132,7 @@ For the Key Personnel section:
 - If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
 - Do NOT generate or make up names - only use real people or "Unknown"
 
-For the Methodology (By Phase) section:
+For the ${orderedTitles.find(t=>/methodology/i.test(t)) || 'Methodology'} section:
 - Create detailed project phases based on the deliverables and requirements mentioned in the RFP
 - If specific methodology is mentioned in the RFP, follow that structure
 - If not specified, create logical phases based on the project type and deliverables
@@ -106,7 +151,7 @@ For the Methodology (By Phase) section:
 - Use <br> tags for line breaks within table cells
 - Ensure the table is properly formatted and readable
 
-For the Project Schedule section:
+For the ${orderedTitles.find(t=>/schedule/i.test(t)) || 'Project Schedule'} section:
 - Create a realistic timeline based on the project requirements and deliverables
 - If specific deadlines are mentioned in the RFP, incorporate those
 - If not specified, create a logical timeline based on the project scope
@@ -142,7 +187,7 @@ For the Project Schedule section:
 - Use ## for phase headings
 - Write comprehensive paragraphs that explain what will be accomplished in each phase
 
-For the Budget section:
+For the ${orderedTitles.find(t=>/budget/i.test(t)) || 'Budget'} section:
 - Create a detailed cost breakdown based on the project phases and deliverables
 - If budget range is provided in the RFP, work within that range
 - If specific budget requirements are mentioned, follow those guidelines
@@ -177,20 +222,14 @@ For the References section:
 - Focus on people who have publicly documented their work in this field
 - Do NOT use dashes at the beginning of each line in references
 
-CRITICAL: Return the sections as a JSON object with EXACTLY these section names as keys and content as values:
-{
-  "Title": "Submitted by: Eighth Generation Consulting\nName: [Resource person name]\nEmail: [Resource person email]\nNumber: [Resource person contact number]",
-  "Firm Qualifications and Experience": "content here",
-  "Relevant Industry Experience": "content here",
-  "Project Understanding and Approach": "content here",
-  "Key Personnel": "content here",
-  "Methodology (By Phase)": "content here",
-  "Project Schedule": "content here",
-  "Budget": "content here",
-  "References": "content here"
-}
+CRITICAL: Return the sections as a JSON object with EXACTLY the above section titles as keys and content as values.
+For the "Title" key, return contact info as a multi-line string with exactly these fields:
+Submitted by: [Company]
+Name: [Name]
+Email: [Email]
+Number: [Phone]
 
-Each section should be a separate key-value pair in the JSON object.`;
+Each section must be a separate key-value pair in the JSON object.`;
 
   const userPrompt = `
 RFP Information:
@@ -279,17 +318,7 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
       const parsed = JSON.parse(jsonText);
       
       // Validate that we have the expected sections
-      const expectedSections = [
-        "Title",
-        "Firm Qualifications and Experience",
-        "Relevant Industry Experience",
-        "Project Understanding and Approach", 
-        "Key Personnel",
-        "Methodology (By Phase)",
-        "Project Schedule",
-        "Budget",
-        "References"
-      ];
+      const expectedSections = orderedTitles;
       
       // Check if we have the expected structure
       const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
@@ -445,13 +474,22 @@ function cleanContent(content) {
 /**
  * Format AI-generated sections for the database
  */
-function formatAISections(sections) {
+function formatAISections(sections, companyName = 'Not specified') {
   const formattedSections = {};
   
   // Add Title section first if it exists
   if (sections.Title) {
     formattedSections["Title"] = {
-      content: extractTitleContactInfo(sections.Title),
+      content: extractTitleContactInfo(sections.Title, companyName),
+      type: "ai-generated",
+      lastModified: new Date().toISOString(),
+    };
+  }
+  
+  // Add Cover Letter section if it exists
+  if (sections["Cover Letter"]) {
+    formattedSections["Cover Letter"] = {
+      content: sections["Cover Letter"],
       type: "ai-generated",
       lastModified: new Date().toISOString(),
     };
@@ -470,12 +508,13 @@ function formatAISections(sections) {
     lastModified: new Date().toISOString(),
   };
   
-  // Add remaining AI-generated sections (excluding Title which was already added)
+  // Add remaining AI-generated sections (excluding Title and Cover Letter which were already added)
   Object.entries(sections).forEach(([sectionName, content]) => {
-    // Skip the hardcoded sections and Title if they were generated by AI
+    // Skip the hardcoded sections, Title, and Cover Letter if they were generated by AI
     if (sectionName !== "Firm Qualifications and Experience" && 
         sectionName !== "Relevant Industry Experience" &&
-        sectionName !== "Title") {
+        sectionName !== "Title" &&
+        sectionName !== "Cover Letter") {
       
       // Apply content cleaning to all sections except Key Personnel
       const processedContent = sectionName === "Key Personnel" 
@@ -535,39 +574,14 @@ function extractTitleContactInfo(content) {
  * Hardcoded content for Firm Qualifications and Experience
  */
 function getFirmQualificationsContent() {
-  return `Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in strategic planning, project management, and stakeholder engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
-
-• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering strategic planning, stakeholder collaboration, and sustainable development through the City of Carbondale's Sustainability Plan.
-
-• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in strategic planning initiatives.
-
-• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible development issues.
-
-• **2025:** American Made Challenge Current Semifinalist, U.S. Department of Energy.
-
-• **2025:** Verizon Disaster Resilience Prize Current Semifinalist for oneNode, a solar microgrid technology to restore connectivity, monitor hazards, and coordinate response in disaster zones.
-
-• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible development, strategic planning, and privacy concerns for data center development.
-
-• **2025:** Awarded Preferred Provider by the Alliance for Tribal Clean Energy.
-
-Our core services include: Strategic Planning, Project Management, Stakeholder Engagement, Public Facilitation, and Regulatory Compliance Reviews.`;
+  return `Not specified`;
 }
 
 /**
  * Hardcoded content for Relevant Industry Experience
  */
 function getRelevantExperienceContent() {
-  return `Eighth Generation Consulting's staff have contributed to and led multiple strategic planning and sustainability initiatives in complex organizational environments, including:
-
-• **Carbondale's Sustainability Action Plan**
-  - Emphasized cross-sector collaboration, policy development, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included diverse community stakeholders. Reviewed all current policies, restrictions, requirements, and assumptions.
-
-• **Osage Nation planning and development support**
-  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around strategic planning, infrastructure development, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and development strategies.
-
-• **Tribal and Municipal Environmental Permitting & Siting Projects**
-  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven analysis, feasibility studies, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
+  return `Not specified`;
 }
 
 /**
@@ -705,12 +719,17 @@ function extractSectionsFromMarkdown(markdownText) {
     finalSections["Title"] = sections.Title;
   }
   
+  // Add Cover Letter section if it exists
+  if (sections["Cover Letter"]) {
+    finalSections["Cover Letter"] = sections["Cover Letter"];
+  }
+  
   // Add hardcoded sections
   Object.assign(finalSections, hardcodedSections);
   
-  // Add remaining AI sections (excluding Title)
+  // Add remaining AI sections (excluding Title and Cover Letter)
   Object.entries(sections).forEach(([sectionName, sectionData]) => {
-    if (sectionName !== "Title") {
+    if (sectionName !== "Title" && sectionName !== "Cover Letter") {
       finalSections[sectionName] = sectionData;
     }
   });

@@ -66,6 +66,10 @@ const rfpSchema = new mongoose.Schema({
   parsedSections: {
     type: mongoose.Schema.Types.Mixed
   },
+  sectionTitles: [{
+    type: String,
+    trim: true
+  }],
   fileName: {
     type: String
   },

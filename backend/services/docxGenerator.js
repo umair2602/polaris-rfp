@@ -140,6 +140,110 @@ class DocxGenerator {
   addCoverLetterPage(docx, proposal, company) {
     // Header logos are already added in the main generation flow
 
+    // Check if we have AI-generated cover letter content
+    const coverLetterSection = proposal.sections?.["Cover Letter"];
+    
+    if (coverLetterSection && coverLetterSection.content) {
+      // Use AI-generated cover letter content
+      this.addAICoverLetterContent(docx, coverLetterSection.content, proposal, company);
+    } else {
+      // Fallback to hardcoded cover letter
+      this.addHardcodedCoverLetter(docx, proposal, company);
+    }
+
+    docx.putPageBreak();
+  }
+
+  // ---------------- AI GENERATED COVER LETTER ----------------
+  addAICoverLetterContent(docx, content, proposal, company) {
+    // Parse the AI-generated cover letter content
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    let currentSection = 'header';
+    let submittedTo = '';
+    let submittedBy = '';
+    let date = '';
+    let salutation = '';
+    let bodyParagraphs = [];
+    let closing = '';
+    let contactInfo = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      if (line.startsWith('**Submitted to:**')) {
+        submittedTo = line.replace('**Submitted to:**', '').trim();
+        currentSection = 'body';
+      } else if (line.startsWith('**Submitted by:**')) {
+        submittedBy = line.replace('**Submitted by:**', '').trim();
+      } else if (line.startsWith('**Date:**')) {
+        date = line.replace('**Date:**', '').trim();
+      } else if (line.startsWith('Dear')) {
+        salutation = line;
+        currentSection = 'body';
+      } else if (line === 'Sincerely,' || line === 'Sincerely') {
+        closing = line;
+        currentSection = 'contact';
+      } else if (currentSection === 'body' && line && !line.startsWith('**')) {
+        bodyParagraphs.push(line);
+      } else if (currentSection === 'contact' && line && !line.startsWith('**')) {
+        contactInfo += line + '\n';
+      }
+    }
+
+    // Add the cover letter content to the document
+    if (submittedTo) {
+      const submittedToPara = docx.createP();
+      submittedToPara.addText("Submitted to:", { bold: true, font_face: "Calibri" });
+      submittedToPara.addLineBreak();
+      submittedToPara.addText(submittedTo, { bold: true, font_face: "Calibri" });
+    }
+
+    if (submittedBy) {
+      const submittedByPara = docx.createP();
+      submittedByPara.addText("Submitted by:", { bold: true, font_face: "Calibri" });
+      submittedByPara.addLineBreak();
+      submittedByPara.addText(submittedBy, { bold: true, font_face: "Calibri" });
+    }
+
+    if (date) {
+      const datePara = docx.createP();
+      datePara.addText(date, { font_face: "Calibri" });
+    }
+
+    if (salutation) {
+      const salutationPara = docx.createP();
+      salutationPara.addText(salutation, { font_face: "Calibri" });
+    }
+
+    // Add body paragraphs
+    bodyParagraphs.forEach((para) => {
+      if (para.trim()) {
+        const p = docx.createP();
+        p.addText(para, { font_size: 12, font_face: "Calibri" });
+      }
+    });
+
+    // Add closing
+    if (closing) {
+      const closingPara = docx.createP();
+      closingPara.addText(closing, { font_face: "Calibri" });
+    }
+
+    // Add contact information
+    if (contactInfo.trim()) {
+      const contactLines = contactInfo.trim().split('\n');
+      contactLines.forEach((line) => {
+        if (line.trim()) {
+          const contactPara = docx.createP();
+          contactPara.addText(line.trim(), { font_face: "Calibri" });
+        }
+      });
+    }
+  }
+
+  // ---------------- HARDCODED COVER LETTER (FALLBACK) ----------------
+  addHardcodedCoverLetter(docx, proposal, company) {
     const title = docx.createP({ align: "center" });
     title.addText("Zoning Code Update and Comprehensive Land Use Plan", {
       bold: true,
@@ -158,7 +262,7 @@ class DocxGenerator {
     const submittedBy = docx.createP();
     submittedBy.addText("Submitted by:", { bold: true, font_face: "Calibri" });
     submittedBy.addLineBreak();
-    submittedBy.addText(company?.name || "Eighth Generation Consulting", {
+    submittedBy.addText(company?.name || "Not specified", {
       bold: true,
       font_face: "Calibri",
     });
@@ -172,7 +276,7 @@ class DocxGenerator {
     });
 
     const bodyParagraphs = [
-      "On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
+      "On behalf of Not specified, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
       "Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.",
       "We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.",
       "We appreciate your consideration and look forward to working together. Sincerely,",
@@ -194,8 +298,6 @@ class DocxGenerator {
     });
     contact.addLineBreak();
     contact.addText(company?.phone || "111-222-33", { font_face: "Calibri" });
-
-    docx.putPageBreak();
   }
 
   // ---------------- SECTIONS ----------------
@@ -203,7 +305,7 @@ class DocxGenerator {
     if (!sections || typeof sections !== "object") return;
 
     const sectionEntries = Object.entries(sections).filter(
-      ([sectionName]) => sectionName !== "Title"
+      ([sectionName]) => sectionName !== "Title" && sectionName !== "Cover Letter"
     );
 
     sectionEntries.forEach(([sectionName, sectionData], index) => {

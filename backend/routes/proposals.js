@@ -5,6 +5,7 @@ const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const { generateAIProposalSections } = require("../services/aiProposalGenerator");
+const { generateAIProposalFromTemplate } = require("../services/aiTemplateProposalGenerator");
 const DocxGenerator = require("../services/docxGenerator");
 const { Packer } = require("docx");
 const router = express.Router();
@@ -28,8 +29,20 @@ router.post("/generate", async (req, res) => {
       return res.status(404).json({ error: "RFP not found" });
     }
 
-    // Generate proposal sections using AI
-    const sections = await generateAIProposalSections(rfp, templateId, customContent);
+    let sections;
+
+    // If templateId is a special AI flow, keep existing behavior using RFP-driven sections
+    if (templateId === 'ai-template') {
+      sections = await generateAIProposalSections(rfp, templateId, customContent);
+    } else {
+      // Load template and generate content strictly from template sections
+      const template = await Template.findById(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      sections = await generateAIProposalFromTemplate(rfp.toObject ? rfp.toObject() : rfp, template.toObject ? template.toObject() : template, customContent);
+    }
 
     // Create proposal
     const proposal = new Proposal({
@@ -307,7 +320,7 @@ router.get("/:id/export-pdf", async (req, res) => {
           align: "left",
         });
 
-        // Eighth Generation Consulting logo (top-right corner) - stick to right edge
+        // Company logo (top-right corner) - stick to right edge
         doc.image(
           logoConfig.eighthGenLogoPath,
           doc.page.width - logoWidth - logoSpacing,
@@ -455,7 +468,7 @@ router.get("/:id/export-pdf", async (req, res) => {
       .fontSize(12)
       .font("Helvetica-Bold")
       .fillColor("#000000")
-      .text(company?.name || "Eighth Generation Consulting", { align: "left" });
+      .text(company?.name || "Not specified", { align: "left" });
     doc.moveDown(1);
 
     // Date - hardcoded
@@ -482,7 +495,7 @@ router.get("/:id/export-pdf", async (req, res) => {
       .fontSize(12)
       .font("Helvetica")
       .fillColor("#000000")
-      .text("On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.", { 
+      .text("On behalf of Not specified, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.", {
         align: "left",
         lineGap: 6
       });

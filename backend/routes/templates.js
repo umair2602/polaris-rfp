@@ -11,6 +11,16 @@ const templates = {
     projectType: 'software_development',
     sections: [
       {
+        title: 'Title',
+        contentType: 'title',
+        required: true
+      },
+      {
+        title: 'Cover Letter',
+        contentType: 'cover_letter',
+        required: true
+      },
+      {
         title: 'Technical Approach & Methodology',
         contentType: 'structured',
         required: true,
@@ -54,6 +64,16 @@ const templates = {
     name: 'Strategic Communications Proposal',
     projectType: 'strategic_communications',
     sections: [
+      {
+        title: 'Title',
+        contentType: 'title',
+        required: true
+      },
+      {
+        title: 'Cover Letter',
+        contentType: 'cover_letter',
+        required: true
+      },
       {
         title: 'Experience & Qualifications',
         contentType: 'credentials_showcase',
@@ -99,6 +119,16 @@ const templates = {
     name: 'Financial Modeling & Analysis Proposal',
     projectType: 'financial_modeling',
     sections: [
+      {
+        title: 'Title',
+        contentType: 'title',
+        required: true
+      },
+      {
+        title: 'Cover Letter',
+        contentType: 'cover_letter',
+        required: true
+      },
       {
         title: 'Methodology & Approach',
         contentType: 'analytical_methodology',
