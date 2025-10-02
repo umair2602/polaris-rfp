@@ -22,7 +22,7 @@ const rfpSchema = new mongoose.Schema({
   projectType: {
     type: String,
     required: true,
-    enum: ['software_development', 'strategic_communications', 'financial_modeling', 'general']
+    trim: true
   },
   keyRequirements: [{
     type: String,

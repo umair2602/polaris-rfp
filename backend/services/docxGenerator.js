@@ -156,90 +156,34 @@ class DocxGenerator {
 
   // ---------------- AI GENERATED COVER LETTER ----------------
   addAICoverLetterContent(docx, content, proposal, company) {
-    // Parse the AI-generated cover letter content
-    const lines = content.split('\n').filter(line => line.trim());
+    // Simply render the cover letter content as-is, preserving formatting
+    const lines = content.split('\n');
     
-    let currentSection = 'header';
-    let submittedTo = '';
-    let submittedBy = '';
-    let date = '';
-    let salutation = '';
-    let bodyParagraphs = [];
-    let closing = '';
-    let contactInfo = '';
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    lines.forEach(line => {
+      const para = docx.createP();
+      const trimmedLine = line.trim();
       
-      if (line.startsWith('**Submitted to:**')) {
-        submittedTo = line.replace('**Submitted to:**', '').trim();
-        currentSection = 'body';
-      } else if (line.startsWith('**Submitted by:**')) {
-        submittedBy = line.replace('**Submitted by:**', '').trim();
-      } else if (line.startsWith('**Date:**')) {
-        date = line.replace('**Date:**', '').trim();
-      } else if (line.startsWith('Dear')) {
-        salutation = line;
-        currentSection = 'body';
-      } else if (line === 'Sincerely,' || line === 'Sincerely') {
-        closing = line;
-        currentSection = 'contact';
-      } else if (currentSection === 'body' && line && !line.startsWith('**')) {
-        bodyParagraphs.push(line);
-      } else if (currentSection === 'contact' && line && !line.startsWith('**')) {
-        contactInfo += line + '\n';
-      }
-    }
-
-    // Add the cover letter content to the document
-    if (submittedTo) {
-      const submittedToPara = docx.createP();
-      submittedToPara.addText("Submitted to:", { bold: true, font_face: "Calibri" });
-      submittedToPara.addLineBreak();
-      submittedToPara.addText(submittedTo, { bold: true, font_face: "Calibri" });
-    }
-
-    if (submittedBy) {
-      const submittedByPara = docx.createP();
-      submittedByPara.addText("Submitted by:", { bold: true, font_face: "Calibri" });
-      submittedByPara.addLineBreak();
-      submittedByPara.addText(submittedBy, { bold: true, font_face: "Calibri" });
-    }
-
-    if (date) {
-      const datePara = docx.createP();
-      datePara.addText(date, { font_face: "Calibri" });
-    }
-
-    if (salutation) {
-      const salutationPara = docx.createP();
-      salutationPara.addText(salutation, { font_face: "Calibri" });
-    }
-
-    // Add body paragraphs
-    bodyParagraphs.forEach((para) => {
-      if (para.trim()) {
-        const p = docx.createP();
-        p.addText(para, { font_size: 12, font_face: "Calibri" });
+      if (trimmedLine) {
+        // Handle bold formatting
+        if (trimmedLine.includes('**')) {
+          const parts = trimmedLine.split('**');
+          for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+              // Regular text
+              if (parts[i]) para.addText(parts[i], { font_face: "Calibri" });
+            } else {
+              // Bold text
+              if (parts[i]) para.addText(parts[i], { bold: true, font_face: "Calibri" });
+            }
+          }
+        } else {
+          para.addText(trimmedLine, { font_face: "Calibri" });
+        }
+      } else {
+        // Empty line for spacing
+        para.addText(" ", { font_face: "Calibri" });
       }
     });
-
-    // Add closing
-    if (closing) {
-      const closingPara = docx.createP();
-      closingPara.addText(closing, { font_face: "Calibri" });
-    }
-
-    // Add contact information
-    if (contactInfo.trim()) {
-      const contactLines = contactInfo.trim().split('\n');
-      contactLines.forEach((line) => {
-        if (line.trim()) {
-          const contactPara = docx.createP();
-          contactPara.addText(line.trim(), { font_face: "Calibri" });
-        }
-      });
-    }
   }
 
   // ---------------- HARDCODED COVER LETTER (FALLBACK) ----------------

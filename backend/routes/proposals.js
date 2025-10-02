@@ -426,145 +426,7 @@ router.get("/:id/export-pdf", async (req, res) => {
 
 
 
-    // Add a new page for the hardcoded cover letter
-    doc.addPage();
-
-    // ---------------- HARDCODED COVER LETTER PAGE ----------------
-    // This page is hardcoded exactly as shown in the image with only 4 dynamic fields
-    doc
-    .fontSize(20)
-    .font("Helvetica-Bold")
-    .fillColor("#000000")
-    .text("Zoning Code Update and Comprehensive Land Use Plan", {
-      align: "center",
-      width: doc.page.width - doc.page.margins.left - doc.page.margins.right
-    });
-    doc.moveDown(1);
-
-    // Submitted to - dynamic
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text("Submitted to:", { align: "left" });
-    doc.moveDown(0.5);
-    
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text(proposal.rfpId?.clientName || "Town of Amherst", { align: "left" });
-    doc.moveDown(1);
-
-    // Submitted by - dynamic
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text("Submitted by:", { align: "left" });
-    doc.moveDown(0.5);
-    
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text(company?.name || "Not specified", { align: "left" });
-    doc.moveDown(1);
-
-    // Date - hardcoded
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("09/16/2025", { align: "left" });
-    doc.moveDown(0.5);
-
-    // Title - hardcoded
-
-
-    // Salutation - hardcoded
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("Dear Town Board and Planning Commission,", { align: "left" });
-    doc.moveDown(1.5);
-
-    // Body paragraphs - all hardcoded exactly as in the image
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("On behalf of Not specified, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.", {
-        align: "left",
-        lineGap: 6
-      });
-    doc.moveDown(1);
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.", { 
-        align: "left",
-        lineGap: 6
-      });
-    doc.moveDown(1);
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.", { 
-        align: "left",
-        lineGap: 6
-      });
-    doc.moveDown(1);
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("We appreciate your consideration and look forward to working together.", { 
-        align: "left",
-        lineGap: 6
-      });
-    doc.moveDown(1);
-
-    // Closing - hardcoded
-    doc.moveDown(1);
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text("Sincerely,", { align: "left" });
-    doc.moveDown(2);
-
-    // Contact information - only Name, Email, Number are dynamic
-    const coverContactName = "Name, President"; // This could be made dynamic if needed
-    const coverContactEmail = company?.email || "email@gmail.com";
-    const coverContactPhone = company?.phone || "111-222-33";
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text(coverContactName, { align: "left" });
-    doc.moveDown(0.5);
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text(coverContactEmail, { align: "left" });
-    doc.moveDown(0.5);
-
-    doc
-      .fontSize(12)
-      .font("Helvetica")
-      .fillColor("#000000")
-      .text(coverContactPhone, { align: "left" });
-
+    // Add page break before cover letter and other sections
     doc.addPage();
 
     // ---------------- SECTIONS ----------------
@@ -578,7 +440,7 @@ router.get("/:id/export-pdf", async (req, res) => {
         return;
       }
       
-      // Add a new page for each section (except the first one which already has a page)
+      // Add a new page for each section (except the first one which now already has a page)
       if (sectionCount > 0) {
         doc.addPage();
       }

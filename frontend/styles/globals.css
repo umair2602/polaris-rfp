@@ -53,7 +53,14 @@ select:-webkit-autofill {
 
 /* Keep selected text readable */
 ::selection {
-  color: #111827; /* gray-900 */
+  color: #ffffff; /* white text */
+  background-color: #3b82f6; /* blue-500 background */
+}
+
+/* Firefox selection styling */
+::-moz-selection {
+  color: #ffffff; /* white text */
+  background-color: #3b82f6; /* blue-500 background */
 }
 
 /* Custom scrollbar styling */

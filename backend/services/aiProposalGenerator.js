@@ -347,23 +347,12 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
 function validateAISections(sections) {
   const validatedSections = {};
   
-  // Define sections that should only contain RFP-based information
-  const rfpBasedSections = [
-    "Title",
-    "Project Understanding and Approach",
-    "Key Personnel", 
-    "Methodology (By Phase)",
-    "Project Schedule",
-    "Budget",
-    "References"
-  ];
-  
-  // Validate each section
+  // Validate each section - no boundaries, process all sections dynamically
   Object.entries(sections).forEach(([sectionName, content]) => {
     if (sectionName === "Title") {
       // Title section should always be preserved as-is for contact extraction
       validatedSections[sectionName] = content;
-    } else if (rfpBasedSections.includes(sectionName)) {
+    } else {
       // Check if content indicates no information available
       if (!content || 
           content.toLowerCase().includes('not available') ||
@@ -375,9 +364,6 @@ function validateAISections(sections) {
         // Clean the content to remove any generated information
         validatedSections[sectionName] = cleanGeneratedContent(content);
       }
-    } else {
-      // For non-RFP based sections, keep as is
-      validatedSections[sectionName] = content;
     }
   });
   
@@ -554,11 +540,6 @@ function extractTitleContactInfo(content) {
 
   return contactInfo;
 }
-
-/**
- * Hardcoded content for Firm Qualifications and Experience
- */
-// Removed hardcoded section content providers
 
 /**
  * Extract sections from markdown text if JSON parsing fails
