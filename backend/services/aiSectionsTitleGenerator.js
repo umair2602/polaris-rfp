@@ -38,14 +38,18 @@ Create section titles that:
 - Are specific to the project context (not generic)
 - Cover 6-12 sections based on what's relevant for this RFP
 
-Examples of contextual titles by domain:
-- IT Projects: "Technical Architecture and Infrastructure", "System Integration Approach", "Security and Compliance Framework"
-- Consulting: "Diagnostic Methodology", "Change Management Strategy", "Stakeholder Engagement Plan"
-- Construction: "Site Analysis and Preparation", "Safety and Compliance Plan", "Construction Methodology"
-- Research: "Research Design and Methodology", "Data Collection Protocol", "Analysis Framework"
+Examples of how to tailor titles by domain:
+- IT Projects: Focus on technical architecture, system integration, security frameworks, data migration, etc.
+- Consulting: Emphasize diagnostic approaches, change management, stakeholder engagement, implementation strategies, etc.
+- Construction: Highlight site preparation, safety compliance, construction methods, materials sourcing, etc.
+- Research: Cover research design, data collection protocols, analysis frameworks, validation methods, etc.
+- Marketing: Include market analysis, campaign strategy, brand positioning, performance metrics, etc.
+- Healthcare: Address clinical protocols, regulatory compliance, patient safety, quality assurance, etc.
 
-RESPONSE FORMAT (example):
-["Executive Summary", "Project Understanding and Approach", "Technical Methodology", "Project Team and Expertise", "Implementation Timeline", "Budget and Cost Structure", "Risk Management Plan", "Quality Assurance Approach", "Past Performance and References"]
+IMPORTANT: Generate section titles that are SPECIFIC to the actual RFP content and requirements. Do not use generic titles.
+
+RESPONSE FORMAT: Return a JSON array of strings, where each string is a section title.
+Example structure: ["Title 1", "Title 2", "Title 3", ...]
 
 Return ONLY the JSON array, nothing else.`;
 
@@ -64,11 +68,15 @@ RFP DETAILS:
 ${rfp.rawText ? `FULL RFP DOCUMENT TEXT:\n${rfp.rawText}` : ''}
 
 Generate section titles that are:
-1. Specific to this project type and requirements
-2. Address the key evaluation criteria mentioned
-3. Show deep understanding of the client's needs
-4. Follow industry-standard proposal structure for this domain
-5. Tailored to this particular RFP context
+1. DIRECTLY derived from the RFP content and requirements above
+2. Address the specific deliverables and evaluation criteria mentioned
+3. Reflect the actual project scope and challenges described
+4. Use terminology and language from the RFP document when appropriate
+5. Show deep understanding of what this particular client is asking for
+6. Follow industry standards for this specific project type
+7. Are contextually relevant (not generic proposal sections)
+
+ANALYZE the RFP content carefully and create titles that a proposal evaluator would expect to see for THIS specific project.
 
 Return ONLY a JSON array of section title strings.`;
 
