@@ -12,14 +12,35 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
     throw new Error("OpenAI API key not configured");
   }
 
+  // Build dynamic section titles using RFP's stored titles
+  const storedTitles = Array.isArray(rfp.sectionTitles) ? rfp.sectionTitles : [];
+  const compulsory = ["Title", "Cover Letter"];
+  const seen = new Set();
+  const orderedTitles = [];
+  [...compulsory, ...storedTitles].forEach((t) => {
+    const k = String(t || '').trim();
+    const key = k.toLowerCase();
+    if (!k || seen.has(key)) return;
+    seen.add(key);
+    orderedTitles.push(k);
+  });
+  const dynamicList = orderedTitles.map((t, i) => `${i + 1}. **${t}**`).join('\n');
+
   const systemPrompt = `
 You are an expert proposal writer. Generate a comprehensive proposal based on the RFP document provided. 
 Structure the proposal with the following sections and format them as markdown:
 
-1. **Title** - ENHANCED CONTACT INFORMATION EXTRACTION:
+${dynamicList}
+
+CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
+${JSON.stringify(orderedTitles)}
+
+SECTION GUIDELINES:
+
+**For "Title" sections** (if present):
    Carefully scan the entire text for ANY contact information and extract the following:
    
-   - **Submitted by**: [Your company name - "Eighth Generation Consulting" - this should ALWAYS be included]
+  - **Submitted by**: [Organization submitting the proposal; if not found, use "Not specified"]
    - **Name**: Look for contact person, project manager, point of contact, or any individual name mentioned for correspondence
    - **Email**: Search for any email addresses in the text (look for @ symbols)
    - **Number**: Find any phone numbers, contact numbers, or telephone references
@@ -38,159 +59,162 @@ Structure the proposal with the following sections and format them as markdown:
    EXTRACTION RULES:
    - If multiple contacts exist, prioritize the PRIMARY contact or project-specific contact
    - If no specific contact info is found, use "Not specified" for that field
-   - For "Submitted by", ALWAYS use "Eighth Generation Consulting" 
+  - For "Submitted by", if not found in the RFP, use "Not specified"
    - Look throughout the entire text, including headers, footers, and appendices
    - Extract the most relevant contact for proposal submission/communication
    - Clean extracted data (remove extra spaces, formatting)
 
-2. **Project Understanding and Approach** - Comprehensive analysis based on information provided in the RFP
-3. **Key Personnel** - Team members with qualifications relevant to the project requirements
-4. **Methodology (By Phase)** - Detailed project phases and deliverables based on RFP requirements
-5. **Project Schedule** - Timeline with milestones based on RFP specifications
-6. **Budget** - Cost breakdown by phases based on RFP budget information
-7. **References** - Relevant past projects and client experience
+**For sections related to Cover Letter** (containing words like "cover letter", "introduction", "letter"):
+   Create a personalized, professional cover letter with contextual details and company-specific information
+   - Use this EXACT format structure:
+     **Submitted to:** [Client Name from RFP]
+     **Submitted by:** [Company Name from context]
+     **Date:** [Current date in MM/DD/YYYY format]
+     
+     Dear [Appropriate salutation based on RFP context],
+     
+     [Personalized opening paragraph mentioning specific connections or relevant experience]
+     
+     [2-3 body paragraphs explaining understanding of the project and approach]
+     
+     [Closing paragraph expressing commitment and looking forward to working together]
+     
+     Sincerely,
+     
+     [Generated Name], [Generated Title]
+     [Generated Email]
+     [Generated Phone]
+   - Generate realistic contact information based on company context
+   - Make the letter feel personal and specific to the RFP
+
+**For sections containing "Understanding", "Approach", or "Analysis"**:
+   Provide comprehensive analysis based on information provided in the RFP
+   - Write 4-6 detailed paragraphs (400-600 words total)
+   - Start with the current situation/context of the client using specific details from the RFP
+   - Identify specific challenges, pressures, and opportunities mentioned in the RFP
+   - Reference specific details from the RFP (project scope, requirements, constraints, objectives)
+   - Explain why action is needed now and what happens without proper execution
+   - Address compliance requirements (regulations, standards, policies) mentioned in the RFP
+   - Conclude with collaborative, data-driven approach tailored to this specific project
+   - Use specific language and terminology from the RFP document to show deep understanding
+
+**For sections related to Personnel, Team, or Staff** (containing words like "personnel", "team", "staff", "resources", "experts"):
+   Include team members with qualifications relevant to the project requirements
+   - Include 4-6 key team members with diverse expertise relevant to the RFP requirements
+   - Follow this exact format for each person:
+     [Full Name], [Credentials] - [Title]
+     - [Specific achievement or experience bullet point relevant to this project type]
+     - [Another specific achievement or experience bullet point with quantifiable results]
+     - [Additional relevant experience bullet point showing domain expertise]
+     - [Optional 4th bullet point for senior roles with leadership experience]
+   - Use 3-4 detailed bullet points per person describing specific achievements, projects, and qualifications
+   - Include specific details like years of experience, notable projects, certifications, awards, or publications
+   - Make the experience directly relevant to the project type and requirements described in the RFP
+   - ONLY use names of real people who have publicly shared their work in this domain
+   - If you cannot find real people, use "Unknown" instead of generating fake names
+   - Ensure team composition addresses all major aspects of the RFP requirements
+
+**For sections related to Methodology, Process, or Phases** (containing words like "methodology", "approach", "process", "phases", "implementation"):
+   Detail project phases and deliverables based on RFP requirements
+   - Create 4-6 comprehensive project phases that directly address the RFP requirements and deliverables
+   - If specific methodology is mentioned in the RFP, follow that structure closely
+   - If not specified, create logical phases based on the project type, scope, and deliverables mentioned in the RFP
+   - CRITICAL: Format as a proper markdown table with exactly 2 columns: "Phase" and "Deliverables"
+   - Use this exact table format:
+     | Phase | Deliverables |
+     |-------|--------------|
+     | Phase 1: [Detailed Phase Name reflecting RFP requirements] | 1. [Specific deliverable from RFP]<br>2. [Another specific deliverable]<br>3. [Additional deliverable]<br>4. [Optional 4th deliverable for complex phases] |
+     | Phase 2: [Detailed Phase Name reflecting RFP requirements] | 1. [Specific deliverable from RFP]<br>2. [Another specific deliverable]<br>3. [Additional deliverable]<br>4. [Optional 4th deliverable for complex phases] |
+   - Each phase should have 3-5 specific, actionable deliverables that directly address RFP requirements
+   - Include deliverables that match what's specifically requested in the RFP document
+   - Use <br> tags for line breaks within table cells
+   - Ensure methodology is appropriate for the project domain and complexity described in the RFP
+
+**For sections related to Schedule or Timeline** (containing words like "schedule", "timeline", "milestones"):
+   Create timeline with milestones based on RFP specifications
+   - Create a realistic timeline that incorporates specific deadlines mentioned in the RFP
+   - If specific deadlines are mentioned in the RFP, work backwards from those dates
+   - If not specified, create a logical timeline based on project scope and industry standards
+   - Include 4-6 phases that align with the methodology and deliverables
+   - CRITICAL: Format as simple headings and paragraphs, NOT as a table
+   - Use this exact format:
+     ## Phase 1: [Detailed Phase Name matching methodology]
+     **Timeline:** [Specific duration with start/end dates if RFP provides deadline]
+     
+     [Detailed 3-4 sentence paragraph describing the phase activities, key milestones, deliverables, and outcomes. Include specific tasks, meetings, reviews, and checkpoints. Explain what will be accomplished and how it contributes to the overall project success. Reference specific RFP requirements that will be addressed in this phase.]
+   - Each phase should have realistic timeline estimates and comprehensive paragraph descriptions
+   - Use **bold** for "Timeline:" labels and ## for phase headings
+   - Write detailed paragraphs (3-4 sentences each) that explain what will be accomplished in each phase
+   - Include specific milestones, deliverables, and review points for each phase
+
+**For sections related to Budget, Cost, or Financial** (containing words like "budget", "cost", "financial", "pricing", "fees"):
+   Provide cost breakdown by phases based on RFP budget information
+   - Create detailed cost breakdown that aligns with the methodology phases and deliverables
+   - If budget range is provided in the RFP, work within that range and justify the costs
+   - If specific budget requirements are mentioned, follow those guidelines closely
+   - Break down costs by phases, resources, and deliverables as appropriate for the project
+   - CRITICAL: Format as a proper markdown table with exactly 3 columns: "Phase", "Description", "Cost"
+   - Use this exact table format:
+     | Phase | Description | Cost |
+     |-------|-------------|------|
+     | Phase 1: [Detailed Phase Name] | [Comprehensive description of work, resources, and deliverables for this phase] | $[Realistic Amount] |
+     | Phase 2: [Detailed Phase Name] | [Comprehensive description of work, resources, and deliverables for this phase] | $[Realistic Amount] |
+     | Phase 3: [Detailed Phase Name] | [Comprehensive description of work, resources, and deliverables for this phase] | $[Realistic Amount] |
+     | Phase 4: [Detailed Phase Name] | [Comprehensive description of work, resources, and deliverables for this phase] | $[Realistic Amount] |
+     | **Total** | **Project Total** | **$[Total Amount]** |
+   - Each phase should have realistic cost estimates based on industry standards and project complexity
+   - Include detailed descriptions that justify the costs for each phase
+   - Ensure costs are appropriate for the project type, scope, and deliverables described in the RFP
+   - Include a total row at the bottom that sums all phase costs
+
+**For sections related to References, Experience, or Portfolio** (containing words like "references", "experience", "portfolio", "past projects", "case studies"):
+   Include relevant past projects and client experience
+   - Include 4-5 relevant past projects that demonstrate experience with similar work to the RFP requirements
+   - Make the references directly relevant to the project type, scope, and requirements described in the RFP
+   - Use this exact format for each reference:
+     Organization Name (Year-Year)
+     Contact: [Name], [Title] of [Organization]
+     Email: [email]
+     Phone: [phone]
+     Scope of Work: [Detailed 2-3 sentence description of work performed, challenges addressed, solutions delivered, and quantifiable achievements or outcomes that relate to the current RFP requirements]
+   - Include specific details about project scope, deliverables, outcomes, and success metrics
+   - Ensure references showcase expertise in the specific domain and project type mentioned in the RFP
+   - ONLY use names of real people who have publicly shared their work in this domain
+   - If you cannot find real people, use "Unknown" instead of generating fake names
+   - Do NOT use dashes at the beginning of each line in references
+   - Focus on projects that demonstrate relevant capabilities for the current RFP
+
+**For any other sections**:
+   Generate comprehensive content that is directly relevant to the section title and RFP requirements
+   - Write substantial content (200-400 words per section depending on importance)
+   - Use specific details and terminology from the RFP document
+   - Address the section topic thoroughly with multiple paragraphs or detailed bullet points
+   - Show deep understanding of the RFP requirements and how they relate to this section
 
 GUIDELINES:
-- Use professional, persuasive language
-- Include specific details from the RFP when available
-- Format tables using markdown table syntax
-- Use bullet points for lists
-- Make content relevant to the project type as described in the RFP
-- Ensure each section is comprehensive but concise
+- Generate COMPREHENSIVE, DETAILED content for each section - avoid brief or superficial responses
+- Use professional, persuasive language that demonstrates expertise
+- Include extensive specific details from the RFP document throughout all sections
+- Reference specific RFP requirements, constraints, objectives, and deliverables in each section
+- Format tables using markdown table syntax with detailed content in each cell
+- Use bullet points for lists but ensure each point is substantial and detailed
+- Make content highly relevant to the project type, scope, and complexity described in the RFP
+- Ensure each section is comprehensive and thorough - prioritize depth over brevity
 - Use **bold** for emphasis and *italics* for important details
-- Adapt language and examples to match the RFP's project type (e.g., "Software Development", "Financial Analysis", "Strategic Planning", "Consulting", "Engineering", etc.)
+- Adapt language and examples to match the RFP's project type and industry context
+- Draw extensively from the RFP raw text to create content that shows deep document analysis
+- Each section should feel substantial and valuable to proposal evaluators
 
-For the Project Understanding and Approach section:
-- Write 4-6 comprehensive paragraphs (300-500 words total)
-- Start with the current situation/context of the client/organization using specific details from the RFP
-- Identify specific challenges, pressures, and opportunities mentioned in the RFP
-- Reference specific details from the RFP (project scope, requirements, constraints, objectives)
-- Explain why action is needed now and what happens without proper execution
-- Describe the organization's valuable assets and goals that must be addressed
-- Address compliance requirements (regulations, standards, policies) mentioned in the RFP
-- Conclude with our collaborative, data-driven approach
-- Use specific language from the RFP to show deep understanding
-- If specific details are not provided in the RFP, work with the general project description available
+IMPORTANT: The AI should intelligently detect section types based on keywords in the section titles and apply appropriate formatting automatically. No need for hardcoded section names.
 
-For the Key Personnel section:
-- Include 3-5 key team members with actual real people who have publicly shared their work in this domain
-- Each person should have: Full Name, Credentials (MBA, PhD, etc.), Title
-- Follow this exact format for each person:
-  [Full Name], [Credentials] - [Title]
-  - [Specific achievement or experience bullet point]
-  - [Another specific achievement or experience bullet point]
-  - [Additional relevant experience bullet point]
-- Use 3-5 bullet points per person describing their specific achievements, projects, and qualifications
-- Make the experience relevant to the project type as described in the RFP
-- Include specific details like years of experience, notable projects, certifications, or awards
-- ONLY use names of real people who have publicly shared their work in this specific domain
-- If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
-- Do NOT generate or make up names - only use real people or "Unknown"
+CRITICAL: Return the sections as a JSON object with EXACTLY the above section titles as keys and content as values.
+For the "Title" key, return contact info as a multi-line string with exactly these fields:
+Submitted by: [Company]
+Name: [Name]
+Email: [Email]
+Number: [Phone]
 
-For the Methodology (By Phase) section:
-- Create detailed project phases based on the deliverables and requirements mentioned in the RFP
-- If specific methodology is mentioned in the RFP, follow that structure
-- If not specified, create logical phases based on the project type and deliverables
-- Include specific deliverables for each phase
-- Make it relevant to the project requirements as described in the RFP
-- CRITICAL: Format as a proper markdown table with exactly 2 columns: "Phase" and "Deliverables"
-- Use this exact table format:
-  | Phase | Deliverables |
-  |-------|--------------|
-  | Phase 1: [Phase Name] | 1. [Deliverable 1]<br>2. [Deliverable 2]<br>3. [Deliverable 3] |
-  | Phase 2: [Phase Name] | 1. [Deliverable 1]<br>2. [Deliverable 2]<br>3. [Deliverable 3] |
-  | Phase 3: [Phase Name] | 1. [Deliverable 1]<br>2. [Deliverable 2]<br>3. [Deliverable 3] |
-  | Phase 4: [Phase Name] | 1. [Deliverable 1]<br>2. [Deliverable 2]<br>3. [Deliverable 3] |
-  | Phase 5: [Phase Name] | 1. [Deliverable 1]<br>2. [Deliverable 2]<br>3. [Deliverable 3] |
-- Each phase should have 3-5 specific deliverables
-- Use <br> tags for line breaks within table cells
-- Ensure the table is properly formatted and readable
-
-For the Project Schedule section:
-- Create a realistic timeline based on the project requirements and deliverables
-- If specific deadlines are mentioned in the RFP, incorporate those
-- If not specified, create a logical timeline based on the project scope
-- Include key milestones and deliverables
-- CRITICAL: Format as simple headings and paragraphs, NOT as a table
-- Use this exact format:
-  ## Phase 1: [Phase Name]
-  **Timeline:** [Duration]
-  
-  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
-  
-  ## Phase 2: [Phase Name]
-  **Timeline:** [Duration]
-  
-  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
-  
-  ## Phase 3: [Phase Name]
-  **Timeline:** [Duration]
-  
-  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
-  
-  ## Phase 4: [Phase Name]
-  **Timeline:** [Duration]
-  
-  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
-  
-  ## Phase 5: [Phase Name]
-  **Timeline:** [Duration]
-  
-  [Detailed paragraph describing the phase activities, key milestones, and deliverables. Include specific tasks, meetings, deliverables, and outcomes for this phase. Write 2-3 comprehensive sentences that explain what will be accomplished during this phase.]
-- Each phase should have realistic timeline and detailed paragraph descriptions
-- Use **bold** for "Timeline:" labels
-- Use ## for phase headings
-- Write comprehensive paragraphs that explain what will be accomplished in each phase
-
-For the Budget section:
-- Create a detailed cost breakdown based on the project phases and deliverables
-- If budget range is provided in the RFP, work within that range
-- If specific budget requirements are mentioned, follow those guidelines
-- Break down costs by phases and deliverables
-- CRITICAL: Format as a proper markdown table with exactly 3 columns: "Phase", "Description", "Cost"
-- Use this exact table format:
-  | Phase | Description | Cost |
-  |-------|-------------|------|
-  | Phase 1: [Phase Name] | [Brief description of work] | $[Amount] |
-  | Phase 2: [Phase Name] | [Brief description of work] | $[Amount] |
-  | Phase 3: [Phase Name] | [Brief description of work] | $[Amount] |
-  | Phase 4: [Phase Name] | [Brief description of work] | $[Amount] |
-  | Phase 5: [Phase Name] | [Brief description of work] | $[Amount] |
-  | **Total** | **Project Total** | **$[Total Amount]** |
-- Each phase should have realistic cost estimates
-- Include a total row at the bottom
-- Use <br> tags for line breaks within table cells if needed
-- Ensure the table is properly formatted and readable
-
-For the References section:
-- Include 3-5 relevant past projects that demonstrate experience with similar work
-- Use this exact format for each reference:
-  Organization Name (Year-Year)
-  Contact: [Name], [Title] of [Organization]
-  Email: [email]
-  Phone: [phone]
-  Scope of Work: [Detailed description of work performed and achievements]
-- Make the references relevant to the project type and requirements
-- ONLY use names of real people who have publicly shared their work in this specific domain
-- If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
-- Do NOT generate or make up names - only use real people or "Unknown"
-- Focus on people who have publicly documented their work in this field
-- Do NOT use dashes at the beginning of each line in references
-
-CRITICAL: Return the sections as a JSON object with EXACTLY these section names as keys and content as values:
-{
-  "Title": "Submitted by: Eighth Generation Consulting\nName: [Resource person name]\nEmail: [Resource person email]\nNumber: [Resource person contact number]",
-  "Firm Qualifications and Experience": "content here",
-  "Relevant Industry Experience": "content here",
-  "Project Understanding and Approach": "content here",
-  "Key Personnel": "content here",
-  "Methodology (By Phase)": "content here",
-  "Project Schedule": "content here",
-  "Budget": "content here",
-  "References": "content here"
-}
-
-Each section should be a separate key-value pair in the JSON object.`;
+Each section must be a separate key-value pair in the JSON object.`;
 
   const userPrompt = `
 RFP Information:
@@ -208,47 +232,23 @@ ${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText}` : ''}
 
 INSTRUCTIONS:
 
-1. **Project Understanding and Approach**: 
-   - Use specific details from the RFP text when available (project scope, requirements, constraints, objectives)
-   - If specific details are not provided, work with the general project description and requirements
-   - Reference the client's specific situation, goals, and needs as described in the Document
-   - Address compliance requirements mentioned in the Document
-   - Write 4-6 comprehensive paragraphs that demonstrate understanding of the project
-   - Adapt language and context to match the project type (e.g., software development, financial analysis, strategic planning, etc.)
+Generate COMPREHENSIVE, DETAILED content for each section based on the section title and RFP requirements:
 
-2. **Key Personnel**: 
-   - ONLY use names of real people who have publicly shared their work in this specific domain
-   - If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
-   - Do NOT generate or make up names - only use real people or "Unknown"
-   - Focus on people who have publicly documented their work in this field
-   - Ensure team members have expertise in the project domain
+- **For Understanding/Approach sections**: Write 4-6 detailed paragraphs (400-600 words) using extensive specific details from the RFP text, reference client's situation, challenges, and requirements thoroughly
+- **For Personnel/Team sections**: Include 4-6 team members with real people only, detailed credentials and achievements, comprehensive experience descriptions relevant to RFP
+- **For Methodology/Process sections**: Create 4-6 detailed phases with comprehensive deliverables, use table format that fully addresses RFP requirements
+- **For Schedule/Timeline sections**: Create realistic detailed timeline with 4-6 phases, use heading format with comprehensive 3-4 sentence paragraphs per phase
+- **For Budget/Cost sections**: Create detailed cost breakdown with comprehensive descriptions, use table format that justifies all costs based on RFP scope
+- **For References/Experience sections**: Include 4-5 highly relevant past projects with detailed scope descriptions that relate to current RFP
+- **For Cover Letter sections**: Use formal letter format with comprehensive, personalized content that addresses RFP specifics
+- **For any other sections**: Generate substantial content (200-400 words) that thoroughly addresses the section topic using RFP details
 
-3. **Methodology (By Phase)**: 
-   - Create detailed phases based on the deliverables and requirements mentioned in the RFP
-   - If specific methodology is mentioned, follow that structure
-   - If not specified, create logical phases based on the project type and deliverables
-   - Ensure methodology is appropriate for the project domain
-
-4. **Project Schedule**: 
-   - Create a realistic timeline based on the project requirements
-   - If specific deadlines are mentioned in the RFP, incorporate those
-   - If not specified, create a logical timeline based on the project scope
-   - Consider project complexity and industry standards for timeline
-
-5. **Budget**: 
-   - Create detailed cost breakdown based on the project phases and deliverables
-   - If budget range is provided in the RFP, work within that range
-   - If specific budget requirements are mentioned, follow those guidelines
-   - Use markdown table format for clear presentation
-   - Ensure costs are realistic for the project type and scope
-
-6. **References**: 
-   - Include relevant past projects that demonstrate experience with similar work
-   - Make the references relevant to the project type and requirements
-   - Ensure references showcase expertise in the project domain
-   - ONLY use names of real people who have publicly shared their work in this specific domain
-   - If you cannot find real people with relevant experience, use "Unknown" instead of generating fake names
-   - Do NOT generate or make up names - only use real people or "Unknown"
+CRITICAL REQUIREMENTS:
+- Each section must be SUBSTANTIAL and COMPREHENSIVE - avoid brief responses
+- Use extensive details from the RFP document throughout all sections
+- Apply appropriate formatting rules based on section content type detection
+- Demonstrate deep analysis and understanding of the RFP requirements
+- Generate content that would impress proposal evaluators with its thoroughness and relevance
 
 Generate a comprehensive proposal with all sections formatted as markdown, using the information provided in the RFP data.`;
 
@@ -256,7 +256,7 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 12000,
+      max_tokens: 16000,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -279,17 +279,7 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
       const parsed = JSON.parse(jsonText);
       
       // Validate that we have the expected sections
-      const expectedSections = [
-        "Title",
-        "Firm Qualifications and Experience",
-        "Relevant Industry Experience",
-        "Project Understanding and Approach", 
-        "Key Personnel",
-        "Methodology (By Phase)",
-        "Project Schedule",
-        "Budget",
-        "References"
-      ];
+      const expectedSections = orderedTitles;
       
       // Check if we have the expected structure
       const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
@@ -318,23 +308,12 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
 function validateAISections(sections) {
   const validatedSections = {};
   
-  // Define sections that should only contain RFP-based information
-  const rfpBasedSections = [
-    "Title",
-    "Project Understanding and Approach",
-    "Key Personnel", 
-    "Methodology (By Phase)",
-    "Project Schedule",
-    "Budget",
-    "References"
-  ];
-  
-  // Validate each section
+  // Validate each section - no boundaries, process all sections dynamically
   Object.entries(sections).forEach(([sectionName, content]) => {
     if (sectionName === "Title") {
       // Title section should always be preserved as-is for contact extraction
       validatedSections[sectionName] = content;
-    } else if (rfpBasedSections.includes(sectionName)) {
+    } else {
       // Check if content indicates no information available
       if (!content || 
           content.toLowerCase().includes('not available') ||
@@ -346,9 +325,6 @@ function validateAISections(sections) {
         // Clean the content to remove any generated information
         validatedSections[sectionName] = cleanGeneratedContent(content);
       }
-    } else {
-      // For non-RFP based sections, keep as is
-      validatedSections[sectionName] = content;
     }
   });
   
@@ -445,37 +421,32 @@ function cleanContent(content) {
 /**
  * Format AI-generated sections for the database
  */
-function formatAISections(sections) {
+function formatAISections(sections, companyName = 'Not specified') {
   const formattedSections = {};
   
   // Add Title section first if it exists
   if (sections.Title) {
     formattedSections["Title"] = {
-      content: extractTitleContactInfo(sections.Title),
+      content: extractTitleContactInfo(sections.Title, companyName),
       type: "ai-generated",
       lastModified: new Date().toISOString(),
     };
   }
   
-  // Add hardcoded sections
-  formattedSections["Firm Qualifications and Experience"] = {
-    content: getFirmQualificationsContent(),
-    type: "hardcoded",
-    lastModified: new Date().toISOString(),
-  };
+  // Add Cover Letter section if it exists
+  if (sections["Cover Letter"]) {
+    formattedSections["Cover Letter"] = {
+      content: sections["Cover Letter"],
+      type: "ai-generated",
+      lastModified: new Date().toISOString(),
+    };
+  }
   
-  formattedSections["Relevant Industry Experience"] = {
-    content: getRelevantExperienceContent(),
-    type: "hardcoded", 
-    lastModified: new Date().toISOString(),
-  };
-  
-  // Add remaining AI-generated sections (excluding Title which was already added)
+  // Add remaining AI-generated sections (excluding Title and Cover Letter which were already added)
   Object.entries(sections).forEach(([sectionName, content]) => {
-    // Skip the hardcoded sections and Title if they were generated by AI
-    if (sectionName !== "Firm Qualifications and Experience" && 
-        sectionName !== "Relevant Industry Experience" &&
-        sectionName !== "Title") {
+    // Skip Title and Cover Letter (already added)
+    if (sectionName !== "Title" &&
+        sectionName !== "Cover Letter") {
       
       // Apply content cleaning to all sections except Key Personnel
       const processedContent = sectionName === "Key Personnel" 
@@ -529,45 +500,6 @@ function extractTitleContactInfo(content) {
   }
 
   return contactInfo;
-}
-
-/**
- * Hardcoded content for Firm Qualifications and Experience
- */
-function getFirmQualificationsContent() {
-  return `Eighth Generation Consulting is a consultancy established in 2022, with a staff of 5 professionals specializing in strategic planning, project management, and stakeholder engagement. Our leadership team has over 75 years of combined experience supporting municipalities, tribal governments, and both non-profit and for-profit organizations to integrate economic and environmental development with community engagement and regulatory compliance requirements. We've earned numerous awards and recognitions for these efforts:
-
-• **2022:** Honored by the United Nations at the Biodiversity COP15 for pioneering strategic planning, stakeholder collaboration, and sustainable development through the City of Carbondale's Sustainability Plan.
-
-• **2024:** Grand Prize winners through an NREL sponsored prize on community integration of infrastructure and workforce development in strategic planning initiatives.
-
-• **2024:** MIT Solver - Indigenous Communities Fellowship Class of 2024 for work on developing systems of collaboration between local, state, tribal, and federal entities around energy and responsible development issues.
-
-• **2025:** American Made Challenge Current Semifinalist, U.S. Department of Energy.
-
-• **2025:** Verizon Disaster Resilience Prize Current Semifinalist for oneNode, a solar microgrid technology to restore connectivity, monitor hazards, and coordinate response in disaster zones.
-
-• **2025:** Shortlisted as an MIT Solver semifinalist for a second time focusing on responsible development, strategic planning, and privacy concerns for data center development.
-
-• **2025:** Awarded Preferred Provider by the Alliance for Tribal Clean Energy.
-
-Our core services include: Strategic Planning, Project Management, Stakeholder Engagement, Public Facilitation, and Regulatory Compliance Reviews.`;
-}
-
-/**
- * Hardcoded content for Relevant Industry Experience
- */
-function getRelevantExperienceContent() {
-  return `Eighth Generation Consulting's staff have contributed to and led multiple strategic planning and sustainability initiatives in complex organizational environments, including:
-
-• **Carbondale's Sustainability Action Plan**
-  - Emphasized cross-sector collaboration, policy development, and climate resiliency measures, adopted via a 5-0 City Council vote. Incorporated robust stakeholder engagement strategies that effectively included diverse community stakeholders. Reviewed all current policies, restrictions, requirements, and assumptions.
-
-• **Osage Nation planning and development support**
-  - Led multiple community-based planning efforts emphasizing coordination between local groups like the Chamber of Commerce, tribal stakeholders in the Osage Nation, as well as county and state representatives. Integrated local concerns around strategic planning, infrastructure development, and economic development. Wrote 12 grant applications serving as subject matter experts on energy and development strategies.
-
-• **Tribal and Municipal Environmental Permitting & Siting Projects**
-  - Partnered with the Upper Mattaponi Tribe of Virginia, the Rappahannock Tribe in collaboration with U.S. Fish and Wildlife, Virginia's Piedmont Environmental Council, and the City of Tacoma's Environmental Services Department to deliver GIS-driven analysis, feasibility studies, and permitting strategies for projects exceeding $400,000 in combined value. Developed community-informed engagement frameworks, coordinated with Authorities Having Jurisdiction (AHJs), and designed compliance pathways aligned with federal, state, and local regulations.`;
 }
 
 /**
@@ -683,21 +615,7 @@ function extractSectionsFromMarkdown(markdownText) {
     };
   }
   
-  // Add hardcoded sections to the beginning
-  const hardcodedSections = {
-    "Firm Qualifications and Experience": {
-      content: getFirmQualificationsContent(),
-      type: "hardcoded",
-      lastModified: new Date().toISOString(),
-    },
-    "Relevant Industry Experience": {
-      content: getRelevantExperienceContent(),
-      type: "hardcoded", 
-      lastModified: new Date().toISOString(),
-    }
-  };
-  
-  // Merge sections with proper ordering: Title first, then hardcoded, then AI sections
+  // Merge sections with proper ordering: Title first, then AI sections
   const finalSections = {};
   
   // Add Title section first if it exists
@@ -705,12 +623,14 @@ function extractSectionsFromMarkdown(markdownText) {
     finalSections["Title"] = sections.Title;
   }
   
-  // Add hardcoded sections
-  Object.assign(finalSections, hardcodedSections);
+  // Add Cover Letter section if it exists
+  if (sections["Cover Letter"]) {
+    finalSections["Cover Letter"] = sections["Cover Letter"];
+  }
   
-  // Add remaining AI sections (excluding Title)
+  // Add remaining AI sections (excluding Title and Cover Letter)
   Object.entries(sections).forEach(([sectionName, sectionData]) => {
-    if (sectionName !== "Title") {
+    if (sectionName !== "Title" && sectionName !== "Cover Letter") {
       finalSections[sectionName] = sectionData;
     }
   });
@@ -721,8 +641,6 @@ function extractSectionsFromMarkdown(markdownText) {
 module.exports = {
   generateAIProposalSections,
   formatAISections,
-  getFirmQualificationsContent,
-  getRelevantExperienceContent,
   extractSectionsFromMarkdown,
   extractTitleContactInfo,
   cleanContent,

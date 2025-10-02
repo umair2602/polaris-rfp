@@ -22,7 +22,7 @@ const rfpSchema = new mongoose.Schema({
   projectType: {
     type: String,
     required: true,
-    enum: ['software_development', 'strategic_communications', 'financial_modeling', 'general']
+    trim: true
   },
   keyRequirements: [{
     type: String,
@@ -66,6 +66,10 @@ const rfpSchema = new mongoose.Schema({
   parsedSections: {
     type: mongoose.Schema.Types.Mixed
   },
+  sectionTitles: [{
+    type: String,
+    trim: true
+  }],
   fileName: {
     type: String
   },

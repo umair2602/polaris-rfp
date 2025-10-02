@@ -43,7 +43,54 @@ class RFPAnalyzer {
     try {
       console.log("Fetching content from URL:", url);
       
-      // Fetch the web page
+      // Check if URL points to a PDF file (by extension or make a HEAD request to check content type)
+      const isPdfUrl = url.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf?') || url.toLowerCase().includes('.pdf#');
+      
+      if (isPdfUrl) {
+        console.log("Detected PDF URL, downloading and parsing as PDF...");
+        
+        // Download PDF content
+        const response = await axios.get(url, {
+          responseType: 'arraybuffer',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        
+        // Convert to buffer and extract text using PDF parser
+        const pdfBuffer = Buffer.from(response.data);
+        return await this.extractTextFromPDF(pdfBuffer);
+      }
+      
+      // For non-PDF URLs, first check content type with a HEAD request
+      try {
+        const headResponse = await axios.head(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        
+        const contentType = headResponse.headers['content-type'] || '';
+        if (contentType.includes('application/pdf')) {
+          console.log("Detected PDF content type, downloading and parsing as PDF...");
+          
+          // Download PDF content
+          const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+          });
+          
+          // Convert to buffer and extract text using PDF parser
+          const pdfBuffer = Buffer.from(response.data);
+          return await this.extractTextFromPDF(pdfBuffer);
+        }
+      } catch (headError) {
+        console.log("HEAD request failed, proceeding with regular HTML extraction:", headError.message);
+      }
+      
+      // Fetch the web page for HTML content
       const response = await axios.get(url, {
         // timeout: 30000, // 30 second timeout
         headers: {
@@ -124,7 +171,7 @@ Extract the following information from the RFP text:
   "clientName": "string - Name of the client/organization requesting the proposal",
   "submissionDeadline": "string - Deadline for proposal submission (or 'Not mentioned in the document' if not found)",
   "budgetRange": "string - Budget range mentioned (or 'Not mentioned in the document' if not found)",
-  "projectType": "string - One of: 'software_development', 'strategic_communications', 'financial_modeling', or 'general'",
+  "projectType": "string - Describe the type/category of project (e.g., 'software_development', 'construction', 'marketing', 'consulting', etc.)",
   "keyRequirements": ["array of strings - Key requirements and specifications"],
   "evaluationCriteria": ["array of strings - Evaluation criteria and scoring methods"],
   "deliverables": ["array of strings - Expected deliverables and outcomes"],
@@ -139,7 +186,7 @@ Extract the following information from the RFP text:
 Rules:
 - Extract information exactly as written in the document
 - If information is not found, use "Not mentioned in the document" for strings or empty arrays for arrays
-- For projectType, choose the most appropriate category based on the content
+- For projectType, describe the type/category of project based on the content. Be specific and descriptive (e.g., 'software_development', 'construction', 'marketing', 'consulting', 'research', etc.). If unclear, use 'general'
 - For arrays, extract all relevant items as separate strings
 - Be comprehensive but accurate - don't invent information
 - Return only valid JSON, no additional text or commentary`;
@@ -148,7 +195,7 @@ Rules:
       const completion = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0.0,
-        max_tokens: 2000,
+        max_tokens: 16000,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `RFP Text:\n\n${text}` },
@@ -176,9 +223,12 @@ Rules:
       // Detect input type and extract text accordingly
       if (typeof input === 'string' && (input.startsWith('http://') || input.startsWith('https://'))) {
         // Input is a URL
-        console.log("Detected URL input, extracting text from web page...");
+        console.log("Detected URL input, extracting text...");
         text = await this.extractTextFromURL(input);
-        extractionMethod = "web-scraping";
+        
+        // Determine extraction method based on URL type
+        const isPdfUrl = input.toLowerCase().endsWith('.pdf') || input.toLowerCase().includes('.pdf?') || input.toLowerCase().includes('.pdf#');
+        extractionMethod = isPdfUrl ? "pdf-from-url" : "web-scraping";
         source = input; // Use URL as source
       } else if (Buffer.isBuffer(input)) {
         // Input is a PDF buffer

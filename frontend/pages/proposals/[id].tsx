@@ -396,16 +396,27 @@ export default function ProposalDetail() {
     if (!content) return "No content available";
 
     // Handle Title section with object content
-    if (sectionName === "Title" && typeof content === "object") {
-      const titleData = content as { submittedBy?: string; name?: string; email?: string; number?: string };
-      return `
-        <div class="title-section">
-          ${titleData.submittedBy ? `<p><strong>Submitted by:</strong> ${titleData.submittedBy}</p>` : ''}
-          ${titleData.name ? `<p><strong>Name:</strong> ${titleData.name}</p>` : ''}
-          ${titleData.email ? `<p><strong>Email:</strong> ${titleData.email}</p>` : ''}
-          ${titleData.number ? `<p><strong>Number:</strong> ${titleData.number}</p>` : ''}
-        </div>
-      `;
+    if (sectionName === "Title") {
+      if (typeof content === "object") {
+        const titleData = content as { submittedBy?: string; name?: string; email?: string; number?: string };
+        return `
+          <div class="title-section">
+            ${titleData.submittedBy ? `<p><strong>Submitted by:</strong> ${titleData.submittedBy}</p>` : ''}
+            ${titleData.name ? `<p><strong>Name:</strong> ${titleData.name}</p>` : ''}
+            ${titleData.email ? `<p><strong>Email:</strong> ${titleData.email}</p>` : ''}
+            ${titleData.number ? `<p><strong>Number:</strong> ${titleData.number}</p>` : ''}
+          </div>
+        `;
+      }
+      if (typeof content === 'string') {
+        // If backend sent Title as a string, render line by line
+        const lines = content.split(/\r?\n/).filter(Boolean);
+        return `
+          <div class="title-section">
+            ${lines.map(line => `<p>${line.replace(/\*\*(.*?)\*\*/g, '<strong>$1<\/strong>')}</p>`).join('')}
+          </div>
+        `;
+      }
     }
 
     // Ensure content is a string for other sections

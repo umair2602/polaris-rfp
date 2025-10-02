@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const RFP = require("../models/RFP");
 const rfpAnalyzer = require("../services/rfpAnalyzer");
+const { generateSectionTitles } = require("../services/aiSectionsTitleGenerator");
 
 const router = express.Router();
 
@@ -134,6 +135,30 @@ router.get("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching RFP:", error);
     res.status(500).json({ error: "Failed to fetch RFP" });
+  }
+});
+
+// Generate AI-driven proposal section titles (titles only)
+router.post("/:id/ai-section-titles", async (req, res) => {
+  try {
+    const rfp = await RFP.findById(req.params.id);
+    if (!rfp) {
+      return res.status(404).json({ error: "RFP not found" });
+    }
+
+    // Return existing if present
+    if (Array.isArray(rfp.sectionTitles) && rfp.sectionTitles.length > 0) {
+      return res.json({ titles: rfp.sectionTitles });
+    }
+
+    // Otherwise, generate and persist
+    const titles = await generateSectionTitles(rfp);
+    rfp.sectionTitles = titles;
+    await rfp.save();
+    return res.json({ titles });
+  } catch (error) {
+    console.error("AI section titles error:", error);
+    return res.status(500).json({ error: "Failed to generate section titles", message: error.message });
   }
 });
 

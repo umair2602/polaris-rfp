@@ -87,6 +87,7 @@ export const rfpApi = {
   get: (id: string) => api.get<RFP>(`/api/rfp/${id}`),
   update: (id: string, data: any) => api.put<RFP>(`/api/rfp/${id}`, data),
   delete: (id: string) => api.delete(`/api/rfp/${id}`),
+  getSectionTitles: (id: string) => api.post<{ titles: string[] }>(`/api/rfp/${id}/ai-section-titles`),
 }
 
 // Proposal API calls

@@ -140,6 +140,65 @@ class DocxGenerator {
   addCoverLetterPage(docx, proposal, company) {
     // Header logos are already added in the main generation flow
 
+    // Check if we have AI-generated cover letter content
+    const coverLetterSection = proposal.sections?.["Cover Letter"];
+    
+    if (coverLetterSection && coverLetterSection.content) {
+      // Use AI-generated cover letter content
+      this.addAICoverLetterContent(docx, coverLetterSection.content, proposal, company);
+    } else {
+      // Fallback to hardcoded cover letter
+      this.addHardcodedCoverLetter(docx, proposal, company);
+    }
+  }
+
+  // ---------------- AI GENERATED COVER LETTER ----------------
+  addAICoverLetterContent(docx, content, proposal, company) {
+    // Add the cover letter title heading
+    const title = docx.createP({ align: "center" });
+    title.addText("Cover Letter", {
+      bold: true,
+      font_size: 16,
+      font_face: "Calibri",
+      color: "073763",
+    });
+
+    // Add some spacing after the title
+    const emptyLine = docx.createP();
+    emptyLine.addText(" ");
+
+    // Simply render the cover letter content as-is, preserving formatting
+    const lines = content.split('\n');
+    
+    lines.forEach(line => {
+      const para = docx.createP();
+      const trimmedLine = line.trim();
+      
+      if (trimmedLine) {
+        // Handle bold formatting
+        if (trimmedLine.includes('**')) {
+          const parts = trimmedLine.split('**');
+          for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+              // Regular text
+              if (parts[i]) para.addText(parts[i], { font_face: "Calibri" });
+            } else {
+              // Bold text
+              if (parts[i]) para.addText(parts[i], { bold: true, font_face: "Calibri" });
+            }
+          }
+        } else {
+          para.addText(trimmedLine, { font_face: "Calibri" });
+        }
+      } else {
+        // Empty line for spacing
+        para.addText(" ", { font_face: "Calibri" });
+      }
+    });
+  }
+
+  // ---------------- HARDCODED COVER LETTER (FALLBACK) ----------------
+  addHardcodedCoverLetter(docx, proposal, company) {
     const title = docx.createP({ align: "center" });
     title.addText("Zoning Code Update and Comprehensive Land Use Plan", {
       bold: true,
@@ -158,7 +217,7 @@ class DocxGenerator {
     const submittedBy = docx.createP();
     submittedBy.addText("Submitted by:", { bold: true, font_face: "Calibri" });
     submittedBy.addLineBreak();
-    submittedBy.addText(company?.name || "Eighth Generation Consulting", {
+    submittedBy.addText(company?.name || "Not specified", {
       bold: true,
       font_face: "Calibri",
     });
@@ -172,7 +231,7 @@ class DocxGenerator {
     });
 
     const bodyParagraphs = [
-      "On behalf of Eighth Generation Consulting, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
+      "On behalf of Not specified, we are pleased to submit our proposal to partner with Town of Amherst on the development of a Comprehensive Land Use Plan and a complete Zoning Code Update. We recognize that this is a once-in-a-generation opportunity to modernize the Township's planning framework, protect its rural and agricultural character, and create a legally defensible, community-driven vision for the next 10–20 years.",
       "Our team brings extensive experience in rural township planning, zoning modernization, and community engagement, having successfully completed similar projects for small communities across the US. We understand the unique needs of Richfield Township: balancing growth pressures with preservation of farmland and residential quality of life.",
       "We are committed to delivering a clear, implementable plan, a user-friendly zoning code, and strong engagement with your residents, Trustees, and Planning Commission.",
       "We appreciate your consideration and look forward to working together. Sincerely,",
@@ -194,8 +253,6 @@ class DocxGenerator {
     });
     contact.addLineBreak();
     contact.addText(company?.phone || "111-222-33", { font_face: "Calibri" });
-
-    docx.putPageBreak();
   }
 
   // ---------------- SECTIONS ----------------
@@ -203,8 +260,13 @@ class DocxGenerator {
     if (!sections || typeof sections !== "object") return;
 
     const sectionEntries = Object.entries(sections).filter(
-      ([sectionName]) => sectionName !== "Title"
+      ([sectionName]) => sectionName !== "Title" && sectionName !== "Cover Letter"
     );
+
+    // Add page break before the first section (after cover letter)
+    if (sectionEntries.length > 0) {
+      docx.putPageBreak();
+    }
 
     sectionEntries.forEach(([sectionName, sectionData], index) => {
       // Header logos are already added in the main generation flow
