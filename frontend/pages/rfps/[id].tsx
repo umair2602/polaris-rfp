@@ -13,6 +13,21 @@ import {
 } from '@heroicons/react/24/outline'
 import AIPreviewModal from '../../components/AIPreviewModal'
 
+// Utility function to trim title properly
+const trimTitle = (title: string, maxLength: number = 60): string => {
+  if (title.length <= maxLength) return title
+  
+  // Find the last space before the max length to avoid cutting words
+  const trimmed = title.substring(0, maxLength)
+  const lastSpaceIndex = trimmed.lastIndexOf(' ')
+  
+  if (lastSpaceIndex > maxLength * 0.7) {
+    return trimmed.substring(0, lastSpaceIndex) + '...'
+  }
+  
+  return trimmed + '...'
+}
+
 export default function RFPDetail() {
   const router = useRouter()
   const { id } = router.query
@@ -55,7 +70,7 @@ export default function RFPDetail() {
       const response = await proposalApi.generate({
         rfpId: rfp._id,
         templateId,
-        title: `Proposal for ${rfp.title}`,
+        title: `Proposal for ${trimTitle(rfp.title, 40)}`,
         customContent: {}
       })
       
@@ -77,7 +92,7 @@ export default function RFPDetail() {
       const response = await proposalApi.generate({
         rfpId: rfp._id,
         templateId: 'ai-template', // Use a special identifier for AI generation
-        title: `AI Proposal for ${rfp.title}`,
+        title: `AI Proposal for ${trimTitle(rfp.title, 35)}`,
         customContent: {}
       })
       
@@ -125,7 +140,7 @@ export default function RFPDetail() {
   return (
     <Layout>
       <Head>
-        <title>{rfp.title} - RFP Details</title>
+        <title>{trimTitle(rfp.title, 50)} - RFP Details</title>
       </Head>
 
       <div>
@@ -137,8 +152,8 @@ export default function RFPDetail() {
                 <div className="flex items-center">
                   <DocumentTextIcon className="h-8 w-8 text-gray-400 mr-3" />
                   <div>
-                    <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                      {rfp.title}
+                    <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate" title={rfp.title}>
+                      {trimTitle(rfp.title, 80)}
                     </h1>
                     <div className="mt-1 flex items-center text-sm text-gray-500">
                       <BuildingOfficeIcon className="h-4 w-4 mr-1" />

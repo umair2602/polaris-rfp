@@ -150,12 +150,23 @@ class DocxGenerator {
       // Fallback to hardcoded cover letter
       this.addHardcodedCoverLetter(docx, proposal, company);
     }
-
-    docx.putPageBreak();
   }
 
   // ---------------- AI GENERATED COVER LETTER ----------------
   addAICoverLetterContent(docx, content, proposal, company) {
+    // Add the cover letter title heading
+    const title = docx.createP({ align: "center" });
+    title.addText("Cover Letter", {
+      bold: true,
+      font_size: 16,
+      font_face: "Calibri",
+      color: "073763",
+    });
+
+    // Add some spacing after the title
+    const emptyLine = docx.createP();
+    emptyLine.addText(" ");
+
     // Simply render the cover letter content as-is, preserving formatting
     const lines = content.split('\n');
     
@@ -251,6 +262,11 @@ class DocxGenerator {
     const sectionEntries = Object.entries(sections).filter(
       ([sectionName]) => sectionName !== "Title" && sectionName !== "Cover Letter"
     );
+
+    // Add page break before the first section (after cover letter)
+    if (sectionEntries.length > 0) {
+      docx.putPageBreak();
+    }
 
     sectionEntries.forEach(([sectionName, sectionData], index) => {
       // Header logos are already added in the main generation flow
