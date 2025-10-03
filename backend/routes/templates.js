@@ -22,7 +22,7 @@ const templates = {
       },
       {
         title: 'Technical Approach & Methodology',
-        contentType: 'structured',
+        contentType: 'Technical Approach & Methodology',
         required: true,
         subsections: [
           'Project Initiation & Planning',
@@ -35,24 +35,24 @@ const templates = {
       },
       {
         title: 'Key Personnel and Experience',
-        contentType: 'team_profiles',
+        contentType: 'Key Personnel and Experience',
         required: true,
         includeRoles: ['project_lead', 'technical_lead', 'senior_architect', 'qa_lead']
       },
       {
         title: 'Budget Estimate',
-        contentType: 'financial_breakdown',
+        contentType: 'Budget Estimate',
         required: true,
         format: 'detailed_table'
       },
       {
         title: 'Project Timeline',
-        contentType: 'project_schedule',
+        contentType: 'Project Timeline',
         required: true
       },
       {
         title: 'References',
-        contentType: 'client_references',
+        contentType: 'References',
         required: true,
         minimumCount: 3,
         filterByType: 'software_development'
@@ -66,48 +66,48 @@ const templates = {
     sections: [
       {
         title: 'Title',
-        contentType: 'title',
+        contentType: 'Title',
         required: true
       },
       {
         title: 'Cover Letter',
-        contentType: 'cover_letter',
+        contentType: 'Cover Letter',
         required: true
       },
       {
         title: 'Experience & Qualifications',
-        contentType: 'credentials_showcase',
+        contentType: 'Experience & Qualifications',
         required: true
       },
       {
         title: 'Project Understanding & Workplan',
-        contentType: 'phased_approach',
+        contentType: 'Project Understanding & Workplan',
         required: true
       },
       {
         title: 'Benefits to Client',
-        contentType: 'value_proposition',
+        contentType: 'Benefits to Client',
         required: true
       },
       {
         title: 'Key Team Members',
-        contentType: 'team_profiles',
+        contentType: 'Key Team Members',
         required: true,
         includeRoles: ['project_manager', 'communications_lead', 'content_strategist']
       },
       {
         title: 'Budget',
-        contentType: 'hourly_breakdown',
+        contentType: 'Budget',
         required: true
       },
       {
         title: 'Compliance & Quality Assurance',
-        contentType: 'standards_commitment',
+        contentType: 'Compliance & Quality Assurance',
         required: true
       },
       {
         title: 'References',
-        contentType: 'client_testimonials',
+        contentType: 'client_references',
         required: true,
         minimumCount: 3,
         filterByType: 'strategic_communications'
@@ -131,23 +131,23 @@ const templates = {
       },
       {
         title: 'Methodology & Approach',
-        contentType: 'analytical_methodology',
+        contentType: 'Methodology & Approach',
         required: true
       },
       {
         title: 'Team Expertise',
-        contentType: 'team_profiles',
+        contentType: 'Key Team Members',
         required: true,
         includeRoles: ['financial_analyst', 'senior_modeler', 'project_manager']
       },
       {
         title: 'Deliverables & Timeline',
-        contentType: 'deliverable_schedule',
+        contentType: 'Deliverables & Timeline',
         required: true
       },
       {
         title: 'Investment & Budget',
-        contentType: 'financial_breakdown',
+        contentType: 'Budget',
         required: true
       },
       {
