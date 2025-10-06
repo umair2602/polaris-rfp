@@ -16,7 +16,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0" onClick={onClose} />
       <div className={`relative bg-white rounded-lg shadow-xl w-full ${maxWidth} mx-4`}>
         {(title || title === "") && (
           <div className="px-6 py-5 border-b border-gray-200">

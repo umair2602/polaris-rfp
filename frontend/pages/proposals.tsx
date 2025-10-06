@@ -9,6 +9,7 @@ import { proposalApi, proposalApiPdf, Proposal } from "../lib/api";
 import api from "../lib/api";
 import Link from "next/link";
 import Modal from "../components/ui/Modal";
+import PdfPreviewModal from "../components/PdfPreviewModal";
 import DownloadMenu from "../components/ui/DownloadMenu";
 import {
   DocumentTextIcon,
@@ -38,8 +39,16 @@ export default function Proposals() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
-  const [downloadMenuForId, setDownloadMenuForId] = useState<string | null>(null);
+  const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(
+    null
+  );
+  const [downloadMenuForId, setDownloadMenuForId] = useState<string | null>(
+    null
+  );
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposals();
@@ -100,24 +109,60 @@ export default function Proposals() {
     }
   };
 
-  const downloadProposalFile = async (proposal: Proposal, format: 'pdf' | 'docx') => {
+  const openPreview = async (proposal: Proposal) => {
+    try {
+      setPreviewError(null);
+      setPreviewOpen(true);
+      setPreviewLoading(true);
+      const resp = await proposalApiPdf.exportPdf(proposal._id);
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url =
+        window.URL.createObjectURL(blob) +
+        "#toolbar=0&navpanes=0&zoom=page-width";
+      setPreviewUrl(url);
+    } catch (error) {
+      console.error("Error generating preview PDF:", error);
+      setPreviewError("Failed to load PDF preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewOpen(false);
+  };
+
+  const downloadProposalFile = async (
+    proposal: Proposal,
+    format: "pdf" | "docx"
+  ) => {
     try {
       setUploadingProposalId(proposal._id);
-      const resp = format === 'pdf'
-        ? await proposalApiPdf.exportPdf(proposal._id)
-        : await proposalApiPdf.exportDocx(proposal._id);
-      const blob = new Blob([resp.data], { type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const resp =
+        format === "pdf"
+          ? await proposalApiPdf.exportPdf(proposal._id)
+          : await proposalApiPdf.exportDocx(proposal._id);
+      const blob = new Blob([resp.data], {
+        type:
+          format === "pdf"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      const safeTitle = proposal.title.replace(/[^a-z0-9]/gi, '_');
+      const safeTitle = proposal.title.replace(/[^a-z0-9]/gi, "_");
       link.download = `${safeTitle}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading proposal:', error);
+      console.error("Error downloading proposal:", error);
     } finally {
       setUploadingProposalId(null);
       setDownloadMenuForId(null);
@@ -295,8 +340,7 @@ export default function Proposals() {
                       </Badge>
                       <div className="flex items-center space-x-1">
                         <Button
-                          as={Link}
-                          href={`/proposals/${proposal._id}`}
+                          onClick={() => openPreview(proposal)}
                           variant="ghost"
                           size="sm"
                           icon={<EyeIcon className="h-4 w-4" />}
@@ -312,7 +356,13 @@ export default function Proposals() {
                         />
                         <div className="relative">
                           <Button
-                            onClick={() => setDownloadMenuForId(downloadMenuForId === proposal._id ? null : proposal._id)}
+                            onClick={() =>
+                              setDownloadMenuForId(
+                                downloadMenuForId === proposal._id
+                                  ? null
+                                  : proposal._id
+                              )
+                            }
                             loading={uploadingProposalId === proposal._id}
                             variant="ghost"
                             size="sm"
@@ -322,7 +372,9 @@ export default function Proposals() {
                           />
                           <DownloadMenu
                             isOpen={downloadMenuForId === proposal._id}
-                            onSelect={(format) => downloadProposalFile(proposal, format)}
+                            onSelect={(format) =>
+                              downloadProposalFile(proposal, format)
+                            }
                           />
                         </div>
                       </div>
@@ -421,13 +473,12 @@ export default function Proposals() {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end space-x-2">
                             <Button
-                              as={Link}
-                              href={`/proposals/${proposal._id}`}
+                              onClick={() => openPreview(proposal)}
                               variant="ghost"
                               size="sm"
                               icon={<EyeIcon className="h-4 w-4" />}
                             >
-                              View
+                              Preview
                             </Button>
                             <Button
                               as={Link}
@@ -439,7 +490,13 @@ export default function Proposals() {
                             />
                             <div className="relative">
                               <Button
-                                onClick={() => setDownloadMenuForId(downloadMenuForId === proposal._id ? null : proposal._id)}
+                                onClick={() =>
+                                  setDownloadMenuForId(
+                                    downloadMenuForId === proposal._id
+                                      ? null
+                                      : proposal._id
+                                  )
+                                }
                                 loading={uploadingProposalId === proposal._id}
                                 variant="ghost"
                                 size="sm"
@@ -449,7 +506,9 @@ export default function Proposals() {
                               />
                               <DownloadMenu
                                 isOpen={downloadMenuForId === proposal._id}
-                                onSelect={(format) => downloadProposalFile(proposal, format)}
+                                onSelect={(format) =>
+                                  downloadProposalFile(proposal, format)
+                                }
                               />
                             </div>
                             <Button
@@ -470,22 +529,35 @@ export default function Proposals() {
             </CardBody>
           </Card>
         )}
-
+          <PdfPreviewModal
+            isOpen={previewOpen}
+            onClose={closePreview}
+            url={previewUrl}
+            loading={previewLoading}
+            error={previewError}
+            title={
+              previewError ? "Preview Unavailable" : "Proposal PDF Preview"
+            }
+          />
         <Modal
           isOpen={showDeleteModal}
           onClose={() => {
-            setShowDeleteModal(false)
-            setProposalToDelete(null)
+            setShowDeleteModal(false);
+            setProposalToDelete(null);
           }}
-          title={proposalToDelete ? `Delete "${proposalToDelete.title}"?` : "Delete proposal"}
+          title={
+            proposalToDelete
+              ? `Delete "${proposalToDelete.title}"?`
+              : "Delete proposal"
+          }
           size="sm"
           footer={
             <div className="flex items-center space-x-3">
               <button
                 className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
                 onClick={() => {
-                  setShowDeleteModal(false)
-                  setProposalToDelete(null)
+                  setShowDeleteModal(false);
+                  setProposalToDelete(null);
                 }}
               >
                 Cancel
