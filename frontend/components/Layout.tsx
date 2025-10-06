@@ -1,10 +1,10 @@
-import { ReactNode, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/router'
-import { 
-  DocumentTextIcon, 
-  FolderIcon, 
-  UserGroupIcon, 
+import { ReactNode, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import {
+  DocumentTextIcon,
+  FolderIcon,
+  UserGroupIcon,
   CogIcon,
   CloudIcon,
   Bars3Icon,
@@ -12,40 +12,75 @@ import {
   BellIcon,
   UserCircleIcon,
   ChevronDownIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline'
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import GlobalSearch from "./GlobalSearch";
 
 interface LayoutProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const router = useRouter()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  // Search moved to GlobalSearch component
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: FolderIcon, current: router.pathname === '/' },
-    { name: 'RFPs', href: '/rfps', icon: DocumentTextIcon, current: router.pathname.startsWith('/rfps') },
-    { name: 'Proposals', href: '/proposals', icon: DocumentTextIcon, current: router.pathname.startsWith('/proposals') },
-    { name: 'Templates', href: '/templates', icon: CogIcon, current: router.pathname.startsWith('/templates') },
-    { name: 'Content Library', href: '/content', icon: UserGroupIcon, current: router.pathname === '/content' },
-    { name: 'Google Drive', href: '/googledrive', icon: CloudIcon, current: router.pathname === '/googledrive' },
-  ]
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: FolderIcon,
+      current: router.pathname === "/",
+    },
+    {
+      name: "RFPs",
+      href: "/rfps",
+      icon: DocumentTextIcon,
+      current: router.pathname.startsWith("/rfps"),
+    },
+    {
+      name: "Proposals",
+      href: "/proposals",
+      icon: DocumentTextIcon,
+      current: router.pathname.startsWith("/proposals"),
+    },
+    {
+      name: "Templates",
+      href: "/templates",
+      icon: CogIcon,
+      current: router.pathname.startsWith("/templates"),
+    },
+    {
+      name: "Content Library",
+      href: "/content",
+      icon: UserGroupIcon,
+      current: router.pathname === "/content",
+    },
+    {
+      name: "Google Drive",
+      href: "/googledrive",
+      icon: CloudIcon,
+      current: router.pathname === "/googledrive",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 transition-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
           <div className="flex items-center space-x-3">
             <div className="flex-shrink-0">
@@ -60,22 +95,26 @@ export default function Layout({ children }: LayoutProps) {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <nav className="mt-6 px-3 space-y-2">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               className={`group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                item.current 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105' 
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100 hover:shadow-md hover:transform hover:scale-105'
+                item.current
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-100 hover:shadow-md hover:transform hover:scale-105"
               }`}
               onClick={() => setSidebarOpen(false)}
             >
-              <item.icon className={`mr-4 flex-shrink-0 h-6 w-6 transition-colors ${
-                item.current ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'
-              }`} />
+              <item.icon
+                className={`mr-4 flex-shrink-0 h-6 w-6 transition-colors ${
+                  item.current
+                    ? "text-white"
+                    : "text-gray-400 group-hover:text-gray-600"
+                }`}
+              />
               <span className="font-medium">{item.name}</span>
               {item.current && (
                 <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -113,16 +152,7 @@ export default function Layout({ children }: LayoutProps) {
               </button>
               <div className="hidden sm:block">
                 <div className="relative">
-                  <input
-                    type="search"
-                    placeholder="Search proposals, RFPs..."
-                    className="w-64 pl-4 pr-10 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all duration-200"
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
+                  <GlobalSearch />
                 </div>
               </div>
             </div>
@@ -134,7 +164,7 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="text-xs text-white font-bold">3</span>
                 </div>
               </button>
-              
+
               <div className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
                 <UserCircleIcon className="h-8 w-8 text-gray-600" />
                 <div className="hidden sm:block">
@@ -157,5 +187,5 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
     </div>
-  )
+  );
 }
