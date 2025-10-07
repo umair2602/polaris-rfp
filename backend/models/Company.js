@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const companySchema = new mongoose.Schema({
+  companyId: {
+    type: String,
+    required: true,
+    unique: true,
+    default: () => `company_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  },
   name: {
     type: String,
     required: true,
@@ -56,6 +62,14 @@ const companySchema = new mongoose.Schema({
     linkedin: String,
     twitter: String,
     facebook: String
+  },
+  coverLetter: {
+    type: String,
+    trim: true
+  },
+  firmQualificationsAndExperience: {
+    type: String,
+    trim: true
   },
   lastUpdated: {
     type: Date,

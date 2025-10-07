@@ -28,58 +28,98 @@ export default function EditReferenceModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Client Name
+                  Organization Name
                 </label>
                 <input
                   type="text"
-                  value={referenceForm.clientName}
+                  value={referenceForm.organizationName}
                   onChange={(e) =>
                     setReferenceForm({
                       ...referenceForm,
-                      clientName: e.target.value,
+                      organizationName: e.target.value,
                     })
                   }
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g., Rend Lake Conservancy District"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Industry
+                  Time Period
                 </label>
                 <input
                   type="text"
-                  value={referenceForm.industry}
+                  value={referenceForm.timePeriod}
                   onChange={(e) =>
                     setReferenceForm({
                       ...referenceForm,
-                      industry: e.target.value,
+                      timePeriod: e.target.value,
                     })
                   }
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g., (2022-2025)"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Contact Name & Credentials
+              </label>
+              <input
+                type="text"
+                value={referenceForm.contactName}
+                onChange={(e) =>
+                  setReferenceForm({
+                    ...referenceForm,
+                    contactName: e.target.value,
+                  })
+                }
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., Gary Williams, MPA"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Contact Title/Position
+              </label>
+              <input
+                type="text"
+                value={referenceForm.contactTitle}
+                onChange={(e) =>
+                  setReferenceForm({
+                    ...referenceForm,
+                    contactTitle: e.target.value,
+                  })
+                }
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., General Manager (CEO) of the Rend Lake Conservancy District"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Additional Title/Background (Optional)
+              </label>
+              <input
+                type="text"
+                value={referenceForm.additionalTitle}
+                onChange={(e) =>
+                  setReferenceForm({
+                    ...referenceForm,
+                    additionalTitle: e.target.value,
+                  })
+                }
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., Former City Manager - City of Carbondale"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Contact Person
-                </label>
-                <input
-                  type="text"
-                  value={referenceForm.contactPerson}
-                  onChange={(e) =>
-                    setReferenceForm({
-                      ...referenceForm,
-                      contactPerson: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Contact Email
+                  Email
                 </label>
                 <input
                   type="email"
@@ -91,25 +131,63 @@ export default function EditReferenceModal({
                     })
                   }
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g., gm@rendlake.org"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={referenceForm.contactPhone}
+                  onChange={(e) =>
+                    setReferenceForm({
+                      ...referenceForm,
+                      contactPhone: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g., (618) 439-4321"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Testimonial
+                Scope of Work
               </label>
               <textarea
-                value={referenceForm.testimonial}
+                value={referenceForm.scopeOfWork}
                 onChange={(e) =>
                   setReferenceForm({
                     ...referenceForm,
-                    testimonial: e.target.value,
+                    scopeOfWork: e.target.value,
                   })
                 }
-                rows={3}
+                rows={5}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="Describe the work performed, achievements, recognition, etc. (e.g., Received honors for work as Primary Author of the City of Carbondale's Sustainability Plan...)"
               />
+            </div>
+
+            <div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={referenceForm.isPublic}
+                  onChange={(e) =>
+                    setReferenceForm({
+                      ...referenceForm,
+                      isPublic: e.target.checked,
+                    })
+                  }
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  Make this reference publicly visible
+                </span>
+              </label>
             </div>
           </div>
         </div>

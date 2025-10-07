@@ -731,6 +731,100 @@ function renderTable(doc, content) {
   doc.y = y + 20;
 }
 
+// Update content library selection for a section
+router.put("/:id/content-library/:sectionName", async (req, res) => {
+  try {
+    const { id, sectionName } = req.params;
+    const { selectedIds, type } = req.body; // type: 'team' or 'references'
 
+    const proposal = await Proposal.findById(id);
+    if (!proposal) {
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    let content = '';
+    
+    if (type === 'team') {
+      const TeamMember = require('../models/TeamMember');
+      const selectedMembers = await TeamMember.find({ 
+        memberId: { $in: selectedIds }, 
+        isActive: true 
+      }).lean();
+      
+      if (selectedMembers.length > 0) {
+        content = 'Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n';
+        selectedMembers.forEach(member => {
+          content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
+          content += `${member.biography}\n\n`;
+        });
+      } else {
+        content = 'No team members selected.';
+      }
+    } else if (type === 'references') {
+      const ProjectReference = require('../models/ProjectReference');
+      const selectedReferences = await ProjectReference.find({ 
+        _id: { $in: selectedIds }, 
+        isActive: true,
+        isPublic: true
+      }).lean();
+      
+      if (selectedReferences.length > 0) {
+        content = 'Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n';
+        selectedReferences.forEach(reference => {
+          content += `**${reference.organizationName}**`;
+          if (reference.timePeriod) {
+            content += ` (${reference.timePeriod})`;
+          }
+          content += '\n\n';
+          
+          content += `**Contact:** ${reference.contactName}`;
+          if (reference.contactTitle) {
+            content += `, ${reference.contactTitle}`;
+          }
+          if (reference.additionalTitle) {
+            content += ` - ${reference.additionalTitle}`;
+          }
+          content += ` of ${reference.organizationName}\n\n`;
+          
+          if (reference.contactEmail) {
+            content += `**Email:** ${reference.contactEmail}\n\n`;
+          }
+          
+          if (reference.contactPhone) {
+            content += `**Phone:** ${reference.contactPhone}\n\n`;
+          }
+          
+          content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
+          content += '---\n\n';
+        });
+      } else {
+        content = 'No references selected.';
+      }
+    }
+
+    // Update the section
+    const updatedSections = {
+      ...proposal.sections,
+      [sectionName]: {
+        ...proposal.sections[sectionName],
+        content: content.trim(),
+        type: 'content-library',
+        lastModified: new Date().toISOString(),
+        selectedIds: selectedIds // Store the selected IDs for future reference
+      }
+    };
+
+    const updatedProposal = await Proposal.findByIdAndUpdate(
+      id,
+      { sections: updatedSections },
+      { new: true }
+    );
+
+    res.json(updatedProposal);
+  } catch (error) {
+    console.error("Error updating content library selection:", error);
+    res.status(500).json({ error: "Failed to update content library selection" });
+  }
+});
 
 module.exports = router;

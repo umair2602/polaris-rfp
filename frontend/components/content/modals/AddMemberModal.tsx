@@ -37,148 +37,111 @@ export default function AddMemberModal({
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white max-h-[80vh] overflow-y-auto">
         <div className="mb-4">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Add Team Member
           </h3>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={memberForm.name}
-                  onChange={(e) =>
-                    setMemberForm({ ...memberForm, name: e.target.value })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={memberForm.title}
-                  onChange={(e) =>
-                    setMemberForm({ ...memberForm, title: e.target.value })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Experience (years)
+                Name & Credentials
               </label>
               <input
-                type="number"
-                value={memberForm.experienceYears}
+                type="text"
+                value={memberForm.nameWithCredentials}
                 onChange={(e) =>
-                  setMemberForm({
-                    ...memberForm,
-                    experienceYears: e.target.value,
+                  setMemberForm({ 
+                    ...memberForm, 
+                    nameWithCredentials: e.target.value 
                   })
                 }
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., Saxon Metzger, MBA"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Education
+              <label className="block text-sm font-medium text-gray-700">
+                Position/Title
               </label>
-              {memberForm.education.map((edu: string, index: number) => (
-                <div key={index} className="flex mb-2">
-                  <input
-                    type="text"
-                    value={edu}
-                    onChange={(e) =>
-                      updateArrayItem(
-                        "education",
-                        index,
-                        e.target.value,
-                        setMemberForm,
-                        memberForm
-                      )
-                    }
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Education qualification"
-                  />
-                  <button
-                    onClick={() =>
-                      removeArrayItem(
-                        "education",
-                        index,
-                        setMemberForm,
-                        memberForm
-                      )
-                    }
-                    className="ml-2 text-red-600 hover:text-red-800"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() =>
-                  addArrayItem("education", setMemberForm, memberForm)
+              <input
+                type="text"
+                value={memberForm.position}
+                onChange={(e) =>
+                  setMemberForm({ 
+                    ...memberForm, 
+                    position: e.target.value 
+                  })
                 }
-                className="text-primary-600 hover:text-primary-800 text-sm"
-              >
-                + Add Education
-              </button>
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., Project Manager"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Certifications
+              <label className="block text-sm font-medium text-gray-700">
+                Professional Biography (Bullet Points)
               </label>
-              {memberForm.certifications.map((cert: string, index: number) => (
-                <div key={index} className="flex mb-2">
-                  <input
-                    type="text"
-                    value={cert}
-                    onChange={(e) =>
-                      updateArrayItem(
-                        "certifications",
-                        index,
-                        e.target.value,
-                        setMemberForm,
-                        memberForm
-                      )
-                    }
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Certification"
-                  />
-                  <button
-                    onClick={() =>
-                      removeArrayItem(
-                        "certifications",
-                        index,
-                        setMemberForm,
-                        memberForm
-                      )
-                    }
-                    className="ml-2 text-red-600 hover:text-red-800"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() =>
-                  addArrayItem("certifications", setMemberForm, memberForm)
-                }
-                className="text-primary-600 hover:text-primary-800 text-sm"
-              >
-                + Add Certification
-              </button>
+              <textarea
+                value={memberForm.biography}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  
+                  // Ensure it starts with a bullet point if not empty
+                  if (value && !value.startsWith('• ')) {
+                    value = '• ' + value;
+                  }
+                  
+                  setMemberForm({ 
+                    ...memberForm, 
+                    biography: value 
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const textarea = e.target as HTMLTextAreaElement;
+                    const cursorPosition = textarea.selectionStart;
+                    const currentValue = memberForm.biography || '';
+                    
+                    // Insert new line with bullet point
+                    const newValue = 
+                      currentValue.slice(0, cursorPosition) + 
+                      '\n• ' + 
+                      currentValue.slice(cursorPosition);
+                    
+                    setMemberForm({ 
+                      ...memberForm, 
+                      biography: newValue 
+                    });
+                    
+                    // Set cursor position after the bullet point
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = cursorPosition + 3;
+                    }, 0);
+                  }
+                }}
+                onFocus={(e) => {
+                  const textarea = e.target as HTMLTextAreaElement;
+                  // If empty, start with a bullet point
+                  if (!memberForm.biography) {
+                    setMemberForm({ 
+                      ...memberForm, 
+                      biography: '• ' 
+                    });
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = 2;
+                    }, 0);
+                  }
+                }}
+                rows={8}
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 font-mono"
+                placeholder="• Start typing here..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Press Enter to automatically create a new bullet point
+              </p>
             </div>
           </div>
         </div>

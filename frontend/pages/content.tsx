@@ -33,10 +33,12 @@ import AddProjectModal from "../components/content/modals/AddProjectModal";
 import EditProjectModal from "../components/content/modals/EditProjectModal";
 import AddReferenceModal from "../components/content/modals/AddReferenceModal";
 import EditReferenceModal from "../components/content/modals/EditReferenceModal";
+import DeleteConfirmationModal from "../components/ui/DeleteConfirmationModal";
 
 export default function ContentLibrary() {
   const toast = useToast();
-  const [company, setCompany] = useState<any>(null);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [team, setTeam] = useState<any[]>([]);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -46,14 +48,12 @@ export default function ContentLibrary() {
   const [editingCompany, setEditingCompany] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showAddCompany, setShowAddCompany] = useState(false);
   const [companyForm, setCompanyForm] = useState<any>({});
   const [memberForm, setMemberForm] = useState<any>({
-    name: "",
-    title: "",
-    experienceYears: "",
-    education: [""],
-    certifications: [""],
-    responsibilities: [""],
+    nameWithCredentials: "",
+    position: "",
+    biography: "",
   });
   const [projects, setProjects] = useState<any[]>([]);
   const [references, setReferences] = useState<any[]>([]);
@@ -78,17 +78,24 @@ export default function ContentLibrary() {
     files: [],
   });
   const [referenceForm, setReferenceForm] = useState<any>({
-    clientName: "",
-    contactPerson: "",
+    organizationName: "",
+    timePeriod: "",
+    contactName: "",
+    contactTitle: "",
+    additionalTitle: "",
     contactEmail: "",
     contactPhone: "",
-    industry: "",
-    projectTypes: [""],
-    relationshipYears: "",
-    projectValue: "",
-    testimonial: "",
+    scopeOfWork: "",
     isPublic: true,
   });
+
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'company' | 'member' | 'project' | 'reference';
+    item: any;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadContent();
@@ -97,17 +104,21 @@ export default function ContentLibrary() {
   const loadContent = async () => {
     try {
       const [
-        companyResponse,
+        companiesResponse,
         teamResponse,
         projectsResponse,
         referencesResponse,
       ] = await Promise.all([
-        contentApi.getCompany(),
+        contentApi.getCompanies(),
         contentApi.getTeam(),
         contentApi.getProjects?.() || Promise.resolve({ data: [] }),
         contentApi.getReferences(),
       ]);
-      setCompany(companyResponse.data || null);
+      const companiesData = Array.isArray(companiesResponse.data) ? companiesResponse.data : [];
+      setCompanies(companiesData);
+      if (companiesData.length > 0) {
+        setSelectedCompany(companiesData[0]);
+      }
       setTeam(Array.isArray(teamResponse.data) ? teamResponse.data : []);
       setProjects(
         Array.isArray(projectsResponse.data) ? projectsResponse.data : []
@@ -124,8 +135,8 @@ export default function ContentLibrary() {
 
   const handleEditCompany = () => {
     setCompanyForm({
-      ...company,
-      companyName: company?.name || company?.companyName || "",
+      ...selectedCompany,
+      companyName: selectedCompany?.name || selectedCompany?.companyName || "",
     });
     setEditingCompany(true);
   };
@@ -133,12 +144,26 @@ export default function ContentLibrary() {
   const handleSaveCompany = async () => {
     try {
       const payload: any = {
-        ...company,
-        name: companyForm.companyName ?? company?.name,
-        description: companyForm.description ?? company?.description,
+        ...selectedCompany,
+        name: companyForm.companyName ?? selectedCompany?.name,
+        description: companyForm.description ?? selectedCompany?.description,
+        founded: companyForm.founded ?? selectedCompany?.founded,
+        location: companyForm.location ?? selectedCompany?.location,
+        website: companyForm.website ?? selectedCompany?.website,
+        email: companyForm.email ?? selectedCompany?.email,
+        phone: companyForm.phone ?? selectedCompany?.phone,
+        coreCapabilities: companyForm.coreCapabilities ?? selectedCompany?.coreCapabilities,
+        certifications: companyForm.certifications ?? selectedCompany?.certifications,
+        industryFocus: companyForm.industryFocus ?? selectedCompany?.industryFocus,
+        missionStatement: companyForm.missionStatement ?? selectedCompany?.missionStatement,
+        visionStatement: companyForm.visionStatement ?? selectedCompany?.visionStatement,
+        values: companyForm.values ?? selectedCompany?.values,
+        statistics: companyForm.statistics ?? selectedCompany?.statistics,
+        socialMedia: companyForm.socialMedia ?? selectedCompany?.socialMedia,
       };
-      const { data } = await contentApi.updateCompany(payload);
-      setCompany(data || payload);
+      const { data } = await contentApi.updateCompanyById(selectedCompany.companyId, payload);
+      setCompanies(companies.map(c => c.companyId === selectedCompany.companyId ? data : c));
+      setSelectedCompany(data);
       setEditingCompany(false);
       toast.success("Company information updated successfully!");
     } catch (error) {
@@ -150,6 +175,68 @@ export default function ContentLibrary() {
   const handleCancelCompanyEdit = () => {
     setCompanyForm({});
     setEditingCompany(false);
+  };
+
+  const handleAddCompany = async () => {
+    try {
+      const { data } = await contentApi.createCompany(companyForm);
+      setCompanies([...companies, data]);
+      setSelectedCompany(data);
+      setCompanyForm({});
+      setShowAddCompany(false);
+      toast.success("Company added successfully!");
+    } catch (error) {
+      console.error("Error adding company:", error);
+      toast.error("Failed to add company");
+    }
+  };
+
+  const handleDeleteCompany = (companyToDelete: any) => {
+    setDeleteTarget({ type: 'company', item: companyToDelete });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      switch (deleteTarget.type) {
+        case 'company':
+          await contentApi.deleteCompany(deleteTarget.item.companyId);
+          setCompanies(companies.filter(c => c.companyId !== deleteTarget.item.companyId));
+          if (selectedCompany?.companyId === deleteTarget.item.companyId) {
+            setSelectedCompany(companies.length > 1 ? companies.find(c => c.companyId !== deleteTarget.item.companyId) : null);
+          }
+          toast.success("Company deleted successfully!");
+          break;
+        case 'reference':
+          await contentApi.deleteReference(deleteTarget.item._id);
+          setReferences(references.filter(r => r._id !== deleteTarget.item._id));
+          toast.success("Reference deleted successfully!");
+          break;
+        case 'member':
+          await contentApi.deleteTeamMember(deleteTarget.item.memberId);
+          setTeam(team.filter((m: any) => m.memberId !== deleteTarget.item.memberId));
+          toast.success("Team member deleted successfully!");
+          break;
+        // Add other cases for project deletion here
+      }
+      
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast.error(`Failed to delete ${deleteTarget.type}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
+    setIsDeleting(false);
   };
 
   const handleEditMember = (member: any) => {
@@ -173,17 +260,24 @@ export default function ContentLibrary() {
     }
   };
 
+  const openAddMemberModal = () => {
+    // Reset the form to empty state
+    setMemberForm({
+      nameWithCredentials: "",
+      position: "",
+      biography: "",
+    });
+    setShowAddMember(true);
+  };
+
   const handleAddMember = async () => {
     try {
       const { data } = await contentApi.createTeamMember(memberForm);
       setTeam([...team, data]);
       setMemberForm({
-        name: "",
-        title: "",
-        experienceYears: "",
-        education: [""],
-        certifications: [""],
-        responsibilities: [""],
+        nameWithCredentials: "",
+        position: "",
+        biography: "",
       });
       setShowAddMember(false);
       toast.success("Team member added successfully!");
@@ -193,21 +287,9 @@ export default function ContentLibrary() {
     }
   };
 
-  const handleDeleteMember = async (memberToDelete: any) => {
-    try {
-      if (!memberToDelete?.memberId) throw new Error("Missing memberId");
-      await contentApi.deleteTeamMember(memberToDelete.memberId);
-      setTeam(
-        team.filter((member) => member.memberId !== memberToDelete.memberId)
-      );
-      if (selectedMember === memberToDelete) {
-        setSelectedMember(null);
-      }
-      toast.success("Team member deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting member:", error);
-      toast.error("Failed to delete team member");
-    }
+  const handleDeleteMember = (memberToDelete: any) => {
+    setDeleteTarget({ type: 'member', item: memberToDelete });
+    setShowDeleteModal(true);
   };
 
   const addArrayItem = (field: string, setState: any, state: any) => {
@@ -292,22 +374,9 @@ export default function ContentLibrary() {
     }
   };
 
-  const handleDeleteProject = async (projectToDelete: any) => {
-    try {
-      const id = projectToDelete?._id || projectToDelete?.id;
-      if (!id) throw new Error("Missing project id");
-      await contentApi.deleteProject(id);
-      setProjects(
-        projects.filter((project) => (project._id || project.id) !== id)
-      );
-      if (selectedProject === projectToDelete) {
-        setSelectedProject(null);
-      }
-      toast.success("Project deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      toast.error("Failed to delete project");
-    }
+  const handleDeleteProject = (projectToDelete: any) => {
+    setDeleteTarget({ type: 'project', item: projectToDelete });
+    setShowDeleteModal(true);
   };
 
   // Reference handlers
@@ -316,15 +385,14 @@ export default function ContentLibrary() {
       const { data } = await contentApi.createReference(referenceForm);
       setReferences([...references, data]);
       setReferenceForm({
-        clientName: "",
-        contactPerson: "",
+        organizationName: "",
+        timePeriod: "",
+        contactName: "",
+        contactTitle: "",
+        additionalTitle: "",
         contactEmail: "",
         contactPhone: "",
-        industry: "",
-        projectTypes: [""],
-        relationshipYears: "",
-        projectValue: "",
-        testimonial: "",
+        scopeOfWork: "",
         isPublic: true,
       });
       setShowAddReference(false);
@@ -357,22 +425,9 @@ export default function ContentLibrary() {
     }
   };
 
-  const handleDeleteReference = async (referenceToDelete: any) => {
-    try {
-      const id = referenceToDelete?._id || referenceToDelete?.id;
-      if (!id) throw new Error("Missing reference id");
-      await contentApi.deleteReference(id);
-      setReferences(
-        references.filter((reference) => (reference._id || reference.id) !== id)
-      );
-      if (selectedReference === referenceToDelete) {
-        setSelectedReference(null);
-      }
-      toast.success("Reference deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting reference:", error);
-      toast.error("Failed to delete reference");
-    }
+  const handleDeleteReference = (referenceToDelete: any) => {
+    setDeleteTarget({ type: 'reference', item: referenceToDelete });
+    setShowDeleteModal(true);
   };
 
   if (loading) {
@@ -459,13 +514,19 @@ export default function ContentLibrary() {
           {activeTab === "company" && (
             <CompanySection
               ctx={{
-                company,
+                companies,
+                selectedCompany,
+                setSelectedCompany,
                 editingCompany,
                 companyForm,
                 setCompanyForm,
+                showAddCompany,
+                setShowAddCompany,
                 handleEditCompany,
                 handleSaveCompany,
                 handleCancelCompanyEdit,
+                handleAddCompany,
+                handleDeleteCompany,
               }}
             />
           )}
@@ -478,6 +539,7 @@ export default function ContentLibrary() {
                 setSelectedMember,
                 showAddMember,
                 setShowAddMember,
+                openAddMemberModal,
                 memberForm,
                 setMemberForm,
                 addArrayItem,
@@ -548,7 +610,14 @@ export default function ContentLibrary() {
           updateArrayItem={updateArrayItem}
           removeArrayItem={removeArrayItem}
           onAdd={handleAddMember}
-          onClose={() => setShowAddMember(false)}
+          onClose={() => {
+            setShowAddMember(false);
+            setMemberForm({
+              nameWithCredentials: "",
+              position: "",
+              biography: "",
+            });
+          }}
         />
 
         <EditMemberModal
@@ -595,6 +664,16 @@ export default function ContentLibrary() {
           setReferenceForm={setReferenceForm}
           onSave={handleSaveReference}
           onClose={() => setEditingReference(null)}
+        />
+
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={cancelDelete}
+          onConfirm={confirmDelete}
+          title={deleteTarget ? `Delete ${deleteTarget.type === 'company' ? 'Company' : deleteTarget.type === 'member' ? 'Team Member' : deleteTarget.type === 'project' ? 'Project' : 'Reference'}` : 'Delete Item'}
+          message={deleteTarget ? `Are you sure you want to delete this ${deleteTarget.type}?` : 'Are you sure you want to delete this item?'}
+          itemName={deleteTarget?.item?.name || deleteTarget?.item?.clientName || deleteTarget?.item?.title}
+          isDeleting={isDeleting}
         />
       </div>
     </Layout>

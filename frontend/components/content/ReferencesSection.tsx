@@ -65,14 +65,13 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">
-                          {reference.clientName}
+                          {reference.organizationName}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {reference.contactPerson}
+                          {reference.contactName}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {reference.industry} • {reference.relationshipYears}{" "}
-                          years
+                          {reference.timePeriod}
                         </p>
                       </div>
                     </div>
@@ -135,10 +134,10 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                     <ClipboardDocumentListIcon className="h-8 w-8 text-purple-600" />
                   </div>
                   <h4 className="font-medium text-gray-900">
-                    {selectedReference.clientName}
+                    {selectedReference.organizationName}
                   </h4>
                   <p className="text-sm text-gray-500">
-                    {selectedReference.industry}
+                    {selectedReference.timePeriod}
                   </p>
                 </div>
 
@@ -146,12 +145,24 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                   <h5 className="text-sm font-medium text-gray-700 mb-2">
                     Contact Information
                   </h5>
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <UserGroupIcon className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {selectedReference.contactPerson}
-                      </span>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <UserGroupIcon className="h-3 w-3 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-800">
+                          {selectedReference.contactName}
+                        </span>
+                      </div>
+                      {selectedReference.contactTitle && (
+                        <p className="text-xs text-gray-600 ml-5">
+                          {selectedReference.contactTitle}
+                        </p>
+                      )}
+                      {selectedReference.additionalTitle && (
+                        <p className="text-xs text-gray-500 ml-5 italic">
+                          {selectedReference.additionalTitle}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <EnvelopeIcon className="h-3 w-3 text-gray-400" />
@@ -170,52 +181,14 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-1">
-                      Relationship
-                    </h5>
-                    <p className="text-xs text-gray-600">
-                      {selectedReference.relationshipYears} years
-                    </p>
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-1">
-                      Project Value
-                    </h5>
-                    <p className="text-xs text-gray-600">
-                      {selectedReference.projectValue}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                    Project Types
-                  </h5>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedReference.projectTypes?.map(
-                      (type: string, index: number) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded flex items-center"
-                        >
-                          <TagIcon className="h-2 w-2 mr-1" />
-                          {type}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {selectedReference.testimonial && (
+                {selectedReference.scopeOfWork && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-700 mb-2">
-                      Testimonial
+                      Scope of Work
                     </h5>
-                    <blockquote className="text-xs text-gray-600 italic border-l-2 border-gray-200 pl-3">
-                      "{selectedReference.testimonial}"
-                    </blockquote>
+                    <div className="text-xs text-gray-600 leading-relaxed">
+                      {selectedReference.scopeOfWork}
+                    </div>
                   </div>
                 )}
               </div>

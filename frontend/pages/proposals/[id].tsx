@@ -21,8 +21,10 @@ import {
   ArrowDownTrayIcon,
   SparklesIcon,
   ChevronDownIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
-import { formatTitleObjectToText, parseTitleTextToObject, renderSectionContent } from "../../utils/proposalHelpers";
+import { formatTitleObjectToText, parseTitleTextToObject, renderSectionContent, isContentLibrarySection, getContentLibraryType, getSelectedIds } from "../../utils/proposalHelpers";
+import ContentLibraryModal from "../../components/ContentLibraryModal";
 
 export default function ProposalDetail() {
   const router = useRouter();
@@ -51,6 +53,10 @@ export default function ProposalDetail() {
   const [infoModalTitle, setInfoModalTitle] = useState("");
   const [infoModalMessage, setInfoModalMessage] = useState("");
   const [infoModalVariant, setInfoModalVariant] = useState<'info' | 'success' | 'error'>("info");
+  const [showContentLibraryModal, setShowContentLibraryModal] = useState(false);
+  const [contentLibrarySection, setContentLibrarySection] = useState<string | null>(null);
+  const [contentLibraryType, setContentLibraryType] = useState<'team' | 'references'>('team');
+  const [isContentLibraryLoading, setIsContentLibraryLoading] = useState(false);
 
   const openInfo = (title: string, message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     setInfoModalTitle(title);
@@ -363,6 +369,47 @@ export default function ProposalDetail() {
     setAiEditingSection(null);
   };
 
+  const openContentLibrary = (sectionName: string) => {
+    const type = getContentLibraryType(sectionName);
+    if (!type) return;
+    
+    setContentLibrarySection(sectionName);
+    setContentLibraryType(type);
+    setShowContentLibraryModal(true);
+  };
+
+  const handleContentLibrarySelection = async (selectedIds: string[]) => {
+    if (!proposal || !contentLibrarySection) return;
+
+    setIsContentLibraryLoading(true);
+    try {
+      const response = await api.put(
+        `/api/proposals/${proposal._id}/content-library/${contentLibrarySection}`,
+        {
+          selectedIds,
+          type: contentLibraryType
+        }
+      );
+
+      setProposal(response.data);
+      setShowContentLibraryModal(false);
+      setContentLibrarySection(null);
+      
+      openInfo("Content updated", "Content library selection updated successfully!", "success");
+    } catch (error: any) {
+      console.error("Error updating content library selection:", error);
+      const errorMessage = error.response?.data?.error || "Failed to update content library selection";
+      openInfo("Update failed", errorMessage, "error");
+    } finally {
+      setIsContentLibraryLoading(false);
+    }
+  };
+
+  const cancelContentLibrary = () => {
+    setShowContentLibraryModal(false);
+    setContentLibrarySection(null);
+  };
+
   // Rendering helpers moved to utils/proposalHelpers
 
   if (loading) {
@@ -628,6 +675,17 @@ export default function ProposalDetail() {
                           {sectionName}
                         </h3>
                         <div className="flex items-center space-x-2">
+                          {/* Content Library Button - only show for content library sections */}
+                          {isContentLibrarySection(sectionData) && getContentLibraryType(sectionName) && (
+                            <button
+                              onClick={() => openContentLibrary(sectionName)}
+                              className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                              title="Select from Library"
+                            >
+                              <BookOpenIcon className="h-3 w-3" />
+                              <span>Select from Library</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => startAIEdit(sectionName)}
                             className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
@@ -805,6 +863,16 @@ export default function ProposalDetail() {
       >
         <p className={`text-sm ${infoModalVariant === 'error' ? 'text-red-700' : infoModalVariant === 'success' ? 'text-green-700' : 'text-gray-700'}`}>{infoModalMessage}</p>
       </Modal>
+
+      {/* Content Library Modal */}
+      <ContentLibraryModal
+        isOpen={showContentLibraryModal}
+        onClose={cancelContentLibrary}
+        onApply={handleContentLibrarySelection}
+        type={contentLibraryType}
+        currentSelectedIds={contentLibrarySection ? getSelectedIds(proposal?.sections[contentLibrarySection]) : []}
+        isLoading={isContentLibraryLoading}
+      />
     </Layout>
   );
 }

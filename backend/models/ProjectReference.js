@@ -1,24 +1,31 @@
 const mongoose = require('mongoose');
 
 const projectReferenceSchema = new mongoose.Schema({
-  clientName: {
+  organizationName: {
     type: String,
     required: true,
     trim: true
   },
-  projectName: {
+  timePeriod: {
+    type: String,
+    trim: true
+  },
+  contactName: {
     type: String,
     required: true,
     trim: true
   },
-  projectScope: {
+  contactTitle: {
+    type: String,
+    trim: true
+  },
+  additionalTitle: {
+    type: String,
+    trim: true
+  },
+  scopeOfWork: {
     type: String,
     required: true
-  },
-  projectType: {
-    type: String,
-    required: true,
-    enum: ['software_development', 'strategic_communications', 'financial_modeling', 'general']
   },
   projectValue: {
     type: String
@@ -32,10 +39,6 @@ const projectReferenceSchema = new mongoose.Schema({
   completionDate: {
     type: Date
   },
-  contactPerson: {
-    type: String,
-    required: true
-  },
   contactEmail: {
     type: String,
     required: true
@@ -43,15 +46,6 @@ const projectReferenceSchema = new mongoose.Schema({
   contactPhone: {
     type: String
   },
-  outcomes: [String],
-  testimonial: {
-    type: String,
-    required: true
-  },
-  keyTechnologies: [String],
-  teamMembers: [String],
-  challenges: [String],
-  solutions: [String],
   isPublic: {
     type: Boolean,
     default: true
@@ -75,9 +69,8 @@ const projectReferenceSchema = new mongoose.Schema({
 });
 
 // Indexes
-projectReferenceSchema.index({ projectType: 1 });
 projectReferenceSchema.index({ isActive: 1 });
 projectReferenceSchema.index({ isPublic: 1 });
-projectReferenceSchema.index({ clientName: 1 });
+projectReferenceSchema.index({ organizationName: 1 });
 
 module.exports = mongoose.model('ProjectReference', projectReferenceSchema);

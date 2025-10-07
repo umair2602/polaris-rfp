@@ -6,49 +6,19 @@ const teamMemberSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  name: {
+  nameWithCredentials: {
     type: String,
     required: true,
     trim: true
   },
-  title: {
+  position: {
     type: String,
     required: true,
     trim: true
   },
-  roleDescription: {
+  biography: {
     type: String,
     required: true
-  },
-  experienceYears: {
-    type: Number,
-    required: true
-  },
-  education: [String],
-  certifications: [String],
-  specializations: [String],
-  responsibilities: [String],
-  bio: {
-    type: String
-  },
-  keyProjects: [{
-    name: String,
-    role: String,
-    description: String,
-    year: Number
-  }],
-  skills: [{
-    category: String,
-    items: [String]
-  }],
-  email: {
-    type: String
-  },
-  linkedIn: {
-    type: String
-  },
-  profileImage: {
-    type: String
   },
   isActive: {
     type: Boolean,
@@ -57,18 +27,13 @@ const teamMemberSchema = new mongoose.Schema({
   joinDate: {
     type: Date,
     default: Date.now
-  },
-  projectTypes: [{
-    type: String,
-    enum: ['software_development', 'strategic_communications', 'financial_modeling', 'general']
-  }]
+  }
 }, {
   timestamps: true
 });
 
-// Indexes
-teamMemberSchema.index({ memberId: 1 });
-teamMemberSchema.index({ projectTypes: 1 });
+// Indexes (memberId already has unique index from schema definition)
 teamMemberSchema.index({ isActive: 1 });
+teamMemberSchema.index({ nameWithCredentials: 1 });
 
 module.exports = mongoose.model('TeamMember', teamMemberSchema);

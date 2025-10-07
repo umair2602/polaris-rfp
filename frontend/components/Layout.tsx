@@ -27,43 +27,13 @@ export default function Layout({ children }: LayoutProps) {
   // Search moved to GlobalSearch component
 
   const navigation = [
-    {
-      name: "Dashboard",
-      href: "/",
-      icon: FolderIcon,
-      current: router.pathname === "/",
-    },
-    {
-      name: "RFPs",
-      href: "/rfps",
-      icon: DocumentTextIcon,
-      current: router.pathname.startsWith("/rfps"),
-    },
-    {
-      name: "Proposals",
-      href: "/proposals",
-      icon: DocumentTextIcon,
-      current: router.pathname.startsWith("/proposals"),
-    },
-    {
-      name: "Templates",
-      href: "/templates",
-      icon: CogIcon,
-      current: router.pathname.startsWith("/templates"),
-    },
-    {
-      name: "Content Library",
-      href: "/content",
-      icon: UserGroupIcon,
-      current: router.pathname === "/content",
-    },
-    {
-      name: "Google Drive",
-      href: "/googledrive",
-      icon: CloudIcon,
-      current: router.pathname === "/googledrive",
-    },
-  ];
+    { name: 'Dashboard', href: '/', icon: FolderIcon, current: router.pathname === '/' },
+    { name: 'RFPs', href: '/rfps', icon: DocumentTextIcon, current: router.pathname.startsWith('/rfps') },
+    { name: 'Proposals', href: '/proposals', icon: DocumentTextIcon, current: router.pathname.startsWith('/proposals') },
+    { name: 'Templates', href: '/templates', icon: CogIcon, current: router.pathname.startsWith('/templates') },
+    { name: 'Content Library', href: '/content', icon: UserGroupIcon, current: router.pathname === '/content' },
+    // { name: 'Google Drive', href: '/googledrive', icon: CloudIcon, current: router.pathname === '/googledrive' },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -158,20 +128,20 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 relative">
+              {/* <button className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 relative">
                 <BellIcon className="h-6 w-6" />
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                   <span className="text-xs text-white font-bold">3</span>
                 </div>
-              </button>
-
+              </button> */}
+              
               <div className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
                 <UserCircleIcon className="h-8 w-8 text-gray-600" />
                 <div className="hidden sm:block">
                   <p className="text-sm font-medium text-gray-900">Admin</p>
                   <p className="text-xs text-gray-500">Online</p>
                 </div>
-                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                {/* <ChevronDownIcon className="h-4 w-4 text-gray-400" /> */}
               </div>
             </div>
           </div>

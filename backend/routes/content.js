@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const Company = require("../models/Company");
 const TeamMember = require("../models/TeamMember");
 const ProjectReference = require("../models/ProjectReference");
@@ -6,7 +7,18 @@ const PastProject = require("../models/PastProject");
 
 const router = express.Router();
 
-// Get company profile
+// Get all companies
+router.get("/companies", async (req, res) => {
+  try {
+    const companies = await Company.find().lean();
+    res.json(companies);
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    res.status(500).json({ error: "Failed to fetch companies" });
+  }
+});
+
+// Get company profile (backward compatibility - returns first company)
 router.get("/company", async (req, res) => {
   try {
     let profile = await Company.findOne().lean();
@@ -22,7 +34,130 @@ router.get("/company", async (req, res) => {
   }
 });
 
-// Update or create company profile
+// Get specific company by ID
+router.get("/companies/:companyId", async (req, res) => {
+  try {
+    const company = await Company.findOne({ 
+      companyId: req.params.companyId
+    }).lean();
+
+    if (!company) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+
+    res.json(company);
+  } catch (error) {
+    console.error("Error fetching company:", error);
+    res.status(500).json({ error: "Failed to fetch company" });
+  }
+});
+
+// Create a new company
+router.post("/companies", async (req, res) => {
+  try {
+    const {
+      name,
+      tagline,
+      description,
+      founded,
+      location,
+      website,
+      email,
+      phone,
+      coreCapabilities = [],
+      certifications = [],
+      industryFocus = [],
+      missionStatement,
+      visionStatement,
+      values = [],
+      statistics = {},
+      socialMedia = {},
+      coverLetter,
+      firmQualificationsAndExperience
+    } = req.body || {};
+
+    if (!name || !description) {
+      return res.status(400).json({ error: "name and description are required" });
+    }
+
+    const newCompany = new Company({
+      name,
+      tagline,
+      description,
+      founded: founded ? new Date(founded) : new Date('2010-01-01'),
+      location,
+      website,
+      email,
+      phone,
+      coreCapabilities,
+      certifications,
+      industryFocus,
+      missionStatement,
+      visionStatement,
+      values,
+      statistics,
+      socialMedia,
+      coverLetter,
+      firmQualificationsAndExperience,
+      lastUpdated: new Date()
+    });
+
+    await newCompany.save();
+    res.status(201).json(newCompany.toObject());
+  } catch (error) {
+    console.error("Error creating company:", error);
+    res.status(500).json({ error: "Failed to create company" });
+  }
+});
+
+// Update a specific company
+router.put("/companies/:companyId", async (req, res) => {
+  try {
+    const updates = { ...req.body };
+    if (updates.founded && typeof updates.founded === "string") {
+      const date = new Date(updates.founded);
+      if (!isNaN(date.getTime())) {
+        updates.founded = date;
+      }
+    }
+    updates.lastUpdated = new Date();
+
+    const updated = await Company.findOneAndUpdate(
+      { companyId: req.params.companyId },
+      { $set: updates },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating company:", error);
+    res.status(500).json({ error: "Failed to update company" });
+  }
+});
+
+// Delete a company
+router.delete("/companies/:companyId", async (req, res) => {
+  try {
+    const deleted = await Company.findOneAndDelete({
+      companyId: req.params.companyId
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting company:", error);
+    res.status(500).json({ error: "Failed to delete company" });
+  }
+});
+
+// Update or create company profile (backward compatibility)
 router.put("/company", async (req, res) => {
   try {
     const updates = { ...req.body };
@@ -67,50 +202,78 @@ router.post("/team", async (req, res) => {
   try {
     const {
       memberId,
-      name,
-      title,
-      roleDescription,
-      experienceYears,
-      education = [],
-      certifications = [],
-      specializations = [],
-      responsibilities = [],
-      bio,
-      keyProjects = [],
-      skills = [],
-      email,
-      linkedIn,
-      profileImage,
-      projectTypes = [],
+      nameWithCredentials,
+      position,
+      biography,
     } = req.body || {};
 
-    if (!name || !title) {
-      return res.status(400).json({ error: "name and title are required" });
+    if (!nameWithCredentials || !position || !biography) {
+      return res.status(400).json({ error: "nameWithCredentials, position, and biography are required" });
+    }
+
+    // Generate a more unique memberId
+    let uniqueMemberId = memberId;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    // If no memberId provided, generate one
+    while (!uniqueMemberId && attempts < maxAttempts) {
+      const timestamp = Date.now();
+      const randomHex = crypto.randomBytes(8).toString('hex'); // Increased from 6 to 8 bytes
+      const candidateId = `member_${timestamp}_${randomHex}`;
+      
+      // Check if this memberId already exists
+      const existingMember = await TeamMember.findOne({ memberId: candidateId });
+      if (!existingMember) {
+        uniqueMemberId = candidateId;
+        break;
+      }
+      attempts++;
+      
+      // Add small delay to ensure different timestamps
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+
+    if (!uniqueMemberId) {
+      // Fallback: use ObjectId as string
+      const mongoose = require('mongoose');
+      uniqueMemberId = `member_${new mongoose.Types.ObjectId().toString()}`;
     }
 
     const newMember = new TeamMember({
-      memberId:
-        memberId || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name,
-      title,
-      roleDescription: roleDescription || title,
-      experienceYears: Number(experienceYears || 0),
-      education,
-      certifications,
-      specializations,
-      responsibilities,
-      bio,
-      keyProjects,
-      skills,
-      email,
-      linkedIn,
-      profileImage,
+      memberId: uniqueMemberId,
+      nameWithCredentials,
+      position,
+      biography,
       isActive: true,
-      projectTypes,
     });
 
-    await newMember.save();
-    res.status(201).json(newMember.toObject());
+    try {
+      await newMember.save();
+      res.status(201).json(newMember.toObject());
+    } catch (saveError) {
+      // If still getting duplicate key error, it might be due to existing bad data
+      if (saveError.code === 11000) {
+        console.log(`Duplicate key error for memberId: ${uniqueMemberId}`);
+        
+        // Try one more time with ObjectId-based approach
+        const mongoose = require('mongoose');
+        const fallbackId = `member_${Date.now()}_${new mongoose.Types.ObjectId().toString()}`;
+        
+        const fallbackMember = new TeamMember({
+          memberId: fallbackId,
+          nameWithCredentials,
+          position,
+          biography,
+          isActive: true,
+        });
+        
+        await fallbackMember.save();
+        res.status(201).json(fallbackMember.toObject());
+      } else {
+        throw saveError;
+      }
+    }
   } catch (error) {
     console.error("Error creating team member:", error);
     res.status(500).json({ error: "Failed to create team member" });
@@ -137,18 +300,26 @@ router.get("/team/:memberId", async (req, res) => {
 // Update a team member
 router.put("/team/:memberId", async (req, res) => {
   try {
-    const updates = { ...req.body };
-    if (updates.experienceYears !== undefined) {
-      updates.experienceYears = Number(updates.experienceYears);
+    const {
+      nameWithCredentials,
+      position,
+      biography,
+    } = req.body;
+
+    if (!nameWithCredentials || !position || !biography) {
+      return res.status(400).json({ error: "nameWithCredentials, position, and biography are required" });
     }
-    if (updates.roleDescription === undefined && updates.title) {
-      updates.roleDescription = updates.title;
-    }
+
+    const updates = {
+      nameWithCredentials,
+      position,
+      biography,
+    };
 
     const updated = await TeamMember.findOneAndUpdate(
       { memberId: req.params.memberId },
       { $set: updates },
-      { new: true }
+      { new: true, runValidators: true }
     ).lean();
 
     if (!updated) {
@@ -332,42 +503,31 @@ router.get("/references", async (req, res) => {
 router.post("/references", async (req, res) => {
   try {
     const {
-      clientName,
-      contactPerson,
+      organizationName,
+      timePeriod,
+      contactName,
+      contactTitle,
+      additionalTitle,
+      scopeOfWork,
       contactEmail,
       contactPhone,
-      projectTypes,
-      projectType,
-      projectName,
-      projectScope,
-      projectValue,
-      duration,
-      relationshipYears,
-      testimonial,
       isPublic = true,
       attachments = [],
     } = req.body || {};
 
-    if (!clientName || !contactPerson || !contactEmail || !testimonial) {
+    if (!organizationName || !contactName || !contactEmail || !scopeOfWork) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const reference = new ProjectReference({
-      clientName,
-      contactPerson,
+      organizationName,
+      timePeriod,
+      contactName,
+      contactTitle,
+      additionalTitle,
+      scopeOfWork,
       contactEmail,
       contactPhone,
-      projectType:
-        projectType ||
-        (Array.isArray(projectTypes) ? projectTypes[0] : undefined) ||
-        "general",
-      projectName: projectName || `${clientName} Reference`,
-      projectScope: projectScope || testimonial?.slice(0, 200) || "",
-      projectValue,
-      duration:
-        duration ||
-        (relationshipYears ? `${relationshipYears} years` : undefined),
-      testimonial,
       isPublic: Boolean(isPublic),
       attachments,
       isActive: true,
@@ -384,18 +544,41 @@ router.post("/references", async (req, res) => {
 // Update a project reference
 router.put("/references/:id", async (req, res) => {
   try {
-    const updates = { ...req.body };
-    if (
-      updates.projectTypes &&
-      !updates.projectType &&
-      Array.isArray(updates.projectTypes)
-    ) {
-      updates.projectType = updates.projectTypes[0];
+    const {
+      organizationName,
+      timePeriod,
+      contactName,
+      contactTitle,
+      additionalTitle,
+      scopeOfWork,
+      contactEmail,
+      contactPhone,
+      isPublic,
+      attachments,
+    } = req.body;
+
+    // Validate required fields
+    if (!organizationName || !contactName || !contactEmail || !scopeOfWork) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
+
+    const updates = {
+      organizationName,
+      timePeriod,
+      contactName,
+      contactTitle,
+      additionalTitle,
+      scopeOfWork,
+      contactEmail,
+      contactPhone,
+      isPublic: Boolean(isPublic),
+      attachments,
+    };
+
     const updated = await ProjectReference.findByIdAndUpdate(
       req.params.id,
       { $set: updates },
-      { new: true }
+      { new: true, runValidators: true }
     ).lean();
 
     if (!updated) {

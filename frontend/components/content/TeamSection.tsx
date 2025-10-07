@@ -14,6 +14,7 @@ export default function TeamSection({ ctx }: { ctx: any }) {
     setSelectedMember,
     showAddMember,
     setShowAddMember,
+    openAddMemberModal,
     memberForm,
     setMemberForm,
     addArrayItem,
@@ -37,7 +38,7 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                 Team Members
               </h3>
               <button
-                onClick={() => setShowAddMember(true)}
+                onClick={openAddMemberModal}
                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-primary-600 hover:bg-primary-700"
               >
                 + Add Member
@@ -63,12 +64,9 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">
-                          {member.name}
+                          {member.nameWithCredentials || member.name}
                         </p>
-                        <p className="text-xs text-gray-500">{member.title}</p>
-                        <p className="text-xs text-gray-400">
-                          {member.experienceYears}+ years experience
-                        </p>
+                        <p className="text-xs text-gray-500">{member.position || member.title}</p>
                       </div>
                     </div>
                     <div className="flex space-x-1">
@@ -121,54 +119,92 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                     <UserGroupIcon className="h-8 w-8 text-primary-600" />
                   </div>
                   <h4 className="font-medium text-gray-900">
-                    {selectedMember.name}
+                    {selectedMember.nameWithCredentials || selectedMember.name}
                   </h4>
                   <p className="text-sm text-gray-500">
-                    {selectedMember.title}
+                    {selectedMember.position || selectedMember.title}
                   </p>
                 </div>
 
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                    Experience
-                  </h5>
-                  <p className="text-sm text-gray-600">
-                    {selectedMember.experienceYears}+ years
-                  </p>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                    Education
-                  </h5>
-                  <ul className="space-y-1">
-                    {selectedMember.education?.map(
-                      (edu: string, index: number) => (
-                        <li key={index} className="text-sm text-gray-600">
-                          {edu}
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                    Certifications
-                  </h5>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedMember.certifications?.map(
-                      (cert: string, index: number) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
-                        >
-                          {cert}
-                        </span>
-                      )
-                    )}
+                {selectedMember.biography && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">
+                      Professional Biography
+                    </h5>
+                    <div className="text-sm text-gray-600 leading-relaxed">
+                      {selectedMember.biography.split('\n').map((line: string, index: number) => {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine) return <br key={index} />;
+                        
+                        // If line starts with bullet point, render as list item
+                        if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+                          return (
+                            <div key={index} className="flex items-start mb-1">
+                              <span className="text-gray-400 mr-2 mt-0.5">•</span>
+                              <span className="flex-1">{trimmedLine.replace(/^[•\-*]\s*/, '')}</span>
+                            </div>
+                          );
+                        }
+                        
+                        // Regular paragraph
+                        return (
+                          <p key={index} className="mb-2">
+                            {trimmedLine}
+                          </p>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Legacy fields for backward compatibility */}
+                {selectedMember.experienceYears && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">
+                      Experience
+                    </h5>
+                    <p className="text-sm text-gray-600">
+                      {selectedMember.experienceYears}+ years
+                    </p>
+                  </div>
+                )}
+
+                {selectedMember.education && selectedMember.education.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">
+                      Education
+                    </h5>
+                    <ul className="space-y-1">
+                      {selectedMember.education.map(
+                        (edu: string, index: number) => (
+                          <li key={index} className="text-sm text-gray-600">
+                            {edu}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedMember.certifications && selectedMember.certifications.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">
+                      Certifications
+                    </h5>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedMember.certifications.map(
+                        (cert: string, index: number) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                          >
+                            {cert}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <h5 className="text-sm font-medium text-gray-700 mb-2">

@@ -125,7 +125,12 @@ export const templateApi = {
 // Content API calls
 export const contentApi = {
   getCompany: () => api.get("/api/content/company"),
+  getCompanies: () => api.get("/api/content/companies"),
+  getCompanyById: (companyId: string) => api.get(`/api/content/companies/${companyId}`),
+  createCompany: (data: any) => api.post("/api/content/companies", data),
   updateCompany: (data: any) => api.put("/api/content/company", data),
+  updateCompanyById: (companyId: string, data: any) => api.put(`/api/content/companies/${companyId}`, data),
+  deleteCompany: (companyId: string) => api.delete(`/api/content/companies/${companyId}`),
   getTeam: () => api.get("/api/content/team"),
   getTeamMember: (id: string) => api.get(`/api/content/team/${id}`),
   createTeamMember: (data: any) => api.post("/api/content/team", data),

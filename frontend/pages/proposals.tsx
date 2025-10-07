@@ -221,13 +221,13 @@ export default function Proposals() {
             <Badge variant="info" size="lg">
               {filteredProposals.length} Proposals
             </Badge>
-            <Button
+            {/* <Button
               variant="primary"
               gradient
               icon={<PlusIcon className="h-5 w-5" />}
             >
               New Proposal
-            </Button>
+            </Button> */}
           </div>
         </div>
 
