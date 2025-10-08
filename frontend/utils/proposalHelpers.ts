@@ -176,4 +176,42 @@ export const formatTableRows = (rows: string[]): string => {
   return tableHtml;
 };
 
+// Helper function to determine if a section is from content library
+export const isContentLibrarySection = (sectionData: any): boolean => {
+  return sectionData?.type === 'content-library';
+};
+
+// Helper function to get content library type from section name
+export const getContentLibraryType = (sectionName: string): 'team' | 'references' | null => {
+  const title = sectionName.toLowerCase();
+  
+  // Check for personnel/team sections
+  if (title.includes('personnel') || 
+      title.includes('team') || 
+      title.includes('staff') || 
+      title.includes('key personnel') ||
+      title.includes('project team') ||
+      title.includes('team member') ||
+      title.includes('human resource') ||
+      title.includes('expertise')) {
+    return 'team';
+  }
+  
+  // Check for references/experience sections
+  if (title.includes('reference') || 
+      (title.includes('experience') && !title.includes('personnel') && !title.includes('team') && !title.includes('key')) ||
+      title.includes('past project') ||
+      title.includes('client reference') ||
+      title.includes('project portfolio')) {
+    return 'references';
+  }
+  
+  return null;
+};
+
+// Helper function to get selected IDs from section data
+export const getSelectedIds = (sectionData: any): string[] => {
+  return sectionData?.selectedIds || [];
+};
+
 
