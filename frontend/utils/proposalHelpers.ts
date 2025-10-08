@@ -191,6 +191,22 @@ export const getContentLibraryType = (sectionName: string): 'team' | 'references
       title.includes('transmittal letter')) {
     return 'company';
   }
+
+  // Check for experience and qualifications sections
+  if (title.includes('experience') ||
+      title.includes('qualification') ||
+      title.includes('firm qualification') ||
+      title.includes('company qualification') ||
+      title.includes('firm experience') ||
+      title.includes('company experience') ||
+      title.includes('background') ||
+      title.includes('capabilities') ||
+      title.includes('expertise') ||
+      title.includes('credentials') ||
+      title.includes('track record') ||
+      title.includes('company profile')) {
+    return 'company';
+  }
   
   // Check for personnel/team sections
   if (title.includes('personnel') || 

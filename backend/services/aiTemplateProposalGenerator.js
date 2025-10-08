@@ -488,6 +488,85 @@ ${contactPhone}`;
 }
 
 /**
+ * Format experience and qualifications using company information from content library
+ */
+async function formatExperienceSection(companyInfo, rfp) {
+  if (!companyInfo) {
+    return "No company information available in the content library.";
+  }
+
+  // Use AI to format the experience content if available and OpenAI is configured
+  if (openai && companyInfo.firmQualificationsAndExperience) {
+    try {
+      const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
+
+Company Experience Content:
+${companyInfo.firmQualificationsAndExperience}
+
+RFP Project Context:
+- Title: ${rfp.title || 'Not specified'}
+- Client: ${rfp.clientName || 'Not specified'}
+- Project Type: ${rfp.projectType || 'Not specified'}
+- Key Requirements: ${rfp.keyRequirements?.join(', ') || 'Not specified'}
+
+Format this content following these rules:
+1. Use the company's content as the primary source - do not add excessive details
+2. Keep formatting simple - use bullet points (●) for lists, no markdown headings (#)
+3. Write in paragraph form with bullet points for achievements/awards only
+4. Make it relevant to the RFP but don't over-elaborate
+5. Use professional, concise language
+6. Do not add multiple sections or subheadings
+7. Keep the same tone and style as the original content
+
+Return only the clean, simply formatted content without markdown headings or excessive structure.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.3,
+        max_tokens: 2000,
+        messages: [
+          { role: "user", content: prompt }
+        ],
+      });
+
+      const formattedContent = completion.choices[0].message.content.trim();
+      return formattedContent;
+    } catch (error) {
+      console.error("AI formatting failed for experience section:", error);
+      // Fallback to basic formatting
+    }
+  }
+
+  // Basic formatting without AI - keep it simple like the original content
+  const baseContent = companyInfo.firmQualificationsAndExperience || 
+    `${companyInfo.name || 'Our company'} brings extensive experience and proven qualifications to deliver exceptional results for your project.`;
+
+  let formattedContent = baseContent;
+
+  // Add company statistics if available - format simply
+  if (companyInfo.statistics && (companyInfo.statistics.yearsInBusiness || companyInfo.statistics.projectsCompleted)) {
+    formattedContent += `\n\n`;
+    if (companyInfo.statistics.yearsInBusiness) {
+      formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`;
+    }
+    if (companyInfo.statistics.projectsCompleted) {
+      formattedContent += `${companyInfo.statistics.yearsInBusiness ? ', completing' : 'We have completed'} ${companyInfo.statistics.projectsCompleted}+ projects`;
+    }
+    if (companyInfo.statistics.clientsSatisfied) {
+      formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`;
+    }
+    formattedContent += `.`;
+  }
+
+  // Add core capabilities if available - simple list
+  if (companyInfo.coreCapabilities && companyInfo.coreCapabilities.length > 0) {
+    formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(', ')}.`;
+  }
+
+  return formattedContent.trim();
+}
+
+/**
  * Check if a section title indicates it should use content library data
  */
 function shouldUseContentLibrary(sectionTitle) {
@@ -500,6 +579,24 @@ function shouldUseContentLibrary(sectionTitle) {
     title.includes("transmittal letter")
   ) {
     return "cover-letter";
+  }
+
+  // Check for experience and qualifications sections
+  if (
+    title.includes("experience") ||
+    title.includes("qualification") ||
+    title.includes("firm qualification") ||
+    title.includes("company qualification") ||
+    title.includes("firm experience") ||
+    title.includes("company experience") ||
+    title.includes("background") ||
+    title.includes("capabilities") ||
+    title.includes("expertise") ||
+    title.includes("credentials") ||
+    title.includes("track record") ||
+    title.includes("company profile")
+  ) {
+    return "experience";
   }
 
   // Check for personnel/team sections FIRST (higher priority)
@@ -733,7 +830,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
         }
 
         // Add content library sections in the original order
-        orderedTitles.forEach((sectionTitle) => {
+        for (const sectionTitle of orderedTitles) {
           const libraryType = contentLibrarySections[sectionTitle];
           if (libraryType) {
             if (libraryType === "team") {
@@ -751,9 +848,14 @@ NOTE: Some sections will be handled separately using content library data. Gener
                 companyInfo,
                 rfp
               );
+            } else if (libraryType === "experience") {
+              parsed[sectionTitle] = await formatExperienceSection(
+                companyInfo,
+                rfp
+              );
             }
           }
-        });
+        }
 
         // Create final sections object in the correct template order
         const finalSections = {};
@@ -813,7 +915,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
       const extracted = extractSectionsFromMarkdown(raw);
 
       // Add content library sections to extracted sections in original order
-      orderedTitles.forEach((sectionTitle) => {
+      for (const sectionTitle of orderedTitles) {
         const libraryType = contentLibrarySections[sectionTitle];
         if (libraryType) {
           let content;
@@ -829,6 +931,8 @@ NOTE: Some sections will be handled separately using content library data. Gener
             selectedIds = selectedReferenceIds;
           } else if (libraryType === "cover-letter") {
             content = formatCoverLetterSection(companyInfo, rfp);
+          } else if (libraryType === "experience") {
+            content = await formatExperienceSection(companyInfo, rfp);
           }
 
           if (content) {
@@ -840,7 +944,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
             };
           }
         }
-      });
+      }
 
       // If Title missing or empty, inject fallback Title section
       if (
@@ -871,7 +975,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
       const extracted = extractSectionsFromMarkdown(raw);
 
       // Add content library sections to extracted sections in original order
-      orderedTitles.forEach((sectionTitle) => {
+      for (const sectionTitle of orderedTitles) {
         const libraryType = contentLibrarySections[sectionTitle];
         if (libraryType) {
           let content;
@@ -887,6 +991,8 @@ NOTE: Some sections will be handled separately using content library data. Gener
             selectedIds = selectedReferenceIds;
           } else if (libraryType === "cover-letter") {
             content = formatCoverLetterSection(companyInfo, rfp);
+          } else if (libraryType === "experience") {
+            content = await formatExperienceSection(companyInfo, rfp);
           }
 
           if (content) {
@@ -898,7 +1004,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
             };
           }
         }
-      });
+      }
 
       if (
         !extracted.Title ||
@@ -937,6 +1043,7 @@ module.exports = {
   fetchTeamMembers,
   fetchProjectReferences,
   formatCoverLetterSection,
+  formatExperienceSection,
   formatTeamMembersSection,
   formatReferencesSection,
   shouldUseContentLibrary,

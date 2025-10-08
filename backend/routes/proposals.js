@@ -746,7 +746,7 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
     
     if (type === 'company') {
       const Company = require('../models/Company');
-      const { formatCoverLetterSection } = require('../services/aiTemplateProposalGenerator');
+      const { formatCoverLetterSection, formatExperienceSection } = require('../services/aiTemplateProposalGenerator');
       
       if (selectedIds.length > 0) {
         const selectedCompany = await Company.findOne({ 
@@ -758,7 +758,16 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
           const RFP = require('../models/RFP');
           const rfp = await RFP.findById(proposal.rfpId);
           
-          content = formatCoverLetterSection(selectedCompany, rfp || {});
+          // Determine if this is a cover letter or experience section based on section name
+          const sectionTitle = sectionName.toLowerCase();
+          if (sectionTitle.includes('cover letter') || 
+              sectionTitle.includes('introduction letter') || 
+              sectionTitle.includes('transmittal letter')) {
+            content = formatCoverLetterSection(selectedCompany, rfp || {});
+          } else {
+            // This is an experience/qualifications section
+            content = await formatExperienceSection(selectedCompany, rfp || {});
+          }
         } else {
           content = 'Selected company not found.';
         }
