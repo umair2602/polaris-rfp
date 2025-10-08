@@ -443,6 +443,42 @@ function fallbackReferenceSelection(rfp, references) {
 }
 
 /**
+ * Format Title section using company information from content library
+ */
+function formatTitleSection(companyInfo, rfp) {
+  if (!companyInfo) {
+    return {
+      submittedBy: "Not specified",
+      name: "Not specified", 
+      email: "Not specified",
+      number: "Not specified"
+    };
+  }
+
+  // Extract company information for Title section
+  const submittedBy = companyInfo.name || "Not specified";
+  
+  // Use primary contact information or generate based on company data
+  const contactName = companyInfo.primaryContact?.name || 
+    (companyInfo.name ? `${companyInfo.name.split(' ')[0]} Representative` : "Not specified");
+  
+  const contactEmail = companyInfo.primaryContact?.email || 
+    companyInfo.email || 
+    "Not specified";
+  
+  const contactPhone = companyInfo.primaryContact?.phone || 
+    companyInfo.phone || 
+    "Not specified";
+
+  return {
+    submittedBy: submittedBy,
+    name: contactName,
+    email: contactEmail,
+    number: contactPhone
+  };
+}
+
+/**
  * Format cover letter using company information from content library
  */
 function formatCoverLetterSection(companyInfo, rfp) {
@@ -571,6 +607,11 @@ Return only the clean, simply formatted content without markdown headings or exc
  */
 function shouldUseContentLibrary(sectionTitle) {
   const title = sectionTitle.toLowerCase();
+
+  // Check for Title section
+  if (title === "title") {
+    return "title";
+  }
 
   // Check for cover letter sections
   if (
@@ -754,7 +795,7 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
 
 NOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:\n\n${dynamicList}\n\nCRITICAL: Use EXACTLY these section titles as JSON keys, in this order:\n${JSON.stringify(
     aiOnlySections
-  )}\n\n1. **Title** - ENHANCED CONTACT INFORMATION EXTRACTION:\n   Carefully scan the entire text for ANY contact information and extract the following:\n\n   - **Submitted by**: [Organization submitting the proposal; if not found, use "Not specified"]\n   - **Name**: Look for contact person, project manager, point of contact, or any individual name mentioned for correspondence\n   - **Email**: Search for any email addresses in the text (look for @ symbols)\n   - **Number**: Find any phone numbers, contact numbers, or telephone references\n\n   SEARCH PATTERNS TO LOOK FOR:\n   - "Contact:", "Contact Person:", "Point of Contact:", "Project Manager:"\n   - "Email:", "E-mail:", "Send to:", "Submit to:"\n   - "Phone:", "Tel:", "Telephone:", "Call:", "Contact Number:"\n   - Names followed by titles like "Director", "Manager", "Coordinator"\n   - Email formats: anything@domain.com, anything@domain.gov, anything@domain.org\n   - Phone formats: (xxx) xxx-xxxx, xxx-xxx-xxxx, xxx.xxx.xxxx\n   - Addresses that might contain contact info\n   - Look in submission instructions, cover letters, and contact sections\n   - Check letterheads, signatures, and footer information\n\n   EXTRACTION RULES:\n   - If multiple contacts exist, prioritize the PRIMARY contact or project-specific contact\n   - If no specific contact info is found, use "Not specified" for that field\n   - For "Submitted by", if not found in the RFP, use "Not specified"\n   - Look throughout the entire text, including headers, footers, and appendices\n   - Extract the most relevant contact for proposal submission/communication\n   - Clean extracted data (remove extra spaces, formatting)${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
+  )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
 
   const userPrompt = `RFP Information:\n- Title: ${rfp.title}\n- Client: ${
     rfp.clientName
@@ -818,11 +859,16 @@ NOTE: Some sections will be handled separately using content library data. Gener
       if (jsonMatch) jsonText = jsonMatch[0];
 
       const parsed = JSON.parse(jsonText);
+      
+      console.log("AI Generated parsed sections:", Object.keys(parsed));
+      console.log("Expected AI sections:", aiOnlySections);
 
       // Validate at least one expected key exists
       const hasExpected = aiOnlySections.some((t) =>
         Object.prototype.hasOwnProperty.call(parsed, t)
       );
+      console.log("Has expected AI sections:", hasExpected);
+      
       if (hasExpected) {
         // Ensure Title is present and populated; if missing/empty, synthesize from RFP
         if (!parsed.Title || String(parsed.Title).trim().length === 0) {
@@ -843,6 +889,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
                 projectReferences,
                 selectedReferenceIds
               );
+            } else if (libraryType === "title") {
+              parsed[sectionTitle] = formatTitleSection(
+                companyInfo,
+                rfp
+              );
             } else if (libraryType === "cover-letter") {
               parsed[sectionTitle] = formatCoverLetterSection(
                 companyInfo,
@@ -859,16 +910,13 @@ NOTE: Some sections will be handled separately using content library data. Gener
 
         // Create final sections object in the correct template order
         const finalSections = {};
+        console.log("Processing final sections. Parsed keys:", Object.keys(parsed));
+        console.log("Ordered titles:", orderedTitles);
+        
         orderedTitles.forEach((sectionTitle) => {
+          console.log(`Processing section: ${sectionTitle}, exists in parsed: ${!!parsed[sectionTitle]}`);
           if (parsed[sectionTitle]) {
-            if (sectionTitle === "Title") {
-              // Handle Title section specially
-              finalSections[sectionTitle] = {
-                content: extractTitleContactInfo(parsed[sectionTitle]),
-                type: "ai-generated",
-                lastModified: new Date().toISOString(),
-              };
-            } else if (contentLibrarySections[sectionTitle]) {
+            if (contentLibrarySections[sectionTitle]) {
               // Content library section
               const libraryType = contentLibrarySections[sectionTitle];
               let selectedIds = [];
@@ -877,8 +925,12 @@ NOTE: Some sections will be handled separately using content library data. Gener
               } else if (libraryType === "references") {
                 selectedIds = selectedReferenceIds;
               }
+              
+              // Handle Title section specially - it returns an object, not a string
+              const content = libraryType === "title" ? parsed[sectionTitle] : parsed[sectionTitle];
+              
               finalSections[sectionTitle] = {
-                content: parsed[sectionTitle],
+                content: content,
                 type: "content-library",
                 lastModified: new Date().toISOString(),
                 ...(selectedIds.length > 0 && { selectedIds: selectedIds }),
@@ -929,6 +981,8 @@ NOTE: Some sections will be handled separately using content library data. Gener
               selectedReferenceIds
             );
             selectedIds = selectedReferenceIds;
+          } else if (libraryType === "title") {
+            content = formatTitleSection(companyInfo, rfp);
           } else if (libraryType === "cover-letter") {
             content = formatCoverLetterSection(companyInfo, rfp);
           } else if (libraryType === "experience") {
@@ -989,6 +1043,8 @@ NOTE: Some sections will be handled separately using content library data. Gener
               selectedReferenceIds
             );
             selectedIds = selectedReferenceIds;
+          } else if (libraryType === "title") {
+            content = formatTitleSection(companyInfo, rfp);
           } else if (libraryType === "cover-letter") {
             content = formatCoverLetterSection(companyInfo, rfp);
           } else if (libraryType === "experience") {
@@ -1042,6 +1098,7 @@ module.exports = {
   fetchCompanyInfo,
   fetchTeamMembers,
   fetchProjectReferences,
+  formatTitleSection,
   formatCoverLetterSection,
   formatExperienceSection,
   formatTeamMembersSection,
