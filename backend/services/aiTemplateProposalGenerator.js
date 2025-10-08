@@ -859,15 +859,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
       if (jsonMatch) jsonText = jsonMatch[0];
 
       const parsed = JSON.parse(jsonText);
-      
-      console.log("AI Generated parsed sections:", Object.keys(parsed));
-      console.log("Expected AI sections:", aiOnlySections);
 
       // Validate at least one expected key exists
       const hasExpected = aiOnlySections.some((t) =>
         Object.prototype.hasOwnProperty.call(parsed, t)
       );
-      console.log("Has expected AI sections:", hasExpected);
       
       if (hasExpected) {
         // Ensure Title is present and populated; if missing/empty, synthesize from RFP
@@ -910,11 +906,8 @@ NOTE: Some sections will be handled separately using content library data. Gener
 
         // Create final sections object in the correct template order
         const finalSections = {};
-        console.log("Processing final sections. Parsed keys:", Object.keys(parsed));
-        console.log("Ordered titles:", orderedTitles);
         
         orderedTitles.forEach((sectionTitle) => {
-          console.log(`Processing section: ${sectionTitle}, exists in parsed: ${!!parsed[sectionTitle]}`);
           if (parsed[sectionTitle]) {
             if (contentLibrarySections[sectionTitle]) {
               // Content library section

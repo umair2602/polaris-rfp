@@ -1,8 +1,360 @@
 const OpenAI = require('openai');
+const TeamMember = require("../models/TeamMember");
+const ProjectReference = require("../models/ProjectReference");
+const Company = require("../models/Company");
 
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
+
+/**
+ * Fetch company information from the content library
+ */
+async function fetchCompanyInfo() {
+  try {
+    const company = await Company.findOne().sort({ createdAt: -1 }).lean();
+    return company;
+  } catch (error) {
+    console.error("Error fetching company info:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch team members from the content library
+ */
+async function fetchTeamMembers() {
+  try {
+    const teamMembers = await TeamMember.find({ isActive: true }).lean();
+    return teamMembers;
+  } catch (error) {
+    console.error("Error fetching team members:", error);
+    return [];
+  }
+}
+
+/**
+ * Fetch project references from the content library
+ */
+async function fetchProjectReferences() {
+  try {
+    const references = await ProjectReference.find({
+      isActive: true,
+      isPublic: true,
+    }).lean();
+    return references;
+  } catch (error) {
+    console.error("Error fetching project references:", error);
+    return [];
+  }
+}
+
+/**
+ * Format Title section using company information from content library
+ */
+function formatTitleSection(companyInfo, rfp) {
+  if (!companyInfo) {
+    return {
+      submittedBy: "Not specified",
+      name: "Not specified", 
+      email: "Not specified",
+      number: "Not specified"
+    };
+  }
+
+  // Extract company information for Title section
+  const submittedBy = companyInfo.name || "Not specified";
+  
+  // Use primary contact information or generate based on company data
+  const contactName = companyInfo.primaryContact?.name || 
+    (companyInfo.name ? `${companyInfo.name.split(' ')[0]} Representative` : "Not specified");
+  
+  const contactEmail = companyInfo.primaryContact?.email || 
+    companyInfo.email || 
+    "Not specified";
+  
+  const contactPhone = companyInfo.primaryContact?.phone || 
+    companyInfo.phone || 
+    "Not specified";
+
+  return {
+    submittedBy: submittedBy,
+    name: contactName,
+    email: contactEmail,
+    number: contactPhone
+  };
+}
+
+/**
+ * Format cover letter using company information from content library
+ */
+function formatCoverLetterSection(companyInfo, rfp) {
+  if (!companyInfo) {
+    return "No company information available in the content library.";
+  }
+
+  // Get current date in MM/DD/YYYY format
+  const currentDate = new Date().toLocaleDateString('en-US');
+  
+  // Determine client name and salutation
+  const clientName = rfp.clientName || rfp.title || 'Valued Client';
+  const salutation = rfp.clientName ? `Dear ${rfp.clientName} Team` : 'Dear Hiring Manager';
+  
+  // Use company's cover letter content ONLY - no additional generic content
+  const coverLetterContent = companyInfo.coverLetter || 
+    `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`;
+  
+  // Generate contact information from company data
+  const contactName = companyInfo.name ? 
+    `${companyInfo.name.split(' ')[0]} Representative` : 
+    'Project Manager';
+  const contactTitle = 'Project Director';
+  const contactEmail = companyInfo.email || 'contact@company.com';
+  const contactPhone = companyInfo.phone || '(555) 123-4567';
+
+  // Format the cover letter with ONLY the company's content, no additional paragraphs
+  const formattedCoverLetter = `**Submitted to:** ${clientName}
+**Submitted by:** ${companyInfo.name || 'Our Company'}
+**Date:** ${currentDate}
+
+${salutation},
+
+${coverLetterContent}
+
+Sincerely,
+
+${contactName}, ${contactTitle}
+${contactEmail}
+${contactPhone}`;
+
+  return formattedCoverLetter;
+}
+
+/**
+ * Format team members data into proposal section content
+ */
+function formatTeamMembersSection(teamMembers, selectedIds = null) {
+  if (!teamMembers || teamMembers.length === 0) {
+    return "No team members available in the content library.";
+  }
+
+  // If specific IDs are provided, filter by those
+  const membersToUse = selectedIds
+    ? teamMembers.filter((member) => selectedIds.includes(member.memberId))
+    : teamMembers;
+
+  if (membersToUse.length === 0) {
+    return "No suitable team members found for this project.";
+  }
+
+  let content =
+    "Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n";
+
+  membersToUse.forEach((member) => {
+    content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
+    content += `${member.biography}\n\n`;
+  });
+
+  return content.trim();
+}
+
+/**
+ * Format project references data into proposal section content
+ */
+function formatReferencesSection(references, selectedIds = null) {
+  if (!references || references.length === 0) {
+    return "No project references available in the content library.";
+  }
+
+  // If specific IDs are provided, filter by those
+  const referencesToUse = selectedIds
+    ? references.filter((reference) =>
+        selectedIds.includes(reference._id.toString())
+      )
+    : references;
+
+  if (referencesToUse.length === 0) {
+    return "No suitable project references found for this project.";
+  }
+
+  let content =
+    "Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n";
+
+  referencesToUse.forEach((reference) => {
+    content += `**${reference.organizationName}**`;
+    if (reference.timePeriod) {
+      content += ` (${reference.timePeriod})`;
+    }
+    content += "\n\n";
+
+    content += `**Contact:** ${reference.contactName}`;
+    if (reference.contactTitle) {
+      content += `, ${reference.contactTitle}`;
+    }
+    if (reference.additionalTitle) {
+      content += ` - ${reference.additionalTitle}`;
+    }
+    content += ` of ${reference.organizationName}\n\n`;
+
+    if (reference.contactEmail) {
+      content += `**Email:** ${reference.contactEmail}\n\n`;
+    }
+
+    if (reference.contactPhone) {
+      content += `**Phone:** ${reference.contactPhone}\n\n`;
+    }
+
+    content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
+    content += "---\n\n";
+  });
+
+  return content.trim();
+}
+
+/**
+ * Format experience and qualifications using company information from content library
+ */
+async function formatExperienceSection(companyInfo, rfp) {
+  if (!companyInfo) {
+    return "No company information available in the content library.";
+  }
+
+  // Use AI to format the experience content if available and OpenAI is configured
+  if (openai && companyInfo.firmQualificationsAndExperience) {
+    try {
+      const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
+
+Company Experience Content:
+${companyInfo.firmQualificationsAndExperience}
+
+RFP Project Context:
+- Title: ${rfp.title || 'Not specified'}
+- Client: ${rfp.clientName || 'Not specified'}
+- Project Type: ${rfp.projectType || 'Not specified'}
+- Key Requirements: ${rfp.keyRequirements?.join(', ') || 'Not specified'}
+
+Format this content following these rules:
+1. Use the company's content as the primary source - do not add excessive details
+2. Keep formatting simple - use bullet points (●) for lists, no markdown headings (#)
+3. Write in paragraph form with bullet points for achievements/awards only
+4. Make it relevant to the RFP but don't over-elaborate
+5. Use professional, concise language
+6. Do not add multiple sections or subheadings
+7. Keep the same tone and style as the original content
+
+Return only the clean, simply formatted content without markdown headings or excessive structure.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.3,
+        max_tokens: 2000,
+        messages: [
+          { role: "user", content: prompt }
+        ],
+      });
+
+      const formattedContent = completion.choices[0].message.content.trim();
+      return formattedContent;
+    } catch (error) {
+      console.error("AI formatting failed for experience section:", error);
+      // Fallback to basic formatting
+    }
+  }
+
+  // Basic formatting without AI - keep it simple like the original content
+  const baseContent = companyInfo.firmQualificationsAndExperience || 
+    `${companyInfo.name || 'Our company'} brings extensive experience and proven qualifications to deliver exceptional results for your project.`;
+
+  let formattedContent = baseContent;
+
+  // Add company statistics if available - format simply
+  if (companyInfo.statistics && (companyInfo.statistics.yearsInBusiness || companyInfo.statistics.projectsCompleted)) {
+    formattedContent += `\n\n`;
+    if (companyInfo.statistics.yearsInBusiness) {
+      formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`;
+    }
+    if (companyInfo.statistics.projectsCompleted) {
+      formattedContent += `${companyInfo.statistics.yearsInBusiness ? ', completing' : 'We have completed'} ${companyInfo.statistics.projectsCompleted}+ projects`;
+    }
+    if (companyInfo.statistics.clientsSatisfied) {
+      formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`;
+    }
+    formattedContent += `.`;
+  }
+
+  // Add core capabilities if available - simple list
+  if (companyInfo.coreCapabilities && companyInfo.coreCapabilities.length > 0) {
+    formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(', ')}.`;
+  }
+
+  return formattedContent.trim();
+}
+
+/**
+ * Check if a section title indicates it should use content library data
+ */
+function shouldUseContentLibrary(sectionTitle) {
+  const title = sectionTitle.toLowerCase();
+
+  // Check for Title section
+  if (title === "title") {
+    return "title";
+  }
+
+  // Check for cover letter sections
+  if (
+    title.includes("cover letter") ||
+    title.includes("introduction letter") ||
+    title.includes("transmittal letter")
+  ) {
+    return "cover-letter";
+  }
+
+  // Check for experience and qualifications sections
+  if (
+    title.includes("experience") ||
+    title.includes("qualification") ||
+    title.includes("firm qualification") ||
+    title.includes("company qualification") ||
+    title.includes("firm experience") ||
+    title.includes("company experience") ||
+    title.includes("background") ||
+    title.includes("capabilities") ||
+    title.includes("expertise") ||
+    title.includes("credentials") ||
+    title.includes("track record") ||
+    title.includes("company profile") ||
+    title.includes("technical approach and methodology")
+  ) {
+    return "experience";
+  }
+
+  // Check for personnel/team sections
+  if (
+    title.includes("personnel") ||
+    title.includes("team") ||
+    title.includes("staff") ||
+    title.includes("key personnel") ||
+    title.includes("project team") ||
+    title.includes("team member") ||
+    title.includes("human resource") ||
+    title.includes("key personnel and experience")
+  ) {
+    return "team";
+  }
+
+  // Check for references sections
+  if (
+    title.includes("reference") ||
+    title.includes("past project") ||
+    title.includes("client reference") ||
+    title.includes("project portfolio")
+  ) {
+    return "references";
+  }
+
+  return null;
+}
 
 /**
  * Generate AI proposal sections based on RFP data
@@ -11,6 +363,11 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
   if (!openai) {
     throw new Error("OpenAI API key not configured");
   }
+
+  // Fetch content library data
+  const companyInfo = await fetchCompanyInfo();
+  const teamMembers = await fetchTeamMembers();
+  const projectReferences = await fetchProjectReferences();
 
   // Build dynamic section titles using RFP's stored titles
   const storedTitles = Array.isArray(rfp.sectionTitles) ? rfp.sectionTitles : [];
@@ -24,16 +381,36 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
     seen.add(key);
     orderedTitles.push(k);
   });
-  const dynamicList = orderedTitles.map((t, i) => `${i + 1}. **${t}**`).join('\n');
+
+  // Identify sections that should use content library
+  const contentLibrarySections = {};
+  orderedTitles.forEach((title) => {
+    const libraryType = shouldUseContentLibrary(title);
+    if (libraryType) {
+      contentLibrarySections[title] = libraryType;
+    }
+  });
+
+  // Filter out content library sections from AI generation
+  const aiOnlySections = orderedTitles.filter(
+    (title) => !contentLibrarySections[title]
+  );
+
+  console.log("Content library sections:", contentLibrarySections);
+  console.log("AI-only sections:", aiOnlySections);
+
+  const dynamicList = aiOnlySections.map((t, i) => `${i + 1}. **${t}**`).join('\n');
 
   const systemPrompt = `
 You are an expert proposal writer. Generate a comprehensive proposal based on the RFP document provided. 
 Structure the proposal with the following sections and format them as markdown:
 
+NOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:
+
 ${dynamicList}
 
 CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
-${JSON.stringify(orderedTitles)}
+${JSON.stringify(aiOnlySections)}
 
 SECTION GUIDELINES:
 
@@ -278,23 +655,118 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
       
       const parsed = JSON.parse(jsonText);
       
-      // Validate that we have the expected sections
-      const expectedSections = orderedTitles;
-      
-      // Check if we have the expected structure
-      const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
+      // Validate that we have the expected AI sections
+      const hasExpectedSections = aiOnlySections.some(section => parsed.hasOwnProperty(section));
       
       if (hasExpectedSections) {
-        // Validate and clean the parsed sections
+        // Add content library sections to parsed sections
+        for (const sectionTitle of orderedTitles) {
+          const libraryType = contentLibrarySections[sectionTitle];
+          if (libraryType) {
+            if (libraryType === "title") {
+              parsed[sectionTitle] = formatTitleSection(companyInfo, rfp);
+            } else if (libraryType === "cover-letter") {
+              parsed[sectionTitle] = formatCoverLetterSection(companyInfo, rfp);
+            } else if (libraryType === "experience") {
+              parsed[sectionTitle] = await formatExperienceSection(companyInfo, rfp);
+            } else if (libraryType === "team") {
+              parsed[sectionTitle] = formatTeamMembersSection(teamMembers);
+            } else if (libraryType === "references") {
+              parsed[sectionTitle] = formatReferencesSection(projectReferences);
+            }
+          }
+        }
+
+        // Validate and clean the AI sections
         const validatedSections = validateAISections(parsed);
-        return formatAISections(validatedSections);
+        return formatAISections(validatedSections, orderedTitles, contentLibrarySections);
       } else {
-        // If structure is different, try to extract from markdown
-        return extractSectionsFromMarkdown(raw);
+        // If structure is different, try to extract from markdown and add content library sections
+        const extracted = extractSectionsFromMarkdown(raw);
+        
+        // Add content library sections to extracted sections
+        for (const sectionTitle of orderedTitles) {
+          const libraryType = contentLibrarySections[sectionTitle];
+          if (libraryType) {
+            if (libraryType === "title") {
+              extracted[sectionTitle] = {
+                content: formatTitleSection(companyInfo, rfp),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "cover-letter") {
+              extracted[sectionTitle] = {
+                content: formatCoverLetterSection(companyInfo, rfp),
+                type: "content-library", 
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "experience") {
+              extracted[sectionTitle] = {
+                content: await formatExperienceSection(companyInfo, rfp),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "team") {
+              extracted[sectionTitle] = {
+                content: formatTeamMembersSection(teamMembers),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "references") {
+              extracted[sectionTitle] = {
+                content: formatReferencesSection(projectReferences),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            }
+          }
+        }
+        
+        return extracted;
       }
     } catch (jsonError) {
-      // If not JSON, try to extract sections from markdown
-      return extractSectionsFromMarkdown(raw);
+      // If not JSON, try to extract sections from markdown and add content library sections
+      const extracted = extractSectionsFromMarkdown(raw);
+      
+      // Add content library sections to extracted sections
+      for (const sectionTitle of orderedTitles) {
+        const libraryType = contentLibrarySections[sectionTitle];
+        if (libraryType) {
+          if (libraryType === "title") {
+            extracted[sectionTitle] = {
+              content: formatTitleSection(companyInfo, rfp),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "cover-letter") {
+            extracted[sectionTitle] = {
+              content: formatCoverLetterSection(companyInfo, rfp),
+              type: "content-library", 
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "experience") {
+            extracted[sectionTitle] = {
+              content: await formatExperienceSection(companyInfo, rfp),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "team") {
+            extracted[sectionTitle] = {
+              content: formatTeamMembersSection(teamMembers),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "references") {
+            extracted[sectionTitle] = {
+              content: formatReferencesSection(projectReferences),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          }
+        }
+      }
+      
+      return extracted;
     }
   } catch (error) {
     console.error("AI proposal generation failed:", error);
@@ -421,43 +893,50 @@ function cleanContent(content) {
 /**
  * Format AI-generated sections for the database
  */
-function formatAISections(sections, companyName = 'Not specified') {
+function formatAISections(sections, orderedTitles = [], contentLibrarySections = {}) {
   const formattedSections = {};
   
-  // Add Title section first if it exists
-  if (sections.Title) {
-    formattedSections["Title"] = {
-      content: extractTitleContactInfo(sections.Title, companyName),
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
+  // Process sections in the correct order
+  const sectionsToProcess = orderedTitles.length > 0 ? orderedTitles : Object.keys(sections);
   
-  // Add Cover Letter section if it exists
-  if (sections["Cover Letter"]) {
-    formattedSections["Cover Letter"] = {
-      content: sections["Cover Letter"],
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
-  
-  // Add remaining AI-generated sections (excluding Title and Cover Letter which were already added)
-  Object.entries(sections).forEach(([sectionName, content]) => {
-    // Skip Title and Cover Letter (already added)
-    if (sectionName !== "Title" &&
-        sectionName !== "Cover Letter") {
+  sectionsToProcess.forEach((sectionName) => {
+    if (sections[sectionName]) {
+      const content = sections[sectionName];
+      const isContentLibrary = contentLibrarySections[sectionName];
       
-      // Apply content cleaning to all sections except Key Personnel
-      const processedContent = sectionName === "Key Personnel" 
-        ? cleanKeyPersonnelContent(content)
-        : cleanContent(content);
-      
-      formattedSections[sectionName] = {
-        content: processedContent,
-        type: "ai-generated",
-        lastModified: new Date().toISOString(),
-      };
+      if (sectionName === "Title" && isContentLibrary) {
+        // Title section from content library - already formatted as object
+        formattedSections[sectionName] = {
+          content: content,
+          type: "content-library",
+          lastModified: new Date().toISOString(),
+        };
+      } else if (isContentLibrary) {
+        // Other content library sections - use as string content
+        formattedSections[sectionName] = {
+          content: content,
+          type: "content-library",
+          lastModified: new Date().toISOString(),
+        };
+      } else if (sectionName === "Title") {
+        // AI-generated Title section - extract contact info
+        formattedSections[sectionName] = {
+          content: extractTitleContactInfo(content),
+          type: "ai-generated",
+          lastModified: new Date().toISOString(),
+        };
+      } else {
+        // AI-generated sections - clean content
+        const processedContent = sectionName === "Key Personnel" 
+          ? cleanKeyPersonnelContent(content)
+          : cleanContent(content);
+        
+        formattedSections[sectionName] = {
+          content: processedContent,
+          type: "ai-generated",
+          lastModified: new Date().toISOString(),
+        };
+      }
     }
   });
   
@@ -646,5 +1125,14 @@ module.exports = {
   cleanContent,
   cleanKeyPersonnelContent,
   validateAISections,
-  cleanGeneratedContent
+  cleanGeneratedContent,
+  fetchCompanyInfo,
+  fetchTeamMembers,
+  fetchProjectReferences,
+  formatTitleSection,
+  formatCoverLetterSection,
+  formatExperienceSection,
+  formatTeamMembersSection,
+  formatReferencesSection,
+  shouldUseContentLibrary
 };
