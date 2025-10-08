@@ -735,7 +735,7 @@ function renderTable(doc, content) {
 router.put("/:id/content-library/:sectionName", async (req, res) => {
   try {
     const { id, sectionName } = req.params;
-    const { selectedIds, type } = req.body; // type: 'team' or 'references'
+    const { selectedIds, type } = req.body; // type: 'team', 'references', or 'company'
 
     const proposal = await Proposal.findById(id);
     if (!proposal) {
@@ -744,7 +744,28 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
 
     let content = '';
     
-    if (type === 'team') {
+    if (type === 'company') {
+      const Company = require('../models/Company');
+      const { formatCoverLetterSection } = require('../services/aiTemplateProposalGenerator');
+      
+      if (selectedIds.length > 0) {
+        const selectedCompany = await Company.findOne({ 
+          companyId: selectedIds[0] // Only use first selected company
+        }).lean();
+        
+        if (selectedCompany) {
+          // Get RFP data from the proposal
+          const RFP = require('../models/RFP');
+          const rfp = await RFP.findById(proposal.rfpId);
+          
+          content = formatCoverLetterSection(selectedCompany, rfp || {});
+        } else {
+          content = 'Selected company not found.';
+        }
+      } else {
+        content = 'No company selected.';
+      }
+    } else if (type === 'team') {
       const TeamMember = require('../models/TeamMember');
       const selectedMembers = await TeamMember.find({ 
         memberId: { $in: selectedIds }, 

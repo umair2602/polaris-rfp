@@ -55,7 +55,7 @@ export default function ProposalDetail() {
   const [infoModalVariant, setInfoModalVariant] = useState<'info' | 'success' | 'error'>("info");
   const [showContentLibraryModal, setShowContentLibraryModal] = useState(false);
   const [contentLibrarySection, setContentLibrarySection] = useState<string | null>(null);
-  const [contentLibraryType, setContentLibraryType] = useState<'team' | 'references'>('team');
+  const [contentLibraryType, setContentLibraryType] = useState<'team' | 'references' | 'company'>('team');
   const [isContentLibraryLoading, setIsContentLibraryLoading] = useState(false);
 
   const openInfo = (title: string, message: string, variant: 'info' | 'success' | 'error' = 'info') => {

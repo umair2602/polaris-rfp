@@ -182,8 +182,15 @@ export const isContentLibrarySection = (sectionData: any): boolean => {
 };
 
 // Helper function to get content library type from section name
-export const getContentLibraryType = (sectionName: string): 'team' | 'references' | null => {
+export const getContentLibraryType = (sectionName: string): 'team' | 'references' | 'company' | null => {
   const title = sectionName.toLowerCase();
+  
+  // Check for cover letter/company sections
+  if (title.includes('cover letter') || 
+      title.includes('introduction letter') || 
+      title.includes('transmittal letter')) {
+    return 'company';
+  }
   
   // Check for personnel/team sections
   if (title.includes('personnel') || 
