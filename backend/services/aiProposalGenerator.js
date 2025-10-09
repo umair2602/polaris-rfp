@@ -223,9 +223,12 @@ SECTION GUIDELINES:
 **For any other sections**:
    Generate comprehensive content that is directly relevant to the section title and RFP requirements
    - Write substantial content (200-400 words per section depending on importance)
-   - Use specific details and terminology from the RFP document
+   - Use specific details and terminology from the RFP document when available
    - Address the section topic thoroughly with multiple paragraphs or detailed bullet points
    - Show deep understanding of the RFP requirements and how they relate to this section
+   - **IMPORTANT**: Even if the RFP doesn't explicitly mention the section topic (e.g., "Sustainability", "Innovation", "Quality Assurance"), generate thoughtful, relevant content that demonstrates how your approach to this RFP addresses that topic
+   - For sections not directly mentioned in RFP, infer and propose how this topic relates to the project goals, deliverables, and client needs
+   - Never write "not available" or "not specified" - always provide substantive, relevant content
 
 GUIDELINES:
 - Generate COMPREHENSIVE, DETAILED content for each section - avoid brief or superficial responses
@@ -240,6 +243,7 @@ GUIDELINES:
 - Adapt language and examples to match the RFP's project type and industry context
 - Draw extensively from the RFP raw text to create content that shows deep document analysis
 - Each section should feel substantial and valuable to proposal evaluators
+- **CRITICAL**: For sections not explicitly mentioned in the RFP, demonstrate how your expertise in that area will benefit the project - DO NOT say "not available" or similar phrases
 
 IMPORTANT: The AI should intelligently detect section types based on keywords in the section titles and apply appropriate formatting automatically. No need for hardcoded section names.
 
@@ -445,12 +449,11 @@ function validateAISections(sections) {
       // Title section should always be preserved as-is for contact extraction
       validatedSections[sectionName] = content;
     } else {
-      // Check if content indicates no information available
+      // Check if content is genuinely empty or too short to be useful
+      // Be less aggressive - only mark as "not available" if truly lacking content
       if (!content || 
-          content.toLowerCase().includes('not available') ||
-          content.toLowerCase().includes('not specified') ||
           content.trim() === '' ||
-          content.length < 10) {
+          content.length < 20) {  // Increased from 10 to 20 to allow short but valid content
         validatedSections[sectionName] = "Not available in the RFP document";
       } else {
         // Clean the content to remove any generated information
