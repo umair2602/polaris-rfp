@@ -484,6 +484,63 @@ router.get("/:id/export-pdf", async (req, res) => {
             align: "center",
             lineGap: 6,
           });
+      } else if (sectionName === "Title" && typeof sectionData.content === 'string') {
+        // Handle Title section with string content (from formatTitleSection or Cover Letter formatting)
+        let titleContent = sectionData.content;
+        
+        // Split by lines to handle each field separately
+        const lines = titleContent.split('\n');
+        
+        lines.forEach((line) => {
+          if (!line.trim()) {
+            doc.moveDown(0.5);
+            return;
+          }
+          
+          // Check if line has bold markdown formatting **text**
+          if (line.includes('**')) {
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            let isFirstPart = true;
+            
+            parts.forEach((part) => {
+              if (!part) return;
+              
+              if (part.startsWith('**') && part.endsWith('**')) {
+                // Bold text (like "Submitted to:")
+                const boldText = part.slice(2, -2);
+                doc
+                  .font('Helvetica-Bold')
+                  .fontSize(11)
+                  .fillColor("#000000")
+                  .text(boldText, {
+                    continued: true,
+                    align: "center",
+                  });
+              } else {
+                // Regular text (like the actual value)
+                doc
+                  .font('Helvetica')
+                  .fontSize(11)
+                  .fillColor("#000000")
+                  .text(part, {
+                    continued: false,
+                    align: "center",
+                    lineGap: 4,
+                  });
+              }
+            });
+          } else {
+            // Plain text line
+            doc
+              .font('Helvetica')
+              .fontSize(11)
+              .fillColor("#000000")
+              .text(line, {
+                align: "center",
+                lineGap: 4,
+              });
+          }
+        });
       } else if (sectionName === "Project Schedule") {
         // Project Schedule should always be rendered as text content with headings and paragraphs
         let cleanContent = sectionData.content || "No content available";
@@ -525,49 +582,62 @@ router.get("/:id/export-pdf", async (req, res) => {
         // ● (U+25CF), • (U+2022), ○ (U+25CB), ◦ (U+25E6) all become "-"
         content = content.replace(/[●•○◦]/g, '-');
         
-        // Split content by paragraphs
+        // Split content by paragraphs (double newlines) to preserve paragraph breaks
         const paragraphs = content.split(/\n\n+/);
         
-        paragraphs.forEach((paragraph, index) => {
+        paragraphs.forEach((paragraph, paragraphIndex) => {
           if (!paragraph.trim()) return;
           
-          // Split paragraph into parts with bold and regular text
-          const parts = paragraph.split(/(\*\*.*?\*\*)/g);
+          // Split each paragraph by single newlines to handle line-by-line rendering
+          const lines = paragraph.split('\n');
           
-          parts.forEach((part) => {
-            if (!part) return;
-            
-            // Check if this part is bold
-            if (part.startsWith('**') && part.endsWith('**')) {
-              // Bold text
-              const boldText = part.slice(2, -2);
-              doc
-                .font('Helvetica-Bold')
-                .fontSize(11)
-                .fillColor("#000000")
-                .text(boldText, {
-                  continued: true,
-                  align: "justify",
-                  lineGap: 6,
-                });
-            } else {
-              // Regular text - remove any remaining italic markers
-              const regularText = part.replace(/\*(.*?)\*/g, '$1');
-              doc
-                .font('Helvetica')
-                .fontSize(11)
-                .fillColor("#000000")
-                .text(regularText, {
-                  continued: parts.indexOf(part) < parts.length - 1,
-                  align: "justify",
-                  lineGap: 6,
-                });
+          lines.forEach((line, lineIndex) => {
+            if (!line.trim()) {
+              // Empty line within a paragraph - add small spacing
+              doc.moveDown(0.3);
+              return;
             }
+            
+            // Split line into parts with bold and regular text
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            
+            parts.forEach((part, partIndex) => {
+              if (!part) return;
+              
+              // Check if this part is bold
+              if (part.startsWith('**') && part.endsWith('**')) {
+                // Bold text (like "Submitted to:", "Date:", etc.)
+                const boldText = part.slice(2, -2);
+                doc
+                  .font('Helvetica-Bold')
+                  .fontSize(11)
+                  .fillColor("#000000")
+                  .text(boldText, {
+                    continued: true, // Continue on same line for the value after the bold label
+                    align: "left",
+                    lineGap: 4,
+                  });
+              } else {
+                // Regular text - remove any remaining italic markers
+                const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                const isLastPart = partIndex === parts.length - 1;
+                
+                doc
+                  .font('Helvetica')
+                  .fontSize(11)
+                  .fillColor("#000000")
+                  .text(regularText, {
+                    continued: false, // End the line after regular text
+                    align: "left",
+                    lineGap: 4,
+                  });
+              }
+            });
           });
           
-          // Add spacing between paragraphs
-          if (index < paragraphs.length - 1) {
-            doc.moveDown(0.5);
+          // Add spacing between paragraphs (not just lines)
+          if (paragraphIndex < paragraphs.length - 1) {
+            doc.moveDown(0.8);
           }
         });
       }

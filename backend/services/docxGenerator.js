@@ -163,36 +163,28 @@ class DocxGenerator {
       color: "073763",
     });
 
-    // Add some spacing after the title
-    const emptyLine = docx.createP();
-    emptyLine.addText(" ");
-
-    // Simply render the cover letter content as-is, preserving formatting
-    const lines = content.split('\n');
+    // Split by double newlines to get paragraphs, then filter out truly empty ones
+    const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
     
-    lines.forEach(line => {
+    paragraphs.forEach((paragraph) => {
       const para = docx.createP();
-      const trimmedLine = line.trim();
+      const trimmedParagraph = paragraph.trim();
       
-      if (trimmedLine) {
-        // Handle bold formatting
-        if (trimmedLine.includes('**')) {
-          const parts = trimmedLine.split('**');
-          for (let i = 0; i < parts.length; i++) {
-            if (i % 2 === 0) {
-              // Regular text
-              if (parts[i]) para.addText(parts[i], { font_face: "Calibri" });
-            } else {
-              // Bold text
-              if (parts[i]) para.addText(parts[i], { bold: true, font_face: "Calibri" });
-            }
+      // Handle bold formatting within the paragraph
+      if (trimmedParagraph.includes('**')) {
+        const parts = trimmedParagraph.split('**');
+        for (let i = 0; i < parts.length; i++) {
+          if (i % 2 === 0) {
+            // Regular text
+            if (parts[i]) para.addText(parts[i], { font_size: 12, font_face: "Calibri" });
+          } else {
+            // Bold text
+            if (parts[i]) para.addText(parts[i], { bold: true, font_size: 12, font_face: "Calibri" });
           }
-        } else {
-          para.addText(trimmedLine, { font_face: "Calibri" });
         }
       } else {
-        // Empty line for spacing
-        para.addText(" ", { font_face: "Calibri" });
+        // No bold formatting, just add the paragraph as-is
+        para.addText(trimmedParagraph, { font_size: 12, font_face: "Calibri" });
       }
     });
   }
