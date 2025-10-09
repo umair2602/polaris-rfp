@@ -433,6 +433,28 @@ router.get("/:id/export-pdf", async (req, res) => {
     // Use existing sections from the proposal database
     const sections = proposal.sections || {};
 
+    // Helper function to check if we need a page break before adding content
+    const checkPageBreak = (estimatedHeight, isHeading = false) => {
+      const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+      const remainingSpace = pageHeight - (doc.y - doc.page.margins.top);
+      
+      if (isHeading) {
+        // For headings, ensure at least 200 units of space for heading + some content
+        // This prevents orphaned headings (increased from 150 to 200 for better safety)
+        if (remainingSpace < 200) {
+          doc.addPage();
+          return true;
+        }
+      } else {
+        // For regular content, add page break if content won't fit
+        if (remainingSpace < estimatedHeight) {
+          doc.addPage();
+          return true;
+        }
+      }
+      return false;
+    };
+
     let sectionCount = 0;
     Object.entries(sections).forEach(([sectionName, sectionData], index) => {
       // Skip Title section as it's already handled on the title page
@@ -440,13 +462,18 @@ router.get("/:id/export-pdf", async (req, res) => {
         return;
       }
       
-      // Add a new page for each section (except the first one which now already has a page)
+      // Add spacing between sections (except the first one)
       if (sectionCount > 0) {
-        doc.addPage();
+        doc.moveDown(2.5); // Add space between sections instead of page break
       }
       sectionCount++;
 
+      // Check if we need a page break before the section heading
+      // This ensures heading + some content stays together
+      checkPageBreak(0, true);
+
       // Section title
+      const titleY = doc.y; // Save Y position for potential rollback
       doc
         .font('Helvetica-Bold')
         .fontSize(16)
@@ -457,6 +484,26 @@ router.get("/:id/export-pdf", async (req, res) => {
         });
 
       doc.moveDown(0.5);
+      
+      // After rendering heading, check if we have enough space for at least some content
+      // If not, move heading to next page
+      const afterHeadingY = doc.y;
+      const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+      const remainingAfterHeading = pageHeight - (afterHeadingY - doc.page.margins.top);
+      
+      if (remainingAfterHeading < 100) {
+        // Not enough space after heading - move entire heading to next page
+        doc.addPage();
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(16)
+          .fillColor("#1E4E9E")
+          .text(sectionName, {
+            align: "center",
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+          });
+        doc.moveDown(0.5);
+      }
 
       // Section content
       if (sectionName === "Title" && typeof sectionData.content === 'object') {
@@ -822,10 +869,24 @@ function renderTable(doc, content) {
   const headers = paddedData[0];
   const dataRows = paddedData.slice(1);
 
-  const tableTop = doc.y;
   const cellPadding = 8;
   const availableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const colWidth = availableWidth / maxCols;
+
+  // Estimate table height
+  const estimatedHeaderHeight = 30;
+  const estimatedMinTableHeight = estimatedHeaderHeight + (dataRows.length * 30); // Rough estimate
+  
+  // Check if we need a page break before starting the table
+  const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+  const remainingSpace = pageHeight - (doc.y - doc.page.margins.top);
+  
+  // If table won't fit on current page and we're not near the top, start on new page
+  if (remainingSpace < estimatedMinTableHeight && (doc.y - doc.page.margins.top) > 100) {
+    doc.addPage();
+  }
+
+  const tableTop = doc.y;
 
   // Header row with better styling
   headers.forEach((header, i) => {
@@ -854,7 +915,7 @@ function renderTable(doc, content) {
 
   let y = tableTop + 30;
 
-  // Data rows with improved styling
+  // Data rows with improved styling and page break handling
   dataRows.forEach((row, rowIndex) => {
     let maxHeight = 30;
     
@@ -866,6 +927,43 @@ function renderTable(doc, content) {
       });
       maxHeight = Math.max(maxHeight, textHeight + 16);
     });
+
+    // Check if row will fit on current page
+    const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+    const remainingSpace = pageHeight - (y - doc.page.margins.top);
+    
+    if (remainingSpace < maxHeight + 20) {
+      // Not enough space, start new page and redraw header
+      doc.addPage();
+      y = doc.y;
+      
+      // Redraw header on new page
+      headers.forEach((header, i) => {
+        const cellX = doc.page.margins.left + i * colWidth;
+        
+        // Header background
+        doc
+          .rect(cellX, y, colWidth, 30)
+          .fillAndStroke("#f8f9fa", "#dee2e6");
+
+        // Header text
+        doc
+          .fontSize(11)
+          .font("Helvetica-Bold")
+          .fillColor("#212529")
+          .text(
+            header.replace(/<br\s*\/?>/gi, '\n'),
+            cellX + cellPadding,
+            y + 8,
+            {
+              width: colWidth - 2 * cellPadding,
+              align: "left",
+            }
+          );
+      });
+      
+      y += 30;
+    }
 
     // Draw row with alternating background colors
     const backgroundColor = rowIndex % 2 === 0 ? "#ffffff" : "#f8f9fa";

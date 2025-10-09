@@ -261,9 +261,22 @@ class DocxGenerator {
     }
 
     sectionEntries.forEach(([sectionName, sectionData], index) => {
-      // Header logos are already added in the main generation flow
+      // Add spacing before each section (except the first one)
+      if (index > 0) {
+        // Add vertical spacing between sections
+        const spacer1 = docx.createP();
+        spacer1.addText(" ");
+        const spacer2 = docx.createP();
+        spacer2.addText(" ");
+        const spacer3 = docx.createP();
+        spacer3.addText(" ");
+      }
 
-      const heading = docx.createP({ align: "center" });
+      // Section heading with keep-with-next to prevent orphaning
+      const heading = docx.createP({ 
+        align: "center",
+        keepNext: true // Keep heading with next paragraph to prevent orphaning
+      });
       heading.addText(sectionName, {
         bold: true,
         font_size: 13,
@@ -277,21 +290,18 @@ class DocxGenerator {
       } else {
         // Use special formatting for Key Personnel section
         if (sectionName === "Key Personnel") {
-          this.addKeyPersonnelContent(docx, content);
+          this.addKeyPersonnelContent(docx, content, true); // Pass true for first paragraph
         } else {
-          this.addTextContent(docx, content);
+          this.addTextContent(docx, content, true); // Pass true for first paragraph
         }
       }
 
-      // Only add page break if this is not the last section
-      if (index < sectionEntries.length - 1) {
-        docx.putPageBreak();
-      }
+      // No automatic page breaks - let content flow naturally
     });
   }
 
   // ---------------- TEXT CONTENT ----------------
-  addTextContent(docx, content) {
+  addTextContent(docx, content, isFirstParagraph = false) {
     let cleanContent = content || "No content available";
     if (typeof cleanContent !== "string") {
       cleanContent = String(cleanContent);
@@ -304,8 +314,11 @@ class DocxGenerator {
 
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
-    paragraphs.forEach((para) => {
-      const p = docx.createP();
+    paragraphs.forEach((para, paraIndex) => {
+      // First paragraph after heading should stay with heading
+      const p = docx.createP({
+        keepWithPrevious: isFirstParagraph && paraIndex === 0
+      });
       
       // Split paragraph by bold markers
       const parts = para.split(/(\*\*.*?\*\*)/g);
@@ -330,7 +343,7 @@ class DocxGenerator {
   }
 
   // ---------------- KEY PERSONNEL CONTENT ----------------
-  addKeyPersonnelContent(docx, content) {
+  addKeyPersonnelContent(docx, content, isFirstParagraph = false) {
     let cleanContent = content || "No content available";
     if (typeof cleanContent !== "string") {
       cleanContent = String(cleanContent);
@@ -343,13 +356,15 @@ class DocxGenerator {
 
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
-    paragraphs.forEach((para) => {
+    paragraphs.forEach((para, paraIndex) => {
       // Check if paragraph contains lines that start with dashes
       const lines = para.split("\n");
 
       if (lines.length === 1) {
-        // Single line paragraph
-        const p = docx.createP();
+        // Single line paragraph - first paragraph should stay with heading
+        const p = docx.createP({
+          keepWithPrevious: isFirstParagraph && paraIndex === 0
+        });
         // Only convert to bullet if line starts with dash and has content after it
         if (para.trim().startsWith("-") && para.trim().length > 1) {
           const bulletText = para.trim().substring(1).trim();
@@ -390,8 +405,11 @@ class DocxGenerator {
         }
       } else {
         // Multi-line paragraph - check each line
-        lines.forEach((line, index) => {
-          const p = docx.createP();
+        lines.forEach((line, lineIndex) => {
+          // First line of first paragraph should stay with heading
+          const p = docx.createP({
+            keepWithPrevious: isFirstParagraph && paraIndex === 0 && lineIndex === 0
+          });
           // Only convert to bullet if line starts with dash and has content after it
           if (line.trim().startsWith("-") && line.trim().length > 1) {
             const bulletText = line.trim().substring(1).trim();
