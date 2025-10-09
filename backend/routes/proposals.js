@@ -598,41 +598,105 @@ router.get("/:id/export-pdf", async (req, res) => {
               return;
             }
             
-            // Split line into parts with bold and regular text
-            const parts = line.split(/(\*\*.*?\*\*)/g);
+            // Check if line starts with a bullet point marker (- )
+            const trimmedLine = line.trim();
+            let bulletText = null;
+            let indentLevel = 0;
             
-            parts.forEach((part, partIndex) => {
-              if (!part) return;
+            // Detect bullet points with varying indentation
+            const bulletMatch = trimmedLine.match(/^(-+)\s+(.+)$/);
+            if (bulletMatch) {
+              indentLevel = bulletMatch[1].length - 1; // Number of dashes minus 1 for indent level
+              bulletText = bulletMatch[2];
+            }
+            
+            if (bulletText) {
+              // This is a bullet point - render with bullet symbol
+              const indent = 20 + (indentLevel * 15); // Base indent + extra for nested bullets
               
-              // Check if this part is bold
-              if (part.startsWith('**') && part.endsWith('**')) {
-                // Bold text (like "Submitted to:", "Date:", etc.)
-                const boldText = part.slice(2, -2);
-                doc
-                  .font('Helvetica-Bold')
-                  .fontSize(11)
-                  .fillColor("#000000")
-                  .text(boldText, {
-                    continued: true, // Continue on same line for the value after the bold label
-                    align: "left",
-                    lineGap: 4,
-                  });
-              } else {
-                // Regular text - remove any remaining italic markers
-                const regularText = part.replace(/\*(.*?)\*/g, '$1');
-                const isLastPart = partIndex === parts.length - 1;
+              // Split bullet text into parts with bold and regular text
+              const parts = bulletText.split(/(\*\*.*?\*\*)/g);
+              
+              // Start with bullet symbol
+              doc
+                .font('Helvetica')
+                .fontSize(11)
+                .fillColor("#000000")
+                .text('• ', {
+                  continued: true,
+                  indent: indent,
+                  align: "left",
+                  lineGap: 4,
+                });
+              
+              // Add the rest of the text
+              parts.forEach((part, partIndex) => {
+                if (!part) return;
                 
-                doc
-                  .font('Helvetica')
-                  .fontSize(11)
-                  .fillColor("#000000")
-                  .text(regularText, {
-                    continued: false, // End the line after regular text
-                    align: "left",
-                    lineGap: 4,
-                  });
-              }
-            });
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  // Bold text
+                  const boldText = part.slice(2, -2);
+                  doc
+                    .font('Helvetica-Bold')
+                    .fontSize(11)
+                    .fillColor("#000000")
+                    .text(boldText, {
+                      continued: partIndex < parts.length - 1,
+                      align: "left",
+                      lineGap: 4,
+                    });
+                } else {
+                  // Regular text - remove any remaining italic markers
+                  const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                  doc
+                    .font('Helvetica')
+                    .fontSize(11)
+                    .fillColor("#000000")
+                    .text(regularText, {
+                      continued: partIndex < parts.length - 1,
+                      align: "left",
+                      lineGap: 4,
+                    });
+                }
+              });
+            } else {
+              // Not a bullet point - render normally
+              // Split line into parts with bold and regular text
+              const parts = line.split(/(\*\*.*?\*\*)/g);
+              
+              parts.forEach((part, partIndex) => {
+                if (!part) return;
+                
+                // Check if this part is bold
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  // Bold text (like "Submitted to:", "Date:", etc.)
+                  const boldText = part.slice(2, -2);
+                  doc
+                    .font('Helvetica-Bold')
+                    .fontSize(11)
+                    .fillColor("#000000")
+                    .text(boldText, {
+                      continued: true, // Continue on same line for the value after the bold label
+                      align: "left",
+                      lineGap: 4,
+                    });
+                } else {
+                  // Regular text - remove any remaining italic markers
+                  const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                  const isLastPart = partIndex === parts.length - 1;
+                  
+                  doc
+                    .font('Helvetica')
+                    .fontSize(11)
+                    .fillColor("#000000")
+                    .text(regularText, {
+                      continued: false, // End the line after regular text
+                      align: "left",
+                      lineGap: 4,
+                    });
+                }
+              });
+            }
           });
           
           // Add spacing between paragraphs (not just lines)
