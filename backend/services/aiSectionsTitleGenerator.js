@@ -5,55 +5,62 @@ const openai = process.env.OPENAI_API_KEY
   : null;
 
 /**
- * Generate ONLY proposal section titles based on the specific RFP context using OpenAI
+ * Generate proposal section titles based on predefined base sections and RFP analysis
  * Returns an array of strings (section titles) with no content
- * Always prepends the compulsory titles: "Title" and "Cover Letter"
+ * Always includes "Title" and "Cover Letter", then analyzes RFP for other relevant sections
  */
 async function generateSectionTitles(rfp) {
   if (!openai) {
     throw new Error("OpenAI API key not configured");
   }
 
-  const systemPrompt = `You are an expert proposal architect. Given an RFP document, analyze it thoroughly and propose a set of section TITLES that are contextually appropriate for a compelling, professional proposal responding to that specific RFP.
+  // Base section structure that serves as the foundation
+  const baseSections = [
+    "Title",
+    "Cover Letter", 
+    "Technical Approach and Methodology",
+    "Key Personnel and Experience",
+    "Budget Estimate",
+    "Project Timeline", 
+    "References"
+  ];
+
+  const systemPrompt = `You are an expert proposal architect. You have a predefined set of base proposal sections, and your job is to analyze the RFP document to determine which sections are relevant and should be included in the proposal.
+
+BASE SECTIONS AVAILABLE:
+- Title (ALWAYS include)
+- Cover Letter (ALWAYS include)
+- Technical Approach and Methodology
+- Key Personnel and Experience  
+- Budget Estimate
+- Project Timeline
+- References
+
+ANALYSIS TASK:
+1. Always include "Title" and "Cover Letter" sections
+2. For each other base section, determine if the RFP contains relevant information that would support that section
+3. If the RFP mentions specific technical requirements, methodologies, or approaches → include "Technical Approach and Methodology"
+4. If the RFP mentions team qualifications, key personnel requirements, or experience requirements → include "Key Personnel and Experience"
+5. If the RFP mentions budget, cost estimates, or pricing requirements → include "Budget Estimate"  
+6. If the RFP mentions project phases, deadlines, milestones, or timeline requirements → include "Project Timeline"
+7. If the RFP mentions past work examples, references, or case studies → include "References"
+8. Additionally, identify if the RFP requires any UNIQUE sections not covered by the base sections and add those
 
 CRITICAL RULES:
 - You MUST return a valid JSON array of strings and nothing else
 - Each string in the array is a section title
-- Do NOT include any explanations, descriptions, or additional text
-- Do NOT include section content or bullet points
+- Always include "Title" and "Cover Letter" first
+- Only include other base sections if the RFP provides supporting content for them
+- Be flexible - add additional unique sections if the RFP requires them (e.g., "Compliance & Quality Assurance", "Risk Management", "Innovation Strategy", etc.)
 - Do NOT include numbering in the titles
-- Titles must be tailored specifically to the RFP's domain, scope, deliverables, and constraints
-
-Analyze the RFP document carefully to understand:
-- Industry/domain (e.g., IT, construction, consulting, healthcare, research)
-- Project type and scope
-- Key requirements and deliverables mentioned
-- Client expectations and evaluation criteria
-- Specific challenges or constraints mentioned
-
-Create section titles that:
-- Directly address what the RFP is asking for
-- Show deep understanding of the project requirements
-- Use professional business/procurement language
-- Are specific to the project context (not generic)
-- Cover 6-12 sections based on what's relevant for this RFP
-
-Examples of how to tailor titles by domain:
-- IT Projects: Focus on technical architecture, system integration, security frameworks, data migration, etc.
-- Consulting: Emphasize diagnostic approaches, change management, stakeholder engagement, implementation strategies, etc.
-- Construction: Highlight site preparation, safety compliance, construction methods, materials sourcing, etc.
-- Research: Cover research design, data collection protocols, analysis frameworks, validation methods, etc.
-- Marketing: Include market analysis, campaign strategy, brand positioning, performance metrics, etc.
-- Healthcare: Address clinical protocols, regulatory compliance, patient safety, quality assurance, etc.
-
-IMPORTANT: Generate section titles that are SPECIFIC to the actual RFP content and requirements. Do not use generic titles.
+- Keep titles professional and clear
 
 RESPONSE FORMAT: Return a JSON array of strings, where each string is a section title.
-Example structure: ["Title 1", "Title 2", "Title 3", ...]
+Example: ["Title", "Cover Letter", "Technical Approach and Methodology", "Budget Estimate", "Unique Section Based on RFP"]
 
 Return ONLY the JSON array, nothing else.`;
 
-  const userPrompt = `Analyze this RFP and generate contextually relevant section titles for the proposal response.
+  const userPrompt = `Analyze this RFP and determine which base sections are relevant, plus identify any unique sections needed.
 
 RFP DETAILS:
 - Title: ${rfp.title}
@@ -67,18 +74,28 @@ RFP DETAILS:
 
 ${rfp.rawText ? `FULL RFP DOCUMENT TEXT:\n${rfp.rawText}` : ''}
 
-Generate section titles that are:
-1. DIRECTLY derived from the RFP content and requirements above
-2. Address the specific deliverables and evaluation criteria mentioned
-3. Reflect the actual project scope and challenges described
-4. Use terminology and language from the RFP document when appropriate
-5. Show deep understanding of what this particular client is asking for
-6. Follow industry standards for this specific project type
-7. Are contextually relevant (not generic proposal sections)
+ANALYSIS INSTRUCTIONS:
+1. START with "Title" and "Cover Letter" (always required)
 
-ANALYZE the RFP content carefully and create titles that a proposal evaluator would expect to see for THIS specific project.
+2. ANALYZE the RFP for each base section:
+   - Technical content/methodology mentioned? → Include "Technical Approach and Methodology"
+   - Personnel/team/qualifications mentioned? → Include "Key Personnel and Experience"  
+   - Budget/cost/pricing mentioned? → Include "Budget Estimate"
+   - Timeline/schedule/phases mentioned? → Include "Project Timeline"
+   - References/past work/case studies mentioned? → Include "References"
 
-Return ONLY a JSON array of section title strings.`;
+3. IDENTIFY unique requirements in this RFP that need additional sections:
+   - Compliance/regulatory requirements → Add appropriate compliance section
+   - Quality assurance/testing → Add quality section  
+   - Risk management → Add risk section
+   - Innovation/technology → Add innovation section
+   - Sustainability/environmental → Add sustainability section
+   - Training/support → Add training section
+   - Any other unique RFP requirements
+
+4. ORDER sections logically (Title first, Cover Letter second, then technical sections, then administrative sections)
+
+Return a JSON array of section titles that are specifically relevant to THIS RFP based on its actual content and requirements.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -118,21 +135,28 @@ Return ONLY a JSON array of section title strings.`;
     
     const cleaned = sanitizeSectionTitlesArray(titles);
 
-    // Always ensure compulsory titles at the very beginning
+    // Ensure Title and Cover Letter are always first and present
     const compulsory = ["Title", "Cover Letter"];
-    const existing = new Set(cleaned.map(t => t.toLowerCase()));
-    const ordered = [...compulsory.filter(t => !existing.has(t.toLowerCase())), ...cleaned];
-    // If the AI already included them but not at the top, re-order with unique preservation
-    const finalSeen = new Set();
-    const final = [];
-    for (const t of [...compulsory, ...ordered]) {
-      const k = t.toLowerCase();
-      if (finalSeen.has(k)) continue;
-      finalSeen.add(k);
-      final.push(t);
+    const finalSections = [];
+    const seenSections = new Set();
+
+    // Add compulsory sections first
+    for (const section of compulsory) {
+      finalSections.push(section);
+      seenSections.add(section.toLowerCase());
     }
 
-    return final.slice(0, 20);
+    // Add remaining sections, avoiding duplicates
+    for (const section of cleaned) {
+      const lowerSection = section.toLowerCase();
+      if (!seenSections.has(lowerSection)) {
+        finalSections.push(section);
+        seenSections.add(lowerSection);
+      }
+    }
+
+    // Limit to reasonable number (but allow some flexibility for complex RFPs)
+    return finalSections.slice(0, 15);
     
   } catch (error) {
     console.error("AI section title generation failed:", error);
@@ -152,11 +176,22 @@ function sanitizeSectionTitlesArray(arr) {
   const seen = new Set();
   const titles = [];
 
+  // Base sections for reference (to maintain consistency)
+  const baseSections = [
+    "Title",
+    "Cover Letter", 
+    "Technical Approach and Methodology",
+    "Key Personnel and Experience",
+    "Budget Estimate",
+    "Project Timeline", 
+    "References"
+  ];
+
   for (const item of arr) {
     if (typeof item !== 'string') continue;
     
     // Clean the title
-    const title = item
+    let title = item
       .replace(/^\d+\s*[).:-]\s*/g, '') // strip leading numbering
       .replace(/^\*+\s*/g, '') // strip bullet symbols
       .replace(/^[-•]\s*/g, '') // strip dash/bullet prefixes
@@ -166,6 +201,17 @@ function sanitizeSectionTitlesArray(arr) {
     if (title.length > 120) continue; // avoid paragraphs
     if (title.length < 3) continue; // too short
     
+    // Normalize base section titles to maintain consistency
+    const lowerTitle = title.toLowerCase();
+    const matchingBase = baseSections.find(base => 
+      base.toLowerCase() === lowerTitle || 
+      lowerTitle.includes(base.toLowerCase().split(' ')[0]) // partial match for flexibility
+    );
+    
+    if (matchingBase) {
+      title = matchingBase; // Use the standardized base section name
+    }
+    
     // Check for duplicates (case-insensitive)
     const key = title.toLowerCase();
     if (seen.has(key)) continue;
@@ -174,8 +220,7 @@ function sanitizeSectionTitlesArray(arr) {
     titles.push(title);
   }
 
-  // Limit to reasonable number of sections
-  return titles.slice(0, 20);
+  return titles;
 }
 
 /**

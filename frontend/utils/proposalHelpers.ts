@@ -35,8 +35,16 @@ export const renderSectionContent = (content: any, sectionName: string): string 
 
   // Handle Title section with object content
   if (sectionName === "Title") {
-    if (typeof content === "object") {
+    if (typeof content === "object" && content !== null) {
       const titleData = content as { submittedBy?: string; name?: string; email?: string; number?: string };
+      
+      // Check if the object has any valid content
+      const hasValidContent = titleData.submittedBy || titleData.name || titleData.email || titleData.number;
+      
+      if (!hasValidContent) {
+        return `<div class="title-section"><p class="text-gray-500 italic">No contact information available</p></div>`;
+      }
+      
       return `
           <div class="title-section">
             ${titleData.submittedBy ? `<p><strong>Submitted by:</strong> ${titleData.submittedBy}</p>` : ''}
@@ -49,12 +57,18 @@ export const renderSectionContent = (content: any, sectionName: string): string 
     if (typeof content === 'string') {
       // If backend sent Title as a string, render line by line
       const lines = content.split(/\r?\n/).filter(Boolean);
+      if (lines.length === 0) {
+        return `<div class="title-section"><p class="text-gray-500 italic">No contact information available</p></div>`;
+      }
       return `
           <div class="title-section">
             ${lines.map(line => `<p>${line.replace(/\*\*(.*?)\*\*/g, '<strong>$1<\/strong>')}</p>`).join('')}
           </div>
         `;
     }
+    
+    // If content is neither object nor string, show fallback
+    return `<div class="title-section"><p class="text-gray-500 italic">Title section content format not recognized</p></div>`;
   }
 
   // Ensure content is a string for other sections
@@ -182,8 +196,36 @@ export const isContentLibrarySection = (sectionData: any): boolean => {
 };
 
 // Helper function to get content library type from section name
-export const getContentLibraryType = (sectionName: string): 'team' | 'references' | null => {
+export const getContentLibraryType = (sectionName: string): 'team' | 'references' | 'company' | null => {
   const title = sectionName.toLowerCase();
+  
+  // Check for Title section
+  if (title === 'title') {
+    return 'company';
+  }
+  
+  // Check for cover letter/company sections
+  if (title.includes('cover letter') || 
+      title.includes('introduction letter') || 
+      title.includes('transmittal letter')) {
+    return 'company';
+  }
+
+  // Check for experience and qualifications sections
+  if (title.includes('experience') ||
+      title.includes('qualification') ||
+      title.includes('firm qualification') ||
+      title.includes('company qualification') ||
+      title.includes('firm experience') ||
+      title.includes('company experience') ||
+      title.includes('background') ||
+      title.includes('capabilities') ||
+      title.includes('expertise') ||
+      title.includes('credentials') ||
+      title.includes('track record') ||
+      title.includes('company profile')) {
+    return 'company';
+  }
   
   // Check for personnel/team sections
   if (title.includes('personnel') || 

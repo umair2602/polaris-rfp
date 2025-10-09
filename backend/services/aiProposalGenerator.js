@@ -1,4 +1,15 @@
 const OpenAI = require('openai');
+const {
+  fetchCompanyInfo,
+  fetchTeamMembers,
+  fetchProjectReferences,
+  formatTitleSection,
+  formatCoverLetterSection,
+  formatTeamMembersSection,
+  formatReferencesSection,
+  formatExperienceSection,
+  shouldUseContentLibrary
+} = require('./sharedSectionFormatters');
 
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -12,6 +23,11 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
     throw new Error("OpenAI API key not configured");
   }
 
+  // Fetch content library data
+  const companyInfo = await fetchCompanyInfo();
+  const teamMembers = await fetchTeamMembers();
+  const projectReferences = await fetchProjectReferences();
+
   // Build dynamic section titles using RFP's stored titles
   const storedTitles = Array.isArray(rfp.sectionTitles) ? rfp.sectionTitles : [];
   const compulsory = ["Title", "Cover Letter"];
@@ -24,16 +40,36 @@ async function generateAIProposalSections(rfp, templateId, customContent) {
     seen.add(key);
     orderedTitles.push(k);
   });
-  const dynamicList = orderedTitles.map((t, i) => `${i + 1}. **${t}**`).join('\n');
+
+  // Identify sections that should use content library
+  const contentLibrarySections = {};
+  for (const title of orderedTitles) {
+    const libraryType = await shouldUseContentLibrary(title);
+    if (libraryType) {
+      contentLibrarySections[title] = libraryType;
+    }
+  }
+
+  // Filter out content library sections from AI generation
+  const aiOnlySections = orderedTitles.filter(
+    (title) => !contentLibrarySections[title]
+  );
+
+  console.log("Content library sections:", contentLibrarySections);
+  console.log("AI-only sections:", aiOnlySections);
+
+  const dynamicList = aiOnlySections.map((t, i) => `${i + 1}. **${t}**`).join('\n');
 
   const systemPrompt = `
 You are an expert proposal writer. Generate a comprehensive proposal based on the RFP document provided. 
 Structure the proposal with the following sections and format them as markdown:
 
+NOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:
+
 ${dynamicList}
 
 CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
-${JSON.stringify(orderedTitles)}
+${JSON.stringify(aiOnlySections)}
 
 SECTION GUIDELINES:
 
@@ -278,23 +314,118 @@ Generate a comprehensive proposal with all sections formatted as markdown, using
       
       const parsed = JSON.parse(jsonText);
       
-      // Validate that we have the expected sections
-      const expectedSections = orderedTitles;
-      
-      // Check if we have the expected structure
-      const hasExpectedSections = expectedSections.some(section => parsed.hasOwnProperty(section));
+      // Validate that we have the expected AI sections
+      const hasExpectedSections = aiOnlySections.some(section => parsed.hasOwnProperty(section));
       
       if (hasExpectedSections) {
-        // Validate and clean the parsed sections
+        // Add content library sections to parsed sections
+        for (const sectionTitle of orderedTitles) {
+          const libraryType = contentLibrarySections[sectionTitle];
+          if (libraryType) {
+            if (libraryType === "title") {
+              parsed[sectionTitle] = formatTitleSection(companyInfo, rfp);
+            } else if (libraryType === "cover-letter") {
+              parsed[sectionTitle] = formatCoverLetterSection(companyInfo, rfp);
+            } else if (libraryType === "experience") {
+              parsed[sectionTitle] = await formatExperienceSection(companyInfo, rfp);
+            } else if (libraryType === "team") {
+              parsed[sectionTitle] = formatTeamMembersSection(teamMembers);
+            } else if (libraryType === "references") {
+              parsed[sectionTitle] = formatReferencesSection(projectReferences);
+            }
+          }
+        }
+
+        // Validate and clean the AI sections
         const validatedSections = validateAISections(parsed);
-        return formatAISections(validatedSections);
+        return formatAISections(validatedSections, orderedTitles, contentLibrarySections);
       } else {
-        // If structure is different, try to extract from markdown
-        return extractSectionsFromMarkdown(raw);
+        // If structure is different, try to extract from markdown and add content library sections
+        const extracted = extractSectionsFromMarkdown(raw);
+        
+        // Add content library sections to extracted sections
+        for (const sectionTitle of orderedTitles) {
+          const libraryType = contentLibrarySections[sectionTitle];
+          if (libraryType) {
+            if (libraryType === "title") {
+              extracted[sectionTitle] = {
+                content: formatTitleSection(companyInfo, rfp),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "cover-letter") {
+              extracted[sectionTitle] = {
+                content: formatCoverLetterSection(companyInfo, rfp),
+                type: "content-library", 
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "experience") {
+              extracted[sectionTitle] = {
+                content: await formatExperienceSection(companyInfo, rfp),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "team") {
+              extracted[sectionTitle] = {
+                content: formatTeamMembersSection(teamMembers),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            } else if (libraryType === "references") {
+              extracted[sectionTitle] = {
+                content: formatReferencesSection(projectReferences),
+                type: "content-library",
+                lastModified: new Date().toISOString(),
+              };
+            }
+          }
+        }
+        
+        return extracted;
       }
     } catch (jsonError) {
-      // If not JSON, try to extract sections from markdown
-      return extractSectionsFromMarkdown(raw);
+      // If not JSON, try to extract sections from markdown and add content library sections
+      const extracted = extractSectionsFromMarkdown(raw);
+      
+      // Add content library sections to extracted sections
+      for (const sectionTitle of orderedTitles) {
+        const libraryType = contentLibrarySections[sectionTitle];
+        if (libraryType) {
+          if (libraryType === "title") {
+            extracted[sectionTitle] = {
+              content: formatTitleSection(companyInfo, rfp),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "cover-letter") {
+            extracted[sectionTitle] = {
+              content: formatCoverLetterSection(companyInfo, rfp),
+              type: "content-library", 
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "experience") {
+            extracted[sectionTitle] = {
+              content: await formatExperienceSection(companyInfo, rfp),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "team") {
+            extracted[sectionTitle] = {
+              content: formatTeamMembersSection(teamMembers),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          } else if (libraryType === "references") {
+            extracted[sectionTitle] = {
+              content: formatReferencesSection(projectReferences),
+              type: "content-library",
+              lastModified: new Date().toISOString(),
+            };
+          }
+        }
+      }
+      
+      return extracted;
     }
   } catch (error) {
     console.error("AI proposal generation failed:", error);
@@ -421,43 +552,50 @@ function cleanContent(content) {
 /**
  * Format AI-generated sections for the database
  */
-function formatAISections(sections, companyName = 'Not specified') {
+function formatAISections(sections, orderedTitles = [], contentLibrarySections = {}) {
   const formattedSections = {};
   
-  // Add Title section first if it exists
-  if (sections.Title) {
-    formattedSections["Title"] = {
-      content: extractTitleContactInfo(sections.Title, companyName),
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
+  // Process sections in the correct order
+  const sectionsToProcess = orderedTitles.length > 0 ? orderedTitles : Object.keys(sections);
   
-  // Add Cover Letter section if it exists
-  if (sections["Cover Letter"]) {
-    formattedSections["Cover Letter"] = {
-      content: sections["Cover Letter"],
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
-  
-  // Add remaining AI-generated sections (excluding Title and Cover Letter which were already added)
-  Object.entries(sections).forEach(([sectionName, content]) => {
-    // Skip Title and Cover Letter (already added)
-    if (sectionName !== "Title" &&
-        sectionName !== "Cover Letter") {
+  sectionsToProcess.forEach((sectionName) => {
+    if (sections[sectionName]) {
+      const content = sections[sectionName];
+      const isContentLibrary = contentLibrarySections[sectionName];
       
-      // Apply content cleaning to all sections except Key Personnel
-      const processedContent = sectionName === "Key Personnel" 
-        ? cleanKeyPersonnelContent(content)
-        : cleanContent(content);
-      
-      formattedSections[sectionName] = {
-        content: processedContent,
-        type: "ai-generated",
-        lastModified: new Date().toISOString(),
-      };
+      if (sectionName === "Title" && isContentLibrary) {
+        // Title section from content library - already formatted as object
+        formattedSections[sectionName] = {
+          content: content,
+          type: "content-library",
+          lastModified: new Date().toISOString(),
+        };
+      } else if (isContentLibrary) {
+        // Other content library sections - use as string content
+        formattedSections[sectionName] = {
+          content: content,
+          type: "content-library",
+          lastModified: new Date().toISOString(),
+        };
+      } else if (sectionName === "Title") {
+        // AI-generated Title section - extract contact info
+        formattedSections[sectionName] = {
+          content: extractTitleContactInfo(content),
+          type: "ai-generated",
+          lastModified: new Date().toISOString(),
+        };
+      } else {
+        // AI-generated sections - clean content
+        const processedContent = sectionName === "Key Personnel" 
+          ? cleanKeyPersonnelContent(content)
+          : cleanContent(content);
+        
+        formattedSections[sectionName] = {
+          content: processedContent,
+          type: "ai-generated",
+          lastModified: new Date().toISOString(),
+        };
+      }
     }
   });
   
@@ -571,71 +709,7 @@ function extractSectionsFromMarkdown(markdownText) {
     }
   }
   
-  // If no sections found with patterns, try to split by common section names
-  if (!foundSections) {
-    const commonSections = [
-      "Project Understanding and Approach",
-      "Key Personnel", 
-      "Methodology",
-      "Project Schedule",
-      "Budget",
-      "References"
-    ];
-    
-    let currentContent = markdownText;
-    
-    for (const sectionName of commonSections) {
-      const regex = new RegExp(`(${sectionName}[\\s\\S]*?)(?=${commonSections.join('|')}|$)`, 'gi');
-      const match = regex.exec(currentContent);
-      
-      if (match && match[1]) {
-        const content = match[1].replace(new RegExp(`^${sectionName}\\s*:?\\s*`, 'i'), '').trim();
-        if (content && content.length > 10) {
-          // Apply content cleaning to all sections except Key Personnel
-          const processedContent = sectionName === "Key Personnel" 
-            ? cleanKeyPersonnelContent(content)
-            : cleanContent(content);
-            
-          sections[sectionName] = {
-            content: processedContent,
-            type: "ai-generated", 
-            lastModified: new Date().toISOString(),
-          };
-        }
-      }
-    }
-  }
-  
-  // If still no sections found, create a single section with all content
-  if (Object.keys(sections).length === 0) {
-    sections["Proposal Content"] = {
-      content: cleanContent(markdownText),
-      type: "ai-generated",
-      lastModified: new Date().toISOString(),
-    };
-  }
-  
-  // Merge sections with proper ordering: Title first, then AI sections
-  const finalSections = {};
-  
-  // Add Title section first if it exists
-  if (sections.Title) {
-    finalSections["Title"] = sections.Title;
-  }
-  
-  // Add Cover Letter section if it exists
-  if (sections["Cover Letter"]) {
-    finalSections["Cover Letter"] = sections["Cover Letter"];
-  }
-  
-  // Add remaining AI sections (excluding Title and Cover Letter)
-  Object.entries(sections).forEach(([sectionName, sectionData]) => {
-    if (sectionName !== "Title" && sectionName !== "Cover Letter") {
-      finalSections[sectionName] = sectionData;
-    }
-  });
-  
-  return finalSections;
+  return sections;
 }
 
 module.exports = {

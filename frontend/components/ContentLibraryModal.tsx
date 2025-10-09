@@ -24,11 +24,21 @@ interface ProjectReference {
   contactPhone?: string;
 }
 
+interface Company {
+  _id: string;
+  companyId: string;
+  name: string;
+  description: string;
+  email?: string;
+  phone?: string;
+  coverLetter?: string;
+}
+
 interface ContentLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onApply: (selectedIds: string[]) => void;
-  type: 'team' | 'references';
+  type: 'team' | 'references' | 'company';
   currentSelectedIds?: string[];
   isLoading?: boolean;
 }
@@ -41,7 +51,7 @@ export default function ContentLibraryModal({
   currentSelectedIds = [],
   isLoading = false
 }: ContentLibraryModalProps) {
-  const [items, setItems] = useState<(TeamMember | ProjectReference)[]>([]);
+  const [items, setItems] = useState<(TeamMember | ProjectReference | Company)[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>(currentSelectedIds);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,10 +70,14 @@ export default function ContentLibraryModal({
       let response;
       if (type === 'team') {
         response = await api.get('/api/content/team');
-      } else {
+      } else if (type === 'references') {
         response = await api.get('/api/content/references');
+      } else if (type === 'company') {
+        response = await api.get('/api/content/companies');
       }
-      setItems(response.data);
+      if (response) {
+        setItems(response.data);
+      }
     } catch (err) {
       console.error('Error loading content library items:', err);
       setError('Failed to load content library items');
@@ -84,8 +98,10 @@ export default function ContentLibraryModal({
     onApply(selectedIds);
   };
 
-  const getItemId = (item: TeamMember | ProjectReference) => {
-    return 'memberId' in item ? item.memberId : item._id;
+  const getItemId = (item: TeamMember | ProjectReference | Company) => {
+    if ('memberId' in item) return item.memberId;
+    if ('companyId' in item) return item.companyId;
+    return item._id;
   };
 
   const renderTeamMember = (member: TeamMember) => (
@@ -147,10 +163,46 @@ export default function ContentLibraryModal({
     </div>
   );
 
-  const title = type === 'team' ? 'Select Team Members' : 'Select Project References';
+  const renderCompany = (company: Company) => (
+    <div key={company.companyId} className="border rounded-lg p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h4 className="font-semibold text-gray-900">{company.name}</h4>
+          {company.email && (
+            <p className="text-sm text-gray-600 mb-1">Email: {company.email}</p>
+          )}
+          {company.phone && (
+            <p className="text-sm text-gray-600 mb-2">Phone: {company.phone}</p>
+          )}
+          <p className="text-sm text-gray-700 line-clamp-3">{company.description}</p>
+          {company.coverLetter && (
+            <p className="text-xs text-gray-500 mt-2">✓ Has cover letter content</p>
+          )}
+        </div>
+        <button
+          onClick={() => toggleSelection(company.companyId)}
+          className={`ml-4 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+            selectedIds.includes(company.companyId)
+              ? 'bg-primary-600 border-primary-600 text-white'
+              : 'border-gray-300 hover:border-primary-500'
+          }`}
+        >
+          {selectedIds.includes(company.companyId) && (
+            <CheckIcon className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  const title = type === 'team' ? 'Select Team Members' : 
+                type === 'references' ? 'Select Project References' : 
+                'Select Company Profile';
   const emptyMessage = type === 'team' 
     ? 'No team members available in the content library.' 
-    : 'No project references available in the content library.';
+    : type === 'references'
+    ? 'No project references available in the content library.'
+    : 'No company profiles available in the content library.';
 
   return (
     <Modal
@@ -207,7 +259,9 @@ export default function ContentLibraryModal({
           <div className="max-h-96 overflow-y-auto space-y-3">
             {type === 'team' 
               ? items.map(item => renderTeamMember(item as TeamMember))
-              : items.map(item => renderReference(item as ProjectReference))
+              : type === 'references'
+              ? items.map(item => renderReference(item as ProjectReference))
+              : items.map(item => renderCompany(item as Company))
             }
           </div>
         )}

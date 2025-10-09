@@ -21,6 +21,11 @@ const templates = {
         required: true
       },
       {
+        title: 'Firm Qualifications and Experience',
+        contentType: 'Firm Qualifications and Experience',
+        required: true
+      },
+      {
         title: 'Technical Approach & Methodology',
         contentType: 'Technical Approach & Methodology',
         required: true,
@@ -127,6 +132,11 @@ const templates = {
       {
         title: 'Cover Letter',
         contentType: 'cover_letter',
+        required: true
+      },
+      {
+        title: 'Firm Qualifications and Experience',
+        contentType: 'Firm Qualifications and Experience',
         required: true
       },
       {

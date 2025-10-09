@@ -1,6 +1,15 @@
 const OpenAI = require("openai");
-const TeamMember = require("../models/TeamMember");
-const ProjectReference = require("../models/ProjectReference");
+const {
+  fetchCompanyInfo,
+  fetchTeamMembers,
+  fetchProjectReferences,
+  formatTitleSection,
+  formatCoverLetterSection,
+  formatTeamMembersSection,
+  formatReferencesSection,
+  formatExperienceSection,
+  shouldUseContentLibrary
+} = require('./sharedSectionFormatters');
 
 const {
   formatAISections,
@@ -14,116 +23,6 @@ const {
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
-
-/**
- * Fetch team members from the content library
- */
-async function fetchTeamMembers() {
-  try {
-    const teamMembers = await TeamMember.find({ isActive: true }).lean();
-    return teamMembers;
-  } catch (error) {
-    console.error("Error fetching team members:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch project references from the content library
- */
-async function fetchProjectReferences() {
-  try {
-    const references = await ProjectReference.find({
-      isActive: true,
-      isPublic: true,
-    }).lean();
-    return references;
-  } catch (error) {
-    console.error("Error fetching project references:", error);
-    return [];
-  }
-}
-
-/**
- * Format team members data into proposal section content
- */
-function formatTeamMembersSection(teamMembers, selectedIds = null) {
-  if (!teamMembers || teamMembers.length === 0) {
-    return "No team members available in the content library.";
-  }
-
-  // If specific IDs are provided, filter by those
-  const membersToUse = selectedIds
-    ? teamMembers.filter((member) => selectedIds.includes(member.memberId))
-    : teamMembers;
-
-  if (membersToUse.length === 0) {
-    return "No suitable team members found for this project.";
-  }
-
-  let content =
-    "Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n";
-
-  membersToUse.forEach((member) => {
-    content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
-    content += `${member.biography}\n\n`;
-  });
-
-  return content.trim();
-}
-
-/**
- * Format project references data into proposal section content
- */
-function formatReferencesSection(references, selectedIds = null) {
-  if (!references || references.length === 0) {
-    return "No project references available in the content library.";
-  }
-
-  // If specific IDs are provided, filter by those
-  const referencesToUse = selectedIds
-    ? references.filter((reference) =>
-        selectedIds.includes(reference._id.toString())
-      )
-    : references;
-
-  if (referencesToUse.length === 0) {
-    return "No suitable project references found for this project.";
-  }
-
-  let content =
-    "Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n";
-
-  referencesToUse.forEach((reference) => {
-    content += `**${reference.organizationName}**`;
-    if (reference.timePeriod) {
-      content += ` (${reference.timePeriod})`;
-    }
-    content += "\n\n";
-
-    content += `**Contact:** ${reference.contactName}`;
-    if (reference.contactTitle) {
-      content += `, ${reference.contactTitle}`;
-    }
-    if (reference.additionalTitle) {
-      content += ` - ${reference.additionalTitle}`;
-    }
-    content += ` of ${reference.organizationName}\n\n`;
-
-    if (reference.contactEmail) {
-      content += `**Email:** ${reference.contactEmail}\n\n`;
-    }
-
-    if (reference.contactPhone) {
-      content += `**Phone:** ${reference.contactPhone}\n\n`;
-    }
-
-    content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
-    content += "---\n\n";
-  });
-
-  return content.trim();
-}
 
 /**
  * Use AI to select most relevant team members based on RFP content
@@ -274,195 +173,37 @@ Instructions:
 }
 
 /**
- * Fallback team selection based on keyword matching
+ * Fallback team selection - simply returns first 2 team members
  */
 function fallbackTeamSelection(rfp, teamMembers) {
   if (!teamMembers || teamMembers.length === 0) return [];
 
-  console.log("Using fallback team selection...");
+  console.log("Using fallback team selection - returning first 2 team members");
 
-  // Extract keywords from RFP
-  const rfpText = [
-    rfp.title || "",
-    rfp.projectType || "",
-    rfp.projectScope || "",
-    ...(rfp.keyRequirements || []),
-    ...(rfp.deliverables || []),
-    rfp.rawText || "",
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  console.log("RFP text for matching:", rfpText.substring(0, 200) + "...");
-
-  // Score each team member based on keyword matches
-  const scoredMembers = teamMembers.map((member) => {
-    const memberText = [
-      member.nameWithCredentials || "",
-      member.position || "",
-      member.biography || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    let score = 0;
-
-    // Direct RFP keyword matches in member text
-    const rfpWords = rfpText.split(/\s+/).filter((word) => word.length > 4);
-    rfpWords.forEach((word) => {
-      if (memberText.includes(word)) {
-        score += 1;
-      }
-    });
-
-    // Bonus for position-based matches
-    if (rfpText.includes("zoning") && memberText.includes("zoning")) score += 5;
-    if (rfpText.includes("planning") && memberText.includes("planning"))
-      score += 5;
-    if (rfpText.includes("municipal") && memberText.includes("municipal"))
-      score += 5;
-    if (rfpText.includes("urban") && memberText.includes("urban")) score += 5;
-    if (rfpText.includes("legal") && memberText.includes("legal")) score += 5;
-    if (rfpText.includes("attorney") && memberText.includes("attorney"))
-      score += 5;
-
-    // Penalty for clearly irrelevant roles
-    if (memberText.includes("finance") && !rfpText.includes("finance"))
-      score -= 10;
-    if (memberText.includes("accounting") && !rfpText.includes("accounting"))
-      score -= 10;
-    if (memberText.includes("technology") && !rfpText.includes("technology"))
-      score -= 10;
-    if (memberText.includes("software") && !rfpText.includes("software"))
-      score -= 10;
-
-    console.log(
-      `${member.memberId} (${member.nameWithCredentials}): score ${score}`
-    );
-    return { member, score };
-  });
-
-  // Select members with score > 0, limit to 2, sort by score
-  const selectedMembers = scoredMembers
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+  // Simply return the first 2 team members
+  const selectedMembers = teamMembers
     .slice(0, 2)
-    .map((item) => item.member.memberId);
+    .map((member) => member.memberId);
 
   console.log("Fallback team selection results:", selectedMembers);
-
-  // If no matches found with positive scores, return empty array instead of all
   return selectedMembers;
 }
 
 /**
- * Fallback reference selection based on keyword matching
+ * Fallback reference selection - simply returns first 2 references
  */
 function fallbackReferenceSelection(rfp, references) {
   if (!references || references.length === 0) return [];
 
-  // Extract keywords from RFP
-  const rfpText = [
-    rfp.title || "",
-    rfp.projectType || "",
-    rfp.projectScope || "",
-    ...(rfp.keyRequirements || []),
-    ...(rfp.deliverables || []),
-    rfp.rawText || "",
-  ]
-    .join(" ")
-    .toLowerCase();
+  console.log("Using fallback reference selection - returning first 2 references");
 
-  console.log("Using fallback reference selection...");
-  console.log("RFP text for matching:", rfpText.substring(0, 200) + "...");
-
-  // Score each reference based on keyword matches
-  const scoredReferences = references.map((ref) => {
-    const refText = [ref.organizationName || "", ref.scopeOfWork || ""]
-      .join(" ")
-      .toLowerCase();
-
-    let score = 0;
-
-    // Direct RFP keyword matches in reference text
-    const rfpWords = rfpText.split(/\s+/).filter((word) => word.length > 4);
-    rfpWords.forEach((word) => {
-      if (refText.includes(word)) {
-        score += 1;
-      }
-    });
-
-    // Bonus for highly relevant matches
-    if (rfpText.includes("zoning") && refText.includes("zoning")) score += 5;
-    if (rfpText.includes("planning") && refText.includes("planning"))
-      score += 5;
-    if (rfpText.includes("municipal") && refText.includes("municipal"))
-      score += 5;
-    if (rfpText.includes("urban") && refText.includes("urban")) score += 5;
-    if (rfpText.includes("city") && refText.includes("city")) score += 3;
-    if (rfpText.includes("county") && refText.includes("county")) score += 3;
-
-    // Penalty for clearly irrelevant projects
-    if (refText.includes("software") && !rfpText.includes("software"))
-      score -= 10;
-    if (refText.includes("technology") && !rfpText.includes("technology"))
-      score -= 10;
-    if (refText.includes("web") && !rfpText.includes("web")) score -= 10;
-    if (refText.includes("database") && !rfpText.includes("database"))
-      score -= 10;
-
-    console.log(`${ref._id} (${ref.organizationName}): score ${score}`);
-    return { reference: ref, score };
-  });
-
-  // Select references with score > 0, limit to 2, sort by score
-  const selectedRefs = scoredReferences
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+  // Simply return the first 2 references
+  const selectedRefs = references
     .slice(0, 2)
-    .map((item) => item.reference._id.toString());
+    .map((ref) => ref._id.toString());
 
   console.log("Fallback reference selection results:", selectedRefs);
-
-  // If no matches found with positive scores, return empty array instead of all
   return selectedRefs;
-}
-
-/**
- * Check if a section title indicates it should use content library data
- */
-function shouldUseContentLibrary(sectionTitle) {
-  const title = sectionTitle.toLowerCase();
-
-  // Check for personnel/team sections FIRST (higher priority)
-  if (
-    title.includes("personnel") ||
-    title.includes("team") ||
-    title.includes("staff") ||
-    title.includes("key personnel") ||
-    title.includes("project team") ||
-    title.includes("team member") ||
-    title.includes("human resource") ||
-    title.includes("expertise")
-  ) {
-    return "team";
-  }
-
-  // Check for references/experience sections (but exclude personnel-related experience)
-  if (
-    title.includes("reference") ||
-    (title.includes("experience") &&
-      !title.includes("personnel") &&
-      !title.includes("team") &&
-      !title.includes("key")) ||
-    title.includes("past project") ||
-    title.includes("client reference") ||
-    title.includes("project portfolio")
-  ) {
-    return "references";
-  }
-
-  return null;
 }
 
 /**
@@ -490,6 +231,7 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
   }
 
   // Fetch content library data
+  const companyInfo = await fetchCompanyInfo();
   const teamMembers = await fetchTeamMembers();
   const projectReferences = await fetchProjectReferences();
 
@@ -538,21 +280,39 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
   });
 
   // Identify sections that should use content library
+  // Track which library types have been used to prevent duplicates
   const contentLibrarySections = {};
-  orderedTitles.forEach((title) => {
-    const libraryType = shouldUseContentLibrary(title);
+  const usedLibraryTypes = new Set();
+  
+  for (const title of orderedTitles) {
+    const libraryType = await shouldUseContentLibrary(title);
     if (libraryType) {
+      // Only use each library type once to prevent duplicate content
+      // Exception: allow multiple sections to be AI-generated (null type)
+      if (libraryType === 'experience' && usedLibraryTypes.has('experience')) {
+        // Skip this section - let AI generate it instead
+        console.log(`Skipping duplicate experience section: ${title}`);
+        continue;
+      }
+      
       contentLibrarySections[title] = libraryType;
+      usedLibraryTypes.add(libraryType);
     }
-  });
+  }
 
   // Filter out content library sections from AI generation
   const aiOnlySections = orderedTitles.filter(
     (title) => !contentLibrarySections[title]
   );
+
+  console.log("Content library sections:", contentLibrarySections);
+  console.log("AI-only sections:", aiOnlySections);
   const dynamicList = aiOnlySections
     .map((t, i) => `${i + 1}. **${t}**`)
     .join("\n");
+
+  // Check if Cover Letter should be generated by AI or handled by content library
+  const shouldGenerateCoverLetter = aiOnlySections.includes("Cover Letter");
 
   // Build per-section guidance from the template (default content, contentType, required)
   const perSectionGuidance = templateOrderedSections
@@ -573,11 +333,16 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
     })
     .join("\n\n");
 
+  // Build cover letter instructions only if AI should generate it
+  const coverLetterInstructions = shouldGenerateCoverLetter ? 
+    `\n\n2. **Cover Letter** - Use company information from content library to create a personalized cover letter\n   Use this EXACT format structure:\n     **Submitted to:** [Client Name from RFP]\n     **Submitted by:** [Company Name from context]\n     **Date:** [Current date in MM/DD/YYYY format]\n\n     Dear [Appropriate salutation based on RFP context],\n\n     [Personalized opening paragraph mentioning specific connections or relevant experience]\n\n     [2-3 body paragraphs explaining understanding of the project and approach]\n\n     [Closing paragraph expressing commitment and looking forward to working together]\n\n     Sincerely,\n\n     [Generated Name], [Generated Title]\n     [Generated Email]\n     [Generated Phone]\n   Generate realistic contact information based on company context and include specific details from the RFP when available.` : 
+    '';
+
   const systemPrompt = `You are an expert proposal writer. Generate a comprehensive proposal strictly using the template-provided section titles and the RFP context. 
 
 NOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:\n\n${dynamicList}\n\nCRITICAL: Use EXACTLY these section titles as JSON keys, in this order:\n${JSON.stringify(
     aiOnlySections
-  )}\n\n1. **Title** - ENHANCED CONTACT INFORMATION EXTRACTION:\n   Carefully scan the entire text for ANY contact information and extract the following:\n\n   - **Submitted by**: [Organization submitting the proposal; if not found, use "Not specified"]\n   - **Name**: Look for contact person, project manager, point of contact, or any individual name mentioned for correspondence\n   - **Email**: Search for any email addresses in the text (look for @ symbols)\n   - **Number**: Find any phone numbers, contact numbers, or telephone references\n\n   SEARCH PATTERNS TO LOOK FOR:\n   - "Contact:", "Contact Person:", "Point of Contact:", "Project Manager:"\n   - "Email:", "E-mail:", "Send to:", "Submit to:"\n   - "Phone:", "Tel:", "Telephone:", "Call:", "Contact Number:"\n   - Names followed by titles like "Director", "Manager", "Coordinator"\n   - Email formats: anything@domain.com, anything@domain.gov, anything@domain.org\n   - Phone formats: (xxx) xxx-xxxx, xxx-xxx-xxxx, xxx.xxx.xxxx\n   - Addresses that might contain contact info\n   - Look in submission instructions, cover letters, and contact sections\n   - Check letterheads, signatures, and footer information\n\n   EXTRACTION RULES:\n   - If multiple contacts exist, prioritize the PRIMARY contact or project-specific contact\n   - If no specific contact info is found, use "Not specified" for that field\n   - For "Submitted by", if not found in the RFP, use "Not specified"\n   - Look throughout the entire text, including headers, footers, and appendices\n   - Extract the most relevant contact for proposal submission/communication\n   - Clean extracted data (remove extra spaces, formatting)\n\n2. **Cover Letter** - Personalized cover letter with contextual details and company-specific information\n   Use this EXACT format structure:\n     **Submitted to:** [Client Name from RFP]\n     **Submitted by:** [Company Name from context]\n     **Date:** [Current date in MM/DD/YYYY format]\n\n     Dear [Appropriate salutation based on RFP context],\n\n     [Personalized opening paragraph mentioning specific connections or relevant experience]\n\n     [2-3 body paragraphs explaining understanding of the project and approach]\n\n     [Closing paragraph expressing commitment and looking forward to working together]\n\n     Sincerely,\n\n     [Generated Name], [Generated Title]\n     [Generated Email]\n     [Generated Phone]\n   Generate realistic contact information based on company context and include specific details from the RFP when available.\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
+  )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
 
   const userPrompt = `RFP Information:\n- Title: ${rfp.title}\n- Client: ${
     rfp.clientName
@@ -646,6 +411,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
       const hasExpected = aiOnlySections.some((t) =>
         Object.prototype.hasOwnProperty.call(parsed, t)
       );
+      
       if (hasExpected) {
         // Ensure Title is present and populated; if missing/empty, synthesize from RFP
         if (!parsed.Title || String(parsed.Title).trim().length === 0) {
@@ -653,7 +419,7 @@ NOTE: Some sections will be handled separately using content library data. Gener
         }
 
         // Add content library sections in the original order
-        orderedTitles.forEach((sectionTitle) => {
+        for (const sectionTitle of orderedTitles) {
           const libraryType = contentLibrarySections[sectionTitle];
           if (libraryType) {
             if (libraryType === "team") {
@@ -666,31 +432,48 @@ NOTE: Some sections will be handled separately using content library data. Gener
                 projectReferences,
                 selectedReferenceIds
               );
+            } else if (libraryType === "title") {
+              parsed[sectionTitle] = formatTitleSection(
+                companyInfo,
+                rfp
+              );
+            } else if (libraryType === "cover-letter") {
+              parsed[sectionTitle] = formatCoverLetterSection(
+                companyInfo,
+                rfp
+              );
+            } else if (libraryType === "experience") {
+              parsed[sectionTitle] = await formatExperienceSection(
+                companyInfo,
+                rfp
+              );
             }
           }
-        });
+        }
 
         // Create final sections object in the correct template order
         const finalSections = {};
+        
         orderedTitles.forEach((sectionTitle) => {
           if (parsed[sectionTitle]) {
-            if (sectionTitle === "Title") {
-              // Handle Title section specially
-              finalSections[sectionTitle] = {
-                content: extractTitleContactInfo(parsed[sectionTitle]),
-                type: "ai-generated",
-                lastModified: new Date().toISOString(),
-              };
-            } else if (contentLibrarySections[sectionTitle]) {
+            if (contentLibrarySections[sectionTitle]) {
               // Content library section
               const libraryType = contentLibrarySections[sectionTitle];
-              const selectedIds =
-                libraryType === "team" ? selectedTeamIds : selectedReferenceIds;
+              let selectedIds = [];
+              if (libraryType === "team") {
+                selectedIds = selectedTeamIds;
+              } else if (libraryType === "references") {
+                selectedIds = selectedReferenceIds;
+              }
+              
+              // Handle Title section specially - it returns an object, not a string
+              const content = libraryType === "title" ? parsed[sectionTitle] : parsed[sectionTitle];
+              
               finalSections[sectionTitle] = {
-                content: parsed[sectionTitle],
+                content: content,
                 type: "content-library",
                 lastModified: new Date().toISOString(),
-                selectedIds: selectedIds,
+                ...(selectedIds.length > 0 && { selectedIds: selectedIds }),
               };
             } else {
               // AI generated section
@@ -724,11 +507,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
       const extracted = extractSectionsFromMarkdown(raw);
 
       // Add content library sections to extracted sections in original order
-      orderedTitles.forEach((sectionTitle) => {
+      for (const sectionTitle of orderedTitles) {
         const libraryType = contentLibrarySections[sectionTitle];
         if (libraryType) {
           let content;
-          let selectedIds;
+          let selectedIds = [];
           if (libraryType === "team") {
             content = formatTeamMembersSection(teamMembers, selectedTeamIds);
             selectedIds = selectedTeamIds;
@@ -738,6 +521,12 @@ NOTE: Some sections will be handled separately using content library data. Gener
               selectedReferenceIds
             );
             selectedIds = selectedReferenceIds;
+          } else if (libraryType === "title") {
+            content = formatTitleSection(companyInfo, rfp);
+          } else if (libraryType === "cover-letter") {
+            content = formatCoverLetterSection(companyInfo, rfp);
+          } else if (libraryType === "experience") {
+            content = await formatExperienceSection(companyInfo, rfp);
           }
 
           if (content) {
@@ -745,11 +534,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
               content: content,
               type: "content-library",
               lastModified: new Date().toISOString(),
-              selectedIds: selectedIds,
+              ...(selectedIds.length > 0 && { selectedIds: selectedIds }),
             };
           }
         }
-      });
+      }
 
       // If Title missing or empty, inject fallback Title section
       if (
@@ -780,11 +569,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
       const extracted = extractSectionsFromMarkdown(raw);
 
       // Add content library sections to extracted sections in original order
-      orderedTitles.forEach((sectionTitle) => {
+      for (const sectionTitle of orderedTitles) {
         const libraryType = contentLibrarySections[sectionTitle];
         if (libraryType) {
           let content;
-          let selectedIds;
+          let selectedIds = [];
           if (libraryType === "team") {
             content = formatTeamMembersSection(teamMembers, selectedTeamIds);
             selectedIds = selectedTeamIds;
@@ -794,6 +583,12 @@ NOTE: Some sections will be handled separately using content library data. Gener
               selectedReferenceIds
             );
             selectedIds = selectedReferenceIds;
+          } else if (libraryType === "title") {
+            content = formatTitleSection(companyInfo, rfp);
+          } else if (libraryType === "cover-letter") {
+            content = formatCoverLetterSection(companyInfo, rfp);
+          } else if (libraryType === "experience") {
+            content = await formatExperienceSection(companyInfo, rfp);
           }
 
           if (content) {
@@ -801,11 +596,11 @@ NOTE: Some sections will be handled separately using content library data. Gener
               content: content,
               type: "content-library",
               lastModified: new Date().toISOString(),
-              selectedIds: selectedIds,
+              ...(selectedIds.length > 0 && { selectedIds: selectedIds }),
             };
           }
         }
-      });
+      }
 
       if (
         !extracted.Title ||
@@ -840,11 +635,6 @@ NOTE: Some sections will be handled separately using content library data. Gener
 
 module.exports = {
   generateAIProposalFromTemplate,
-  fetchTeamMembers,
-  fetchProjectReferences,
-  formatTeamMembersSection,
-  formatReferencesSection,
-  shouldUseContentLibrary,
   selectRelevantTeamMembers,
   selectRelevantReferences,
   fallbackTeamSelection,

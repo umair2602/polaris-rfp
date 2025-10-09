@@ -448,6 +448,7 @@ router.get("/:id/export-pdf", async (req, res) => {
 
       // Section title
       doc
+        .font('Helvetica-Bold')
         .fontSize(16)
         .fillColor("#1E4E9E")
         .text(sectionName, {
@@ -509,30 +510,66 @@ router.get("/:id/export-pdf", async (req, res) => {
       } else if (sectionData.content && typeof sectionData.content === 'string' && sectionData.content.includes("|")) {
         renderTable(doc, sectionData.content);
       } else {
-        // Clean markdown formatting from content
-        let cleanContent = sectionData.content || "No content available";
+        // Render content with bold formatting support
+        let content = sectionData.content || "No content available";
         
         // Ensure content is a string
-        if (typeof cleanContent !== 'string') {
-          cleanContent = String(cleanContent);
+        if (typeof content !== 'string') {
+          content = String(content);
         }
         
-        // Remove markdown bold formatting (**text**)
-        cleanContent = cleanContent.replace(/\*\*(.*?)\*\*/g, '$1');
+        // Remove markdown headers (# ## ###) but keep bold formatting
+        content = content.replace(/^#{1,6}\s*/gm, '');
         
-        // Remove markdown italic formatting (*text*)
-        cleanContent = cleanContent.replace(/\*(.*?)\*/g, '$1');
+        // Replace Unicode bullet points with standard ASCII dash that PDF supports
+        // ● (U+25CF), • (U+2022), ○ (U+25CB), ◦ (U+25E6) all become "-"
+        content = content.replace(/[●•○◦]/g, '-');
         
-        // Remove markdown headers (# ## ###)
-        cleanContent = cleanContent.replace(/^#{1,6}\s*/gm, '');
+        // Split content by paragraphs
+        const paragraphs = content.split(/\n\n+/);
         
-        doc
-          .fontSize(11)
-          .fillColor("#000000")
-          .text(cleanContent, {
-            align: "justify",
-            lineGap: 6,
+        paragraphs.forEach((paragraph, index) => {
+          if (!paragraph.trim()) return;
+          
+          // Split paragraph into parts with bold and regular text
+          const parts = paragraph.split(/(\*\*.*?\*\*)/g);
+          
+          parts.forEach((part) => {
+            if (!part) return;
+            
+            // Check if this part is bold
+            if (part.startsWith('**') && part.endsWith('**')) {
+              // Bold text
+              const boldText = part.slice(2, -2);
+              doc
+                .font('Helvetica-Bold')
+                .fontSize(11)
+                .fillColor("#000000")
+                .text(boldText, {
+                  continued: true,
+                  align: "justify",
+                  lineGap: 6,
+                });
+            } else {
+              // Regular text - remove any remaining italic markers
+              const regularText = part.replace(/\*(.*?)\*/g, '$1');
+              doc
+                .font('Helvetica')
+                .fontSize(11)
+                .fillColor("#000000")
+                .text(regularText, {
+                  continued: parts.indexOf(part) < parts.length - 1,
+                  align: "justify",
+                  lineGap: 6,
+                });
+            }
           });
+          
+          // Add spacing between paragraphs
+          if (index < paragraphs.length - 1) {
+            doc.moveDown(0.5);
+          }
+        });
       }
 
       // Add extra space at the end of each section
@@ -735,7 +772,7 @@ function renderTable(doc, content) {
 router.put("/:id/content-library/:sectionName", async (req, res) => {
   try {
     const { id, sectionName } = req.params;
-    const { selectedIds, type } = req.body; // type: 'team' or 'references'
+    const { selectedIds, type } = req.body; // type: 'team', 'references', or 'company'
 
     const proposal = await Proposal.findById(id);
     if (!proposal) {
@@ -744,7 +781,39 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
 
     let content = '';
     
-    if (type === 'team') {
+    if (type === 'company') {
+      const Company = require('../models/Company');
+      const { formatTitleSection, formatCoverLetterSection, formatExperienceSection } = require('../services/sharedSectionFormatters');
+      
+      if (selectedIds.length > 0) {
+        const selectedCompany = await Company.findOne({ 
+          companyId: selectedIds[0] // Only use first selected company
+        }).lean();
+        
+        if (selectedCompany) {
+          // Get RFP data from the proposal
+          const RFP = require('../models/RFP');
+          const rfp = await RFP.findById(proposal.rfpId);
+          
+          // Determine section type based on section name
+          const sectionTitle = sectionName.toLowerCase();
+          if (sectionTitle === 'title') {
+            content = formatTitleSection(selectedCompany, rfp || {});
+          } else if (sectionTitle.includes('cover letter') || 
+              sectionTitle.includes('introduction letter') || 
+              sectionTitle.includes('transmittal letter')) {
+            content = formatCoverLetterSection(selectedCompany, rfp || {});
+          } else {
+            // This is an experience/qualifications section
+            content = await formatExperienceSection(selectedCompany, rfp || {});
+          }
+        } else {
+          content = 'Selected company not found.';
+        }
+      } else {
+        content = 'No company selected.';
+      }
+    } else if (type === 'team') {
       const TeamMember = require('../models/TeamMember');
       const selectedMembers = await TeamMember.find({ 
         memberId: { $in: selectedIds }, 
