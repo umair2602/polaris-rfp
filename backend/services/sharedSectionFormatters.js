@@ -205,7 +205,6 @@ function formatReferencesSection(references, selectedIds = null) {
     }
 
     content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
-    content += "---\n\n";
   });
 
   return content.trim();
@@ -235,7 +234,7 @@ RFP Project Context:
 
 Format this content following these rules:
 1. Use the company's content as the primary source - do not add excessive details
-2. Keep formatting simple - use bullet points (●) for lists, no markdown headings (#)
+2. Keep formatting simple - use hyphens (-) for lists, no markdown headings (#)
 3. Write in paragraph form with bullet points for achievements/awards only
 4. Make it relevant to the RFP but don't over-elaborate
 5. Use professional, concise language

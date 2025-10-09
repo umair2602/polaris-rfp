@@ -280,11 +280,23 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
   });
 
   // Identify sections that should use content library
+  // Track which library types have been used to prevent duplicates
   const contentLibrarySections = {};
+  const usedLibraryTypes = new Set();
+  
   for (const title of orderedTitles) {
     const libraryType = await shouldUseContentLibrary(title);
     if (libraryType) {
+      // Only use each library type once to prevent duplicate content
+      // Exception: allow multiple sections to be AI-generated (null type)
+      if (libraryType === 'experience' && usedLibraryTypes.has('experience')) {
+        // Skip this section - let AI generate it instead
+        console.log(`Skipping duplicate experience section: ${title}`);
+        continue;
+      }
+      
       contentLibrarySections[title] = libraryType;
+      usedLibraryTypes.add(libraryType);
     }
   }
 

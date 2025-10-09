@@ -305,9 +305,8 @@ class DocxGenerator {
       cleanContent = String(cleanContent);
     }
 
+    // Remove markdown headers but keep bold formatting
     cleanContent = cleanContent
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/\*(.*?)\*/g, "$1")
       .replace(/^#{1,6}\s*/gm, "")
       .replace(/\n\n+/g, "\n\n");
 
@@ -315,7 +314,26 @@ class DocxGenerator {
 
     paragraphs.forEach((para) => {
       const p = docx.createP();
-      p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+      
+      // Split paragraph by bold markers
+      const parts = para.split(/(\*\*.*?\*\*)/g);
+      
+      parts.forEach((part) => {
+        if (!part) return;
+        
+        // Check if this part is bold
+        if (part.startsWith('**') && part.endsWith('**')) {
+          // Bold text
+          const boldText = part.slice(2, -2);
+          p.addText(boldText, { bold: true, font_size: 12, font_face: "Calibri" });
+        } else {
+          // Regular text - remove any remaining italic markers
+          const regularText = part.replace(/\*(.*?)\*/g, '$1');
+          if (regularText.trim()) {
+            p.addText(regularText, { font_size: 12, font_face: "Calibri" });
+          }
+        }
+      });
     });
   }
 
@@ -326,9 +344,8 @@ class DocxGenerator {
       cleanContent = String(cleanContent);
     }
 
+    // Remove markdown headers but keep bold formatting
     cleanContent = cleanContent
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/\*(.*?)\*/g, "$1")
       .replace(/^#{1,6}\s*/gm, "")
       .replace(/\n\n+/g, "\n\n");
 
@@ -347,12 +364,37 @@ class DocxGenerator {
           if (bulletText) {
             // Only add bullet if there's content after the dash
             p.addText("• ", { font_size: 12, font_face: "Calibri" });
-            p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+            
+            // Handle bold formatting in bullet text
+            const parts = bulletText.split(/(\*\*.*?\*\*)/g);
+            parts.forEach((part) => {
+              if (!part) return;
+              if (part.startsWith('**') && part.endsWith('**')) {
+                p.addText(part.slice(2, -2), { bold: true, font_size: 12, font_face: "Calibri" });
+              } else {
+                const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                if (regularText.trim()) {
+                  p.addText(regularText, { font_size: 12, font_face: "Calibri" });
+                }
+              }
+            });
           } else {
             p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
           }
         } else {
-          p.addText(para.trim(), { font_size: 12, font_face: "Calibri" });
+          // Handle bold formatting in regular text
+          const parts = para.trim().split(/(\*\*.*?\*\*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            if (part.startsWith('**') && part.endsWith('**')) {
+              p.addText(part.slice(2, -2), { bold: true, font_size: 12, font_face: "Calibri" });
+            } else {
+              const regularText = part.replace(/\*(.*?)\*/g, '$1');
+              if (regularText.trim()) {
+                p.addText(regularText, { font_size: 12, font_face: "Calibri" });
+              }
+            }
+          });
         }
       } else {
         // Multi-line paragraph - check each line
@@ -364,12 +406,37 @@ class DocxGenerator {
             if (bulletText) {
               // Only add bullet if there's content after the dash
               p.addText("• ", { font_size: 12, font_face: "Calibri" });
-              p.addText(bulletText, { font_size: 12, font_face: "Calibri" });
+              
+              // Handle bold formatting in bullet text
+              const parts = bulletText.split(/(\*\*.*?\*\*)/g);
+              parts.forEach((part) => {
+                if (!part) return;
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  p.addText(part.slice(2, -2), { bold: true, font_size: 12, font_face: "Calibri" });
+                } else {
+                  const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                  if (regularText.trim()) {
+                    p.addText(regularText, { font_size: 12, font_face: "Calibri" });
+                  }
+                }
+              });
             } else {
               p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
             }
           } else {
-            p.addText(line.trim(), { font_size: 12, font_face: "Calibri" });
+            // Handle bold formatting in regular text
+            const parts = line.trim().split(/(\*\*.*?\*\*)/g);
+            parts.forEach((part) => {
+              if (!part) return;
+              if (part.startsWith('**') && part.endsWith('**')) {
+                p.addText(part.slice(2, -2), { bold: true, font_size: 12, font_face: "Calibri" });
+              } else {
+                const regularText = part.replace(/\*(.*?)\*/g, '$1');
+                if (regularText.trim()) {
+                  p.addText(regularText, { font_size: 12, font_face: "Calibri" });
+                }
+              }
+            });
           }
         });
       }
