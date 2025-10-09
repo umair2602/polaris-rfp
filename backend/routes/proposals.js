@@ -746,7 +746,7 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
     
     if (type === 'company') {
       const Company = require('../models/Company');
-      const { formatTitleSection, formatCoverLetterSection, formatExperienceSection } = require('../services/aiTemplateProposalGenerator');
+      const { formatTitleSection, formatCoverLetterSection, formatExperienceSection } = require('../services/sharedSectionFormatters');
       
       if (selectedIds.length > 0) {
         const selectedCompany = await Company.findOne({ 
