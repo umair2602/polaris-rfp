@@ -3,118 +3,112 @@ const TeamMember = require("../models/TeamMember");
 const ProjectReference = require("../models/ProjectReference");
 const Company = require("../models/Company");
 
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
-
-/**
- * Fetch company information from the content library
- */
-async function fetchCompanyInfo() {
-  try {
-    const company = await Company.findOne().sort({ createdAt: -1 }).lean();
-    return company;
-  } catch (error) {
-    console.error("Error fetching company info:", error);
-    return null;
+class SharedSectionFormatters {
+  // Lazy OpenAI initialization
+  static get openai() {
+    if (!this._openaiInitialized) {
+      this._openai = process.env.OPENAI_API_KEY
+        ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+        : null;
+      this._openaiInitialized = true;
+    }
+    return this._openai;
   }
-}
 
-/**
- * Fetch team members from the content library
- */
-async function fetchTeamMembers() {
-  try {
-    const teamMembers = await TeamMember.find({ isActive: true }).lean();
-    return teamMembers;
-  } catch (error) {
-    console.error("Error fetching team members:", error);
-    return [];
+  /**
+   * Fetch company information from the content library
+   */
+  static async fetchCompanyInfo() {
+    try {
+      const company = await Company.findOne().sort({ createdAt: -1 }).lean();
+      return company;
+    } catch (error) {
+      console.error("Error fetching company info:", error);
+      return null;
+    }
   }
-}
 
-/**
- * Fetch project references from the content library
- */
-async function fetchProjectReferences() {
-  try {
-    const references = await ProjectReference.find({
-      isActive: true,
-      isPublic: true,
-    }).lean();
-    return references;
-  } catch (error) {
-    console.error("Error fetching project references:", error);
-    return [];
+  /**
+   * Fetch team members from the content library
+   */
+  static async fetchTeamMembers() {
+    try {
+      const teamMembers = await TeamMember.find({ isActive: true }).lean();
+      return teamMembers;
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      return [];
+    }
   }
-}
 
-/**
- * Format Title section using company information from content library
- */
-function formatTitleSection(companyInfo, rfp) {
-  if (!companyInfo) {
+  /**
+   * Fetch project references from the content library
+   */
+  static async fetchProjectReferences() {
+    try {
+      const references = await ProjectReference.find({
+        isActive: true,
+        isPublic: true,
+      }).lean();
+      return references;
+    } catch (error) {
+      console.error("Error fetching project references:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Format Title section using company information from content library
+   */
+  static formatTitleSection(companyInfo, rfp) {
+    if (!companyInfo) {
+      return {
+        submittedBy: "Not specified",
+        name: "Not specified",
+        email: "Not specified",
+        number: "Not specified",
+      };
+    }
+
+    const submittedBy = companyInfo.name || "Not specified";
+    const contactName =
+      companyInfo.primaryContact?.name ||
+      (companyInfo.name
+        ? `${companyInfo.name.split(" ")[0]} Representative`
+        : "Not specified");
+    const contactEmail = companyInfo.primaryContact?.email || companyInfo.email || "Not specified";
+    const contactPhone = companyInfo.primaryContact?.phone || companyInfo.phone || "Not specified";
+
     return {
-      submittedBy: "Not specified",
-      name: "Not specified", 
-      email: "Not specified",
-      number: "Not specified"
+      submittedBy,
+      name: contactName,
+      email: contactEmail,
+      number: contactPhone,
     };
   }
 
-  // Extract company information for Title section
-  const submittedBy = companyInfo.name || "Not specified";
-  
-  // Use primary contact information or generate based on company data
-  const contactName = companyInfo.primaryContact?.name || 
-    (companyInfo.name ? `${companyInfo.name.split(' ')[0]} Representative` : "Not specified");
-  
-  const contactEmail = companyInfo.primaryContact?.email || 
-    companyInfo.email || 
-    "Not specified";
-  
-  const contactPhone = companyInfo.primaryContact?.phone || 
-    companyInfo.phone || 
-    "Not specified";
+  /**
+   * Format cover letter using company information from content library
+   */
+  static formatCoverLetterSection(companyInfo, rfp) {
+    if (!companyInfo) {
+      return "No company information available in the content library.";
+    }
 
-  return {
-    submittedBy: submittedBy,
-    name: contactName,
-    email: contactEmail,
-    number: contactPhone
-  };
-}
+    const currentDate = new Date().toLocaleDateString("en-US");
+    const clientName = rfp.clientName || rfp.title || "Valued Client";
+    const salutation = rfp.clientName ? `Dear ${rfp.clientName} Team` : "Dear Hiring Manager";
+    const coverLetterContent =
+      companyInfo.coverLetter ||
+      `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`;
 
-/**
- * Format cover letter using company information from content library
- */
-function formatCoverLetterSection(companyInfo, rfp) {
-  if (!companyInfo) {
-    return "No company information available in the content library.";
-  }
+    const contactName = companyInfo.name ? `${companyInfo.name.split(" ")[0]} Representative` : "Project Manager";
+    const contactTitle = "Project Director";
+    const contactEmail = companyInfo.email || "contact@company.com";
+    const contactPhone = companyInfo.phone || "(555) 123-4567";
 
-  // Get current date in MM/DD/YYYY format
-  const currentDate = new Date().toLocaleDateString('en-US');
-  
-  // Determine client name and salutation
-  const clientName = rfp.clientName || rfp.title || 'Valued Client';
-  const salutation = rfp.clientName ? `Dear ${rfp.clientName} Team` : 'Dear Hiring Manager';
-  
-  // Use company's cover letter content ONLY - no additional generic content
-  const coverLetterContent = companyInfo.coverLetter || 
-    `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`;
-  
-  // Generate contact information from company data
-  const contactName = companyInfo.name ? 
-    `${companyInfo.name.split(' ')[0]} Representative` : 
-    'Project Manager';
-  const contactTitle = 'Project Director';
-  const contactEmail = companyInfo.email || 'contact@company.com';
-  const contactPhone = companyInfo.phone || '(555) 123-4567';
-
-  // Format the cover letter with ONLY the company's content, no additional paragraphs
-  const formattedCoverLetter = `**Submitted to:** ${clientName}
-**Submitted by:** ${companyInfo.name || 'Our Company'}
+    const formattedCoverLetter = `**Submitted to:** ${clientName}
+**Submitted by:** ${companyInfo.name || "Our Company"}
 **Date:** ${currentDate}
 
 ${salutation},
@@ -127,101 +121,97 @@ ${contactName}, ${contactTitle}
 ${contactEmail}
 ${contactPhone}`;
 
-  return formattedCoverLetter;
-}
-
-/**
- * Format team members data into proposal section content
- */
-function formatTeamMembersSection(teamMembers, selectedIds = null) {
-  if (!teamMembers || teamMembers.length === 0) {
-    return "No team members available in the content library.";
+    return formattedCoverLetter;
   }
 
-  // If specific IDs are provided, filter by those
-  const membersToUse = selectedIds
-    ? teamMembers.filter((member) => selectedIds.includes(member.memberId))
-    : teamMembers;
+  /**
+   * Format team members data into proposal section content
+   */
+  static formatTeamMembersSection(teamMembers, selectedIds = null) {
+    if (!teamMembers || teamMembers.length === 0) {
+      return "No team members available in the content library.";
+    }
 
-  if (membersToUse.length === 0) {
-    return "No suitable team members found for this project.";
+    const membersToUse = selectedIds
+      ? teamMembers.filter((member) => selectedIds.includes(member.memberId))
+      : teamMembers;
+
+    if (membersToUse.length === 0) {
+      return "No suitable team members found for this project.";
+    }
+
+    let content =
+      "Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n";
+
+    membersToUse.forEach((member) => {
+      content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
+      content += `${member.biography}\n\n`;
+    });
+
+    return content.trim();
   }
 
-  let content =
-    "Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n";
+  /**
+   * Format project references data into proposal section content
+   */
+  static formatReferencesSection(references, selectedIds = null) {
+    if (!references || references.length === 0) {
+      return "No project references available in the content library.";
+    }
 
-  membersToUse.forEach((member) => {
-    content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
-    content += `${member.biography}\n\n`;
-  });
+    const referencesToUse = selectedIds
+      ? references.filter((reference) => selectedIds.includes(reference._id.toString()))
+      : references;
 
-  return content.trim();
-}
+    if (referencesToUse.length === 0) {
+      return "No suitable project references found for this project.";
+    }
 
-/**
- * Format project references data into proposal section content
- */
-function formatReferencesSection(references, selectedIds = null) {
-  if (!references || references.length === 0) {
-    return "No project references available in the content library.";
+    let content =
+      "Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n";
+
+    referencesToUse.forEach((reference) => {
+      content += `**${reference.organizationName}**`;
+      if (reference.timePeriod) {
+        content += ` (${reference.timePeriod})`;
+      }
+      content += "\n\n";
+
+      content += `**Contact:** ${reference.contactName}`;
+      if (reference.contactTitle) {
+        content += `, ${reference.contactTitle}`;
+      }
+      if (reference.additionalTitle) {
+        content += ` - ${reference.additionalTitle}`;
+      }
+      content += ` of ${reference.organizationName}\n\n`;
+
+      if (reference.contactEmail) {
+        content += `**Email:** ${reference.contactEmail}\n\n`;
+      }
+
+      if (reference.contactPhone) {
+        content += `**Phone:** ${reference.contactPhone}\n\n`;
+      }
+
+      content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
+    });
+
+    return content.trim();
   }
 
-  // If specific IDs are provided, filter by those
-  const referencesToUse = selectedIds
-    ? references.filter((reference) =>
-        selectedIds.includes(reference._id.toString())
-      )
-    : references;
-
-  if (referencesToUse.length === 0) {
-    return "No suitable project references found for this project.";
-  }
-
-  let content =
-    "Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n";
-
-  referencesToUse.forEach((reference) => {
-    content += `**${reference.organizationName}**`;
-    if (reference.timePeriod) {
-      content += ` (${reference.timePeriod})`;
-    }
-    content += "\n\n";
-
-    content += `**Contact:** ${reference.contactName}`;
-    if (reference.contactTitle) {
-      content += `, ${reference.contactTitle}`;
-    }
-    if (reference.additionalTitle) {
-      content += ` - ${reference.additionalTitle}`;
-    }
-    content += ` of ${reference.organizationName}\n\n`;
-
-    if (reference.contactEmail) {
-      content += `**Email:** ${reference.contactEmail}\n\n`;
+  /**
+   * Format experience and qualifications using company information from content library
+   */
+  static async formatExperienceSection(companyInfo, rfp) {
+    if (!companyInfo) {
+      return "No company information available in the content library.";
     }
 
-    if (reference.contactPhone) {
-      content += `**Phone:** ${reference.contactPhone}\n\n`;
-    }
-
-    content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
-  });
-
-  return content.trim();
-}
-
-/**
- * Format experience and qualifications using company information from content library
- */
-async function formatExperienceSection(companyInfo, rfp) {
-  if (!companyInfo) {
-    return "No company information available in the content library.";
-  }
-
-  // Use AI to format the experience content if available and OpenAI is configured
-  if (openai && companyInfo.firmQualificationsAndExperience) {
-    try {
-      const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
+    const openai = this.openai;
+    if (openai && companyInfo.firmQualificationsAndExperience) {
+      try {
+        const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
 
 Company Experience Content:
 ${companyInfo.firmQualificationsAndExperience}
@@ -243,69 +233,67 @@ Format this content following these rules:
 
 Return only the clean, simply formatted content without markdown headings or excessive structure.`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        temperature: 0.3,
-        max_tokens: 2000,
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          temperature: 0.3,
+          max_tokens: 2000,
+          messages: [{ role: "user", content: prompt }],
+        });
 
-      const formattedContent = completion.choices[0].message.content.trim();
-      return formattedContent;
-    } catch (error) {
-      console.error("AI formatting failed for experience section:", error);
-      // Fallback to basic formatting
+        const formattedContent = completion.choices[0].message.content.trim();
+        return formattedContent;
+      } catch (error) {
+        console.error("AI formatting failed for experience section:", error);
+        // Fallback to basic formatting
+      }
     }
+
+    const baseContent =
+      companyInfo.firmQualificationsAndExperience ||
+      `${companyInfo.name || "Our company"} brings extensive experience and proven qualifications to deliver exceptional results for your project.`;
+
+    let formattedContent = baseContent;
+
+    if (
+      companyInfo.statistics &&
+      (companyInfo.statistics.yearsInBusiness || companyInfo.statistics.projectsCompleted)
+    ) {
+      formattedContent += `\n\n`;
+      if (companyInfo.statistics.yearsInBusiness) {
+        formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`;
+      }
+      if (companyInfo.statistics.projectsCompleted) {
+        formattedContent += `${companyInfo.statistics.yearsInBusiness ? ", completing" : "We have completed"} ${companyInfo.statistics.projectsCompleted}+ projects`;
+      }
+      if (companyInfo.statistics.clientsSatisfied) {
+        formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`;
+      }
+      formattedContent += `.`;
+    }
+
+    if (companyInfo.coreCapabilities && companyInfo.coreCapabilities.length > 0) {
+      formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(", ")}.`;
+    }
+
+    return formattedContent.trim();
   }
 
-  // Basic formatting without AI - keep it simple like the original content
-  const baseContent = companyInfo.firmQualificationsAndExperience || 
-    `${companyInfo.name || 'Our company'} brings extensive experience and proven qualifications to deliver exceptional results for your project.`;
+  /**
+   * Check if a section title indicates it should use content library data
+   * Uses OpenAI to intelligently classify section types
+   */
+  static async shouldUseContentLibrary(sectionTitle) {
+    const title = sectionTitle.toLowerCase().trim();
+    if (title === "title") return "title";
+    if (title === "cover letter") return "cover-letter";
 
-  let formattedContent = baseContent;
-
-  // Add company statistics if available - format simply
-  if (companyInfo.statistics && (companyInfo.statistics.yearsInBusiness || companyInfo.statistics.projectsCompleted)) {
-    formattedContent += `\n\n`;
-    if (companyInfo.statistics.yearsInBusiness) {
-      formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`;
+    const openai = this.openai;
+    if (!openai) {
+      return this.shouldUseContentLibraryFallback(sectionTitle);
     }
-    if (companyInfo.statistics.projectsCompleted) {
-      formattedContent += `${companyInfo.statistics.yearsInBusiness ? ', completing' : 'We have completed'} ${companyInfo.statistics.projectsCompleted}+ projects`;
-    }
-    if (companyInfo.statistics.clientsSatisfied) {
-      formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`;
-    }
-    formattedContent += `.`;
-  }
 
-  // Add core capabilities if available - simple list
-  if (companyInfo.coreCapabilities && companyInfo.coreCapabilities.length > 0) {
-    formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(', ')}.`;
-  }
-
-  return formattedContent.trim();
-}
-
-/**
- * Check if a section title indicates it should use content library data
- * Uses OpenAI to intelligently classify section types
- */
-async function shouldUseContentLibrary(sectionTitle) {
-  // Fast path for exact matches
-  const title = sectionTitle.toLowerCase().trim();
-  if (title === "title") return "title";
-  if (title === "cover letter") return "cover-letter";
-  
-  // If OpenAI is not configured, fall back to basic keyword matching
-  if (!openai) {
-    return shouldUseContentLibraryFallback(sectionTitle);
-  }
-
-  try {
-    const prompt = `Analyze this proposal section title and classify it into one of these categories:
+    try {
+      const prompt = `Analyze this proposal section title and classify it into one of these categories:
 - "title" - for title page/cover page sections
 - "cover-letter" - for cover letter, introduction letter, or transmittal letter sections
 - "experience" - for company experience, qualifications, capabilities, expertise, technical approach, or methodology sections
@@ -317,107 +305,90 @@ Section title: "${sectionTitle}"
 
 Respond with ONLY one of these values: "title", "cover-letter", "experience", "team", "references", or null`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.1,
-      max_tokens: 20,
-      messages: [{ role: "user", content: prompt }],
-    });
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.1,
+        max_tokens: 20,
+        messages: [{ role: "user", content: prompt }],
+      });
 
-    const response = completion.choices[0].message.content.trim().toLowerCase();
-    
-    // Parse the response
-    if (response.includes("title") && !response.includes("cover")) return "title";
-    if (response.includes("cover-letter") || response.includes("cover letter")) return "cover-letter";
-    if (response.includes("experience")) return "experience";
-    if (response.includes("team")) return "team";
-    if (response.includes("reference")) return "references";
-    if (response.includes("null") || response === "null") return null;
-    
-    // If response doesn't match expected format, fall back to keyword matching
-    console.warn(`Unexpected AI response for section "${sectionTitle}": ${response}. Using fallback.`);
-    return shouldUseContentLibraryFallback(sectionTitle);
-    
-  } catch (error) {
-    console.error("AI section classification failed:", error);
-    return shouldUseContentLibraryFallback(sectionTitle);
+      const response = completion.choices[0].message.content.trim().toLowerCase();
+
+      if (response.includes("title") && !response.includes("cover")) return "title";
+      if (response.includes("cover-letter") || response.includes("cover letter")) return "cover-letter";
+      if (response.includes("experience")) return "experience";
+      if (response.includes("team")) return "team";
+      if (response.includes("reference")) return "references";
+      if (response.includes("null") || response === "null") return null;
+
+      console.warn(`Unexpected AI response for section "${sectionTitle}": ${response}. Using fallback.`);
+      return this.shouldUseContentLibraryFallback(sectionTitle);
+    } catch (error) {
+      console.error("AI section classification failed:", error);
+      return this.shouldUseContentLibraryFallback(sectionTitle);
+    }
+  }
+
+  /**
+   * Fallback keyword-based section classification when AI is unavailable
+   */
+  static shouldUseContentLibraryFallback(sectionTitle) {
+    const title = sectionTitle.toLowerCase();
+
+    if (title === "title") {
+      return "title";
+    }
+
+    if (
+      title.includes("cover letter") ||
+      title.includes("introduction letter") ||
+      title.includes("transmittal letter")
+    ) {
+      return "cover-letter";
+    }
+
+    if (
+      title.includes("experience") ||
+      title.includes("qualification") ||
+      title.includes("firm qualification") ||
+      title.includes("company qualification") ||
+      title.includes("firm experience") ||
+      title.includes("company experience") ||
+      title.includes("background") ||
+      title.includes("capabilities") ||
+      title.includes("expertise") ||
+      title.includes("credentials") ||
+      title.includes("track record") ||
+      title.includes("company profile") ||
+      title.includes("technical approach and methodology")
+    ) {
+      return "experience";
+    }
+
+    if (
+      title.includes("personnel") ||
+      title.includes("team") ||
+      title.includes("staff") ||
+      title.includes("key personnel") ||
+      title.includes("project team") ||
+      title.includes("team member") ||
+      title.includes("human resource") ||
+      title.includes("key personnel and experience")
+    ) {
+      return "team";
+    }
+
+    if (
+      title.includes("reference") ||
+      title.includes("past project") ||
+      title.includes("client reference") ||
+      title.includes("project portfolio")
+    ) {
+      return "references";
+    }
+
+    return null;
   }
 }
 
-/**
- * Fallback keyword-based section classification when AI is unavailable
- */
-function shouldUseContentLibraryFallback(sectionTitle) {
-  const title = sectionTitle.toLowerCase();
-
-  // Check for Title section
-  if (title === "title") {
-    return "title";
-  }
-
-  // Check for cover letter sections
-  if (
-    title.includes("cover letter") ||
-    title.includes("introduction letter") ||
-    title.includes("transmittal letter")
-  ) {
-    return "cover-letter";
-  }
-
-  // Check for experience and qualifications sections
-  if (
-    title.includes("experience") ||
-    title.includes("qualification") ||
-    title.includes("firm qualification") ||
-    title.includes("company qualification") ||
-    title.includes("firm experience") ||
-    title.includes("company experience") ||
-    title.includes("background") ||
-    title.includes("capabilities") ||
-    title.includes("expertise") ||
-    title.includes("credentials") ||
-    title.includes("track record") ||
-    title.includes("company profile") ||
-    title.includes("technical approach and methodology")
-  ) {
-    return "experience";
-  }
-
-  // Check for personnel/team sections
-  if (
-    title.includes("personnel") ||
-    title.includes("team") ||
-    title.includes("staff") ||
-    title.includes("key personnel") ||
-    title.includes("project team") ||
-    title.includes("team member") ||
-    title.includes("human resource") ||
-    title.includes("key personnel and experience")
-  ) {
-    return "team";
-  }
-
-  // Check for references sections
-  if (
-    title.includes("reference") ||
-    title.includes("past project") ||
-    title.includes("client reference") ||
-    title.includes("project portfolio")
-  ) {
-    return "references";
-  }
-
-  return null;
-}
-
-module.exports = {
-  fetchCompanyInfo,
-  fetchTeamMembers,
-  fetchProjectReferences,
-  formatTitleSection,
-  formatCoverLetterSection,
-  formatTeamMembersSection,
-  formatReferencesSection,
-  formatExperienceSection,
-  shouldUseContentLibrary
-};
+module.exports = SharedSectionFormatters;

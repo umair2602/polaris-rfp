@@ -4,8 +4,8 @@ const RFP = require("../models/RFP");
 const Company = require("../models/Company");
 const PDFDocument = require("pdfkit");
 const path = require("path");
-const { generateAIProposalSections } = require("../services/aiProposalGenerator");
-const { generateAIProposalFromTemplate } = require("../services/aiTemplateProposalGenerator");
+const AIProposalGenerator = require("../services/aiProposalGenerator");
+const TemplateGenerator = require("../services/templateGenerator");
 const DocxGenerator = require("../services/docxGenerator");
 const { Packer } = require("docx");
 const router = express.Router();
@@ -33,7 +33,11 @@ router.post("/generate", async (req, res) => {
 
     // If templateId is a special AI flow, keep existing behavior using RFP-driven sections
     if (templateId === 'ai-template') {
-      sections = await generateAIProposalSections(rfp, templateId, customContent);
+      sections = await AIProposalGenerator.generateAIProposalSections(
+        rfp,
+        templateId,
+        customContent
+      );
     } else {
       // Load template and generate content strictly from template sections
       const template = await Template.findById(templateId);
@@ -41,7 +45,11 @@ router.post("/generate", async (req, res) => {
         return res.status(404).json({ error: "Template not found" });
       }
 
-      sections = await generateAIProposalFromTemplate(rfp.toObject ? rfp.toObject() : rfp, template.toObject ? template.toObject() : template, customContent);
+      sections = await TemplateGenerator.generateAIProposalFromTemplate(
+        rfp.toObject ? rfp.toObject() : rfp,
+        template.toObject ? template.toObject() : template,
+        customContent
+      );
     }
 
     // Create proposal
@@ -80,12 +88,12 @@ router.post("/:id/generate-sections", async (req, res) => {
       return res.status(404).json({ error: "Proposal not found" });
     }
 
-    if (!openai) {
+  if (!AIProposalGenerator.openai) {
       return res.status(500).json({ error: "OpenAI API key not configured" });
     }
 
     // Generate AI sections
-    const sections = await generateAIProposalSections(proposal.rfpId, proposal.templateId, {});
+  const sections = await AIProposalGenerator.generateAIProposalSections(proposal.rfpId, proposal.templateId, {});
 
     // Update proposal with new sections
     proposal.sections = sections;
@@ -985,7 +993,7 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
     
     if (type === 'company') {
       const Company = require('../models/Company');
-      const { formatTitleSection, formatCoverLetterSection, formatExperienceSection } = require('../services/sharedSectionFormatters');
+  const SharedSectionFormatters = require('../services/sharedSectionFormatters');
       
       if (selectedIds.length > 0) {
         const selectedCompany = await Company.findOne({ 
@@ -1000,14 +1008,14 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
           // Determine section type based on section name
           const sectionTitle = sectionName.toLowerCase();
           if (sectionTitle === 'title') {
-            content = formatTitleSection(selectedCompany, rfp || {});
+            content = SharedSectionFormatters.formatTitleSection(selectedCompany, rfp || {});
           } else if (sectionTitle.includes('cover letter') || 
               sectionTitle.includes('introduction letter') || 
               sectionTitle.includes('transmittal letter')) {
-            content = formatCoverLetterSection(selectedCompany, rfp || {});
+            content = SharedSectionFormatters.formatCoverLetterSection(selectedCompany, rfp || {});
           } else {
             // This is an experience/qualifications section
-            content = await formatExperienceSection(selectedCompany, rfp || {});
+            content = await SharedSectionFormatters.formatExperienceSection(selectedCompany, rfp || {});
           }
         } else {
           content = 'Selected company not found.';
