@@ -655,11 +655,11 @@ router.get("/:id/export-docx", async (req, res) => {
 });
 
 function renderTable(doc, content) {
+  // Keep lines that look like table rows and exclude pure separator rows
   const rows = content
     .split("\n")
     .filter((line) => {
       const trimmedLine = line.trim();
-      // Keep lines that contain | but exclude separator rows (lines with only dashes, pipes, and spaces)
       return trimmedLine.includes("|") && !trimmedLine.match(/^[\s\-\|]+$/) && trimmedLine.length > 0;
     });
 
@@ -669,29 +669,57 @@ function renderTable(doc, content) {
     return;
   }
 
-  // Parse table data more robustly
-  const tableData = rows.map((row) => {
-    return row
-      .split("|")
-      .map((c) => c.trim())
-      .filter((c) => c !== "");
-  });
+  // Parse a row, preserving empty middle cells but trimming edges caused by leading/trailing pipes
+  function parseRowKeepEmpties(row) {
+    const parts = row.split("|").map((c) => c.trim());
+    // Drop first/last if they are empty artifacts from leading/trailing pipe
+    if (parts.length > 0 && parts[0] === "") parts.shift();
+    if (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
+    return parts; // keep empty strings inside
+  }
 
-  // Ensure all rows have the same number of columns
-  const maxCols = Math.max(...tableData.map(row => row.length));
-  const paddedData = tableData.map(row => {
-    while (row.length < maxCols) {
-      row.push("");
+  const rawTable = rows.map(parseRowKeepEmpties);
+  if (rawTable.length === 0) {
+    doc.text(content);
+    return;
+  }
+
+  // Use first row as headers
+  const headers = rawTable[0];
+  const headerCount = headers.length;
+
+  // Normalize data rows to exactly headerCount columns
+  const dataRows = rawTable.slice(1).map((row) => {
+    const r = [...row];
+    if (r.length > headerCount) {
+      // Merge extras into last column to avoid overflow
+      const head = r.slice(0, headerCount - 1);
+      const tail = r.slice(headerCount - 1).filter((x) => x !== "");
+      return [...head, tail.join(" ")];
     }
-    return row;
+    while (r.length < headerCount) r.push("");
+    return r;
   });
-
-  const headers = paddedData[0];
-  const dataRows = paddedData.slice(1);
 
   const cellPadding = 8;
   const availableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const colWidth = availableWidth / maxCols;
+
+  // Detect 5-col Budget table by header names
+  const lowerHeaders = headers.map((h) => String(h).toLowerCase());
+  const isBudget5 =
+    headerCount === 5 &&
+    lowerHeaders.some((h) => h.includes("phase")) &&
+    lowerHeaders.some((h) => h.includes("role")) &&
+    (lowerHeaders.some((h) => h.includes("hourly")) || lowerHeaders.some((h) => h.includes("rate"))) &&
+    lowerHeaders.some((h) => h.includes("hour")) &&
+    lowerHeaders.some((h) => h.includes("cost"));
+
+  // Column widths: custom for budget, equal otherwise
+  const ratios = isBudget5 ? [0.26, 0.24, 0.16, 0.12, 0.22] : Array(headerCount).fill(1 / headerCount);
+  const colWidths = ratios.map((r) => r * availableWidth);
+
+  // Column alignments
+  const colAlign = isBudget5 ? ["left", "left", "center", "center", "right"] : Array(headerCount).fill("left");
 
   // Estimate table height
   const estimatedHeaderHeight = 30;
@@ -709,8 +737,10 @@ function renderTable(doc, content) {
   const tableTop = doc.y;
 
   // Header row with better styling
+  let xCursor = doc.page.margins.left;
   headers.forEach((header, i) => {
-    const cellX = doc.page.margins.left + i * colWidth;
+    const colWidth = colWidths[i];
+    const cellX = xCursor;
     
     // Header background
     doc
@@ -731,6 +761,7 @@ function renderTable(doc, content) {
           align: "left",
         }
       );
+    xCursor += colWidth;
   });
 
   let y = tableTop + 30;
@@ -741,7 +772,8 @@ function renderTable(doc, content) {
     
     // Calculate maximum height needed for this row
     row.forEach((cell, i) => {
-      const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n').trim();
+      const colWidth = colWidths[i];
+      const cleanCell = (cell === '' ? '\u00A0' : cell).replace(/<br\s*\/?>/gi, '\n');
       const textHeight = doc.heightOfString(cleanCell, {
         width: colWidth - 2 * cellPadding,
       });
@@ -758,8 +790,10 @@ function renderTable(doc, content) {
       y = doc.y;
       
       // Redraw header on new page
+      let hx = doc.page.margins.left;
       headers.forEach((header, i) => {
-        const cellX = doc.page.margins.left + i * colWidth;
+        const colWidth = colWidths[i];
+        const cellX = hx;
         
         // Header background
         doc
@@ -780,6 +814,7 @@ function renderTable(doc, content) {
               align: "left",
             }
           );
+        hx += colWidth;
       });
       
       y += 30;
@@ -788,9 +823,15 @@ function renderTable(doc, content) {
     // Draw row with alternating background colors
     const backgroundColor = rowIndex % 2 === 0 ? "#ffffff" : "#f8f9fa";
     
+    let rx = doc.page.margins.left;
+    // Detect subtotal/total rows for styling
+    const rowLabel = String(row[0] || '').toLowerCase();
+    const isSummaryRow = rowLabel.includes('subtotal') || rowLabel.includes('total');
+
     row.forEach((cell, i) => {
-      const cellX = doc.page.margins.left + i * colWidth;
-      const cleanCell = cell.replace(/<br\s*\/?>/gi, '\n').trim();
+      const colWidth = colWidths[i];
+      const cellX = rx;
+      const cleanCell = (cell === '' ? '\u00A0' : cell).replace(/<br\s*\/?>/gi, '\n');
       
       // Cell background
       doc
@@ -800,17 +841,18 @@ function renderTable(doc, content) {
       // Cell text
       doc
         .fontSize(10)
-        .font("Helvetica")
+        .font(isSummaryRow ? "Helvetica-Bold" : "Helvetica")
         .fillColor("#212529")
         .text(
-          cleanCell || " ", // Empty cells get a space
+          cleanCell || "\u00A0", // Preserve empty cells as NBSP
           cellX + cellPadding,
           y + 8,
           {
             width: colWidth - 2 * cellPadding,
-            align: "left",
+            align: colAlign[i] || "left",
           }
         );
+      rx += colWidth;
     });
 
     y += maxHeight;

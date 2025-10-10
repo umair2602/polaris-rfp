@@ -105,7 +105,7 @@ Instructions:
  * Use AI to select most relevant project references based on RFP content
  */
 async function selectRelevantReferences(rfp, references) {
-  console.log("--- AI Reference Selection Debug ---");
+console.log("--- AI Reference Selection Debug ---");
   console.log("OpenAI configured:", !!openai);
   console.log("References count:", references?.length || 0);
 
@@ -239,7 +239,7 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
   // Use AI to select most relevant content based on RFP
   let selectedTeamIds = await selectRelevantTeamMembers(rfp, teamMembers);
   let selectedReferenceIds = await selectRelevantReferences(
-    rfp,
+  rfp,
     projectReferences
   );
 

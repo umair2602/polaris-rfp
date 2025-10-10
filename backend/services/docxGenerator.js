@@ -458,18 +458,31 @@ class DocxGenerator {
     try {
       const lines = content.split("\n");
       const table = [];
+      let expectedCols = 0;
 
       for (const line of lines) {
         if (!line.trim() || /^[\s\|\-]+$/.test(line)) continue;
 
         if (line.includes("|")) {
-          const cells = line
-            .split("|")
+          // Preserve intentionally empty cells between pipes to keep alignment
+          let parts = line.split("|");
+          if (parts.length && parts[0].trim() === "") parts.shift();
+          if (parts.length && parts[parts.length - 1].trim() === "") parts.pop();
+          const cells = parts
             .map((c) => c.trim())
             .map((c) => c.replace(/\*\*/g, "").replace(/\*/g, "")) // Remove ** and * markdown formatting
-            .map((c) => c.replace(/<br\s*\/?>/gi, "\n")) // Convert <br> tags to line breaks
-            .filter((c) => c !== "");
-          if (cells.length) table.push(cells);
+            .map((c) => c.replace(/<br\s*\/?>(?=.)/gi, "\n")) // Convert <br> tags to line breaks
+            .map((c) => (c === "" ? "\u00A0" : c)); // Use NBSP for empty cells
+
+          if (cells.length) {
+            // Establish expected column count from header row
+            if (expectedCols === 0) expectedCols = cells.length;
+            // Pad/trim to match header width
+            const normalized = cells.length < expectedCols
+              ? [...cells, ...Array(expectedCols - cells.length).fill("\u00A0")]
+              : cells.slice(0, expectedCols);
+            table.push(normalized);
+          }
         }
       }
 
@@ -477,7 +490,7 @@ class DocxGenerator {
         // Determine table type and width based on content
         const tableType = this.determineTableType(table, content);
         const tableData = this.createFormattedTable(table, tableType);
-        const tableStyle = this.createTableStyle(tableType);
+        const tableStyle = this.createTableStyle(tableType, table[0]?.length || 0);
 
         docx.createTable(tableData, tableStyle);
       }
@@ -630,6 +643,10 @@ class DocxGenerator {
   getDataAlignment(tableType, cellIndex) {
     switch (tableType) {
       case "budget":
+        // For 5-col budget: Phase(left), Role(left), Rate(center), Hours(center), Cost(right)
+        if (cellIndex === 0 || cellIndex === 1) return "left";
+        if (cellIndex === 2 || cellIndex === 3) return "center";
+        if (cellIndex === 4) return "right";
         return "center";
       case "timeline":
         return "center";
@@ -653,7 +670,7 @@ class DocxGenerator {
     }
   }
 
-  createTableStyle(tableType = "default") {
+  createTableStyle(tableType = "default", columnCount = 0) {
     const baseStyle = {
       tableSize: 24,
       tableColor: "000000",
@@ -672,13 +689,27 @@ class DocxGenerator {
 
     switch (tableType) {
       case "budget":
+        // Dynamic widths: support 5-col resource budget or fallback to 3-col
+        if (columnCount >= 5) {
+          return {
+            ...baseStyle,
+            tableColWidth: 11000,
+            columns: [
+              { width: 3500 }, // Phase
+              { width: 3000 }, // Role
+              { width: 1500 }, // Hourly Rate
+              { width: 1200 }, // Hours
+              { width: 1800 }, // Cost ($)
+            ],
+          };
+        }
         return {
           ...baseStyle,
-          tableColWidth: 9000, // Moderate increase for better centering
+          tableColWidth: 9000,
           columns: [
-            { width: 3000 }, // Phase column - wider for descriptions
-            { width: 4500 }, // Description column - widest for content
-            { width: 1500 }, // Cost column - wider for numbers
+            { width: 3000 }, // Phase
+            { width: 4500 }, // Description
+            { width: 1500 }, // Cost
           ],
         };
       case "timeline":
