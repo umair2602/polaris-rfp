@@ -19,6 +19,7 @@ const {
   cleanKeyPersonnelContent,
   extractTitleContactInfo,
 } = require("./aiProposalGenerator");
+const { getSectionGuidelines } = require('./promptGuidelines');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -342,7 +343,7 @@ async function generateAIProposalFromTemplate(rfp, template, customContent) {
 
 NOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:\n\n${dynamicList}\n\nCRITICAL: Use EXACTLY these section titles as JSON keys, in this order:\n${JSON.stringify(
     aiOnlySections
-  )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
+  )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- Use bullet points and markdown tables where appropriate\n- Keep content grounded in the RFP context; avoid hallucinations\n\nSECTION GUIDELINES:\n${getSectionGuidelines()}\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
 
   const userPrompt = `RFP Information:\n- Title: ${rfp.title}\n- Client: ${
     rfp.clientName
