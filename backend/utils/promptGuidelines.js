@@ -114,39 +114,46 @@ function getSectionGuidelines() {
    - Include specific milestones, deliverables, and review points for each phase
 
 **For sections related to Budget, Cost, or Financial** (containing words like "budget", "cost", "financial", "pricing", "fees"):
-   Provide a resource-based cost breakdown by phase that matches the methodology phases
-   - Create a detailed breakdown that aligns 1:1 with the phases defined in the Methodology/Process section
-   - If a budget range is provided in the RFP, keep totals within that range and briefly justify major cost drivers
-   - If specific budget rules are mentioned (e.g., NTE, reimbursables), follow them strictly and note any assumptions below the table
-   - Break down costs by Phase and Role with hourly rate, estimated hours, and calculated cost
-   - CRITICAL: Format as a proper markdown table with exactly 5 columns: "Phase", "Role", "Hourly Rate", "Hours", "Cost ($)"
-   - Use this exact table header and row structure (do not hardcode example values; compute based on the RFP context):
-     | Phase | Role | Hourly Rate | Hours | Cost ($) |
-     |------|------|-------------|-------|----------|
-     | Phase 1: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
-     |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
-     |  | [Additional Roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
-     | Subtotal Phase 1 |  |  |  | $[Sum of Phase 1] |
-     | Phase 2: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
-     |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
-     |  | [Additional Roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
-     | Subtotal Phase 2 |  |  |  | $[Sum of Phase 2] |
-     | ... |  |  |  |  |
-     | TOTAL |  |  |  | $[Grand Total] |
-   - Rules and formatting requirements:
-     - Use currency format with a dollar sign and thousands separators (e.g., $12,340.00); round to two decimals
-     - Keep the Phase cell filled only on the first row for that phase; leave it blank for subsequent role rows in the same phase
-     - Ensure subtotals equal the sum of role costs for that phase; ensure TOTAL equals the sum of all subtotals
-     - The number of phases should mirror the Methodology section (typically 4–6)
-     - Optionally precede the table with a one-line heading like: "Budget — $[Grand Total]" and, if applicable, "All in NTE price inclusive of all fees"
-     - Do not reuse or copy any example numbers; generate values based on the RFP scope, rates typical for the domain, and stated constraints
-     - STRICT MARKDOWN SYNTAX (to prevent column shifts):
-       - Every data row must have exactly 5 cells and start and end with a pipe
-       - For role-only rows inside a phase, the first cell MUST be empty: "|  | [Role] | $[Rate] | [Hours] | $[Rate*Hours] |"
-       - For Subtotal rows, only the first and last cells contain text: "| Subtotal Phase X |  |  |  | $[Subtotal] |"
-       - For the TOTAL row: "| TOTAL |  |  |  | $[Grand Total] |"
-       - Never omit the leading "|  |" when the Phase cell is intentionally blank; never merge cells
-   - After the table, add a short assumptions/notes block listing key assumptions (e.g., rate basis, travel, data collection scope, number of meetings)
+    Provide a resource-based cost breakdown by phase that matches the methodology phases
+    - Create a detailed breakdown that aligns 1:1 with the phases defined in the Methodology/Process section
+    - If a budget range is provided in the RFP, keep totals within that range and briefly justify major cost drivers
+    - If specific budget rules are mentioned (e.g., NTE, reimbursables), follow them strictly and note any assumptions below the table
+    - Break down costs by Phase and Role with hourly rate, estimated hours, and calculated cost
+    - CRITICAL: Format as a proper markdown table with exactly 5 columns: "Phase", "Role", "Hourly Rate", "Hours", "Cost ($)"
+    - Determine the list of phases as follows:
+       - If the Methodology/Process section exists, EXTRACT its phase names/headings and use those EXACT names in the Budget table
+       - If Methodology is not available, INFER 4–6 logical phases from the RFP scope and use those names consistently across sections
+    - Use this exact table header and row structure (do not hardcode example values; compute based on the RFP context):
+       | Phase | Role | Hourly Rate | Hours | Cost ($) |
+       |------|------|-------------|-------|----------|
+       | Phase 1: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role C or additional roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
+       | Subtotal Phase 1 |  |  |  | $[Sum of Phase 1] |
+       | Phase 2: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role C or additional roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
+       | Subtotal Phase 2 |  |  |  | $[Sum of Phase 2] |
+       | Phase 3: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
+       |  | [Role C or additional roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
+       | Subtotal Phase 3 |  |  |  | $[Sum of Phase 3] |
+       | ... repeat Phase blocks for ALL phases identified ... |
+       | TOTAL |  |  |  | $[Grand Total] |
+    - Rules and formatting requirements:
+       - Use currency format with a dollar sign and thousands separators (e.g., $12,340.00); round to two decimals
+       - Keep the Phase cell filled only on the first row for that phase; leave it blank for subsequent role rows in the same phase
+       - Ensure subtotals equal the sum of role costs for that phase; ensure TOTAL equals the sum of all subtotals
+       - The number of phases MUST mirror the Methodology section (typically 4–6); do NOT limit to two phases
+       - Do not include ellipsis "..." rows in the final output; generate concrete rows for EVERY phase
+       - Do not reuse or copy any example numbers; generate values based on the RFP scope, rates typical for the domain, and stated constraints
+       - STRICT MARKDOWN SYNTAX (to prevent column shifts):
+          - Every data row must have exactly 5 cells and start and end with a pipe
+          - For role-only rows inside a phase, the first cell MUST be empty: "|  | [Role] | $[Rate] | [Hours] | $[Rate*Hours] |"
+          - For Subtotal rows, only the first and last cells contain text: "| Subtotal Phase X |  |  |  | $[Subtotal] |"
+          - For the TOTAL row: "| TOTAL |  |  |  | $[Grand Total] |"
+          - Never omit the leading "|  |" when the Phase cell is intentionally blank; never merge cells
+    - After the table, add a short assumptions/notes block listing key assumptions (e.g., rate basis, travel, data collection scope, number of meetings)
 
 **For sections related to References, Experience, or Portfolio** (containing words like "references", "experience", "portfolio", "past projects", "case studies"):
    Include relevant past projects and client experience

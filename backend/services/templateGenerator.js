@@ -1,7 +1,7 @@
 const OpenAI = require("openai");
 const SharedSectionFormatters = require("./sharedSectionFormatters");
 const AIProposalGenerator = require("./aiProposalGenerator");
-const { getSectionGuidelines } = require("./promptGuidelines");
+const { getSectionGuidelines } = require("../utils/promptGuidelines");
 
 class TemplateGenerator {
   // Lazy OpenAI initialization
@@ -23,10 +23,10 @@ class TemplateGenerator {
         id: member.memberId,
         name: member.nameWithCredentials,
         position: member.position,
-        expertise: member.biography.substring(0, 200),
+        expertise: member.biography,
       }));
 
-      const prompt = `Based on the following RFP requirements, select the most relevant team members from our content library. Return ONLY the IDs of the selected members as a JSON array (e.g., ["id1", "id2"]).\n\nRFP Information:\n- Title: ${rfp.title}\n- Project Type: ${rfp.projectType}\n- Key Requirements: ${rfp.keyRequirements?.join(", ") || "Not specified"}\n- Deliverables: ${rfp.deliverables?.join(", ") || "Not specified"}\n- Project Scope: ${rfp.projectScope || "Not specified"}\n- Raw Text Preview: ${rfp.rawText ? rfp.rawText.substring(0, 300) + "..." : "Not available"}\n\nAvailable Team Members:\n${membersSummary
+      const prompt = `Based on the following RFP requirements, select the most relevant team members from our content library. Return ONLY the IDs of the selected members as a JSON array (e.g., ["id1", "id2"]).\n\nRFP Information:\n- Title: ${rfp.title}\n- Project Type: ${rfp.projectType}\n- Key Requirements: ${rfp.keyRequirements?.join(", ") || "Not specified"}\n- Deliverables: ${rfp.deliverables?.join(", ") || "Not specified"}\n- Project Scope: ${rfp.projectScope || "Not specified"}\n- Raw Text Preview: ${rfp.rawText ? rfp.rawText + "..." : "Not available"}\n\nAvailable Team Members:\n${membersSummary
         .map(
           (m) =>
             `ID: ${m.id} | ${m.name} - ${m.position} | Expertise: ${m.expertise}...`
@@ -54,10 +54,10 @@ class TemplateGenerator {
       const referencesSummary = references.map((ref) => ({
         id: ref._id.toString(),
         organization: ref.organizationName,
-        scope: ref.scopeOfWork.substring(0, 200),
+        scope: ref.scopeOfWork,
       }));
 
-      const prompt = `Based on the following RFP requirements, select the most relevant project references from our content library. Return ONLY the IDs of the selected references as a JSON array (e.g., ["id1", "id2"]).\n\nRFP Information:\n- Title: ${rfp.title}\n- Project Type: ${rfp.projectType}\n- Key Requirements: ${rfp.keyRequirements?.join(", ") || "Not specified"}\n- Deliverables: ${rfp.deliverables?.join(", ") || "Not specified"}\n- Project Scope: ${rfp.projectScope || "Not specified"}\n- Raw Text Preview: ${rfp.rawText ? rfp.rawText.substring(0, 300) + "..." : "Not available"}\n\nAvailable Project References:\n${referencesSummary
+      const prompt = `Based on the following RFP requirements, select the most relevant project references from our content library. Return ONLY the IDs of the selected references as a JSON array (e.g., ["id1", "id2"]).\n\nRFP Information:\n- Title: ${rfp.title}\n- Project Type: ${rfp.projectType}\n- Key Requirements: ${rfp.keyRequirements?.join(", ") || "Not specified"}\n- Deliverables: ${rfp.deliverables?.join(", ") || "Not specified"}\n- Project Scope: ${rfp.projectScope || "Not specified"}\n- Raw Text Preview: ${rfp.rawText ? rfp.rawText + "..." : "Not available"}\n\nAvailable Project References:\n${referencesSummary
         .map((r) => `ID: ${r.id} | ${r.organization} | Scope: ${r.scope}...`)
         .join("\n")}\n\nInstructions:\n- Select references that demonstrate similar work or capabilities required by this RFP\n- Consider industry, project type, and scope alignment\n- Limit selection to 2-3 most relevant references\n- If no references are particularly relevant, return an empty array\n- Return only the JSON array of IDs, no other text`;
 

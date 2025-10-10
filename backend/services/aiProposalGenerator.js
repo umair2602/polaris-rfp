@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const { getSectionGuidelines } = require('./promptGuidelines');
+const { getSectionGuidelines } = require('../utils/promptGuidelines');
 const SharedSectionFormatters = require('./sharedSectionFormatters');
 
 class AIProposalGenerator {
