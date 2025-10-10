@@ -1,31 +1,36 @@
 const OpenAI = require('openai');
 
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
-
-/**
- * Generate proposal section titles based on predefined base sections and RFP analysis
- * Returns an array of strings (section titles) with no content
- * Always includes "Title" and "Cover Letter", then analyzes RFP for other relevant sections
- */
-async function generateSectionTitles(rfp) {
-  if (!openai) {
-    throw new Error("OpenAI API key not configured");
+class SectionTitlesGenerator {
+  static get openai() {
+    if (!this._openai) {
+      this._openai = process.env.OPENAI_API_KEY
+        ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+        : null;
+    }
+    return this._openai;
   }
 
-  // Base section structure that serves as the foundation
-  const baseSections = [
-    "Title",
-    "Cover Letter", 
-    "Technical Approach and Methodology",
-    "Key Personnel and Experience",
-    "Budget Estimate",
-    "Project Timeline", 
-    "References"
-  ];
+  static get baseSections() {
+    return [
+      'Title',
+      'Cover Letter',
+      'Technical Approach and Methodology',
+      'Key Personnel and Experience',
+      'Budget Estimate',
+      'Project Timeline',
+      'References',
+    ];
+  }
 
-  const systemPrompt = `You are an expert proposal architect. You have a predefined set of base proposal sections, and your job is to analyze the RFP document to determine which sections are relevant and should be included in the proposal.
+  /**
+   * Generate proposal section titles based on predefined base sections and RFP analysis
+   */
+  static async generateSectionTitles(rfp) {
+    if (!this.openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const systemPrompt = `You are an expert proposal architect. You have a predefined set of base proposal sections, and your job is to analyze the RFP document to determine which sections are relevant and should be included in the proposal.
 
 BASE SECTIONS AVAILABLE:
 - Title (ALWAYS include)
@@ -60,7 +65,7 @@ Example: ["Title", "Cover Letter", "Technical Approach and Methodology", "Budget
 
 Return ONLY the JSON array, nothing else.`;
 
-  const userPrompt = `Analyze this RFP and determine which base sections are relevant, plus identify any unique sections needed.
+    const userPrompt = `Analyze this RFP and determine which base sections are relevant, plus identify any unique sections needed.
 
 RFP DETAILS:
 - Title: ${rfp.title}
@@ -97,26 +102,21 @@ ANALYSIS INSTRUCTIONS:
 
 Return a JSON array of section titles that are specifically relevant to THIS RFP based on its actual content and requirements.`;
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       temperature: 0.3,
       max_tokens: 1000,
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
       ],
     });
 
-    const raw = (completion.choices?.[0]?.message?.content || "").trim();
-
-    // Parse the JSON response
+    const raw = (completion.choices?.[0]?.message?.content || '').trim();
     const parsed = JSON.parse(raw);
-    
-    // Handle different possible JSON structures
+
     let titles = [];
-    
     if (Array.isArray(parsed)) {
       titles = parsed;
     } else if (parsed.titles && Array.isArray(parsed.titles)) {
@@ -126,27 +126,21 @@ Return a JSON array of section titles that are specifically relevant to THIS RFP
     } else if (parsed.section_titles && Array.isArray(parsed.section_titles)) {
       titles = parsed.section_titles;
     } else {
-      // If it's an object with keys, try to extract values
       const values = Object.values(parsed);
       if (values.length > 0 && Array.isArray(values[0])) {
         titles = values[0];
       }
     }
-    
-    const cleaned = sanitizeSectionTitlesArray(titles);
 
-    // Ensure Title and Cover Letter are always first and present
-    const compulsory = ["Title", "Cover Letter"];
+    const cleaned = this.sanitizeSectionTitlesArray(titles);
+
+    const compulsory = ['Title', 'Cover Letter'];
     const finalSections = [];
     const seenSections = new Set();
-
-    // Add compulsory sections first
     for (const section of compulsory) {
       finalSections.push(section);
       seenSections.add(section.toLowerCase());
     }
-
-    // Add remaining sections, avoiding duplicates
     for (const section of cleaned) {
       const lowerSection = section.toLowerCase();
       if (!seenSections.has(lowerSection)) {
@@ -154,100 +148,53 @@ Return a JSON array of section titles that are specifically relevant to THIS RFP
         seenSections.add(lowerSection);
       }
     }
-
-    // Limit to reasonable number (but allow some flexibility for complex RFPs)
     return finalSections.slice(0, 15);
-    
-  } catch (error) {
-    console.error("AI section title generation failed:", error);
-    throw new Error(`AI section title generation failed: ${error.message}`);
   }
-}
 
-/**
- * Sanitize and deduplicate section titles
- */
-function sanitizeSectionTitlesArray(arr) {
-  if (!Array.isArray(arr)) {
-    console.warn("Expected array but got:", typeof arr);
-    return [];
-  }
-  
-  const seen = new Set();
-  const titles = [];
-
-  // Base sections for reference (to maintain consistency)
-  const baseSections = [
-    "Title",
-    "Cover Letter", 
-    "Technical Approach and Methodology",
-    "Key Personnel and Experience",
-    "Budget Estimate",
-    "Project Timeline", 
-    "References"
-  ];
-
-  for (const item of arr) {
-    if (typeof item !== 'string') continue;
-    
-    // Clean the title
-    let title = item
-      .replace(/^\d+\s*[).:-]\s*/g, '') // strip leading numbering
-      .replace(/^\*+\s*/g, '') // strip bullet symbols
-      .replace(/^[-•]\s*/g, '') // strip dash/bullet prefixes
-      .trim();
-
-    if (!title) continue;
-    if (title.length > 120) continue; // avoid paragraphs
-    if (title.length < 3) continue; // too short
-    
-    // Normalize base section titles to maintain consistency
-    const lowerTitle = title.toLowerCase();
-    const matchingBase = baseSections.find(base => 
-      base.toLowerCase() === lowerTitle || 
-      lowerTitle.includes(base.toLowerCase().split(' ')[0]) // partial match for flexibility
-    );
-    
-    if (matchingBase) {
-      title = matchingBase; // Use the standardized base section name
+  /** Sanitize and deduplicate section titles */
+  static sanitizeSectionTitlesArray(arr) {
+    if (!Array.isArray(arr)) {
+      console.warn('Expected array but got:', typeof arr);
+      return [];
     }
-    
-    // Check for duplicates (case-insensitive)
-    const key = title.toLowerCase();
-    if (seen.has(key)) continue;
-    
-    seen.add(key);
-    titles.push(title);
+    const seen = new Set();
+    const titles = [];
+    for (const item of arr) {
+      if (typeof item !== 'string') continue;
+      let title = item
+        .replace(/^\d+\s*[).:-]\s*/g, '')
+        .replace(/^\*+\s*/g, '')
+        .replace(/^[-•]\s*/g, '')
+        .trim();
+      if (!title) continue;
+      if (title.length > 120) continue;
+      if (title.length < 3) continue;
+      const lowerTitle = title.toLowerCase();
+      const matchingBase = this.baseSections.find(
+        (base) => base.toLowerCase() === lowerTitle || lowerTitle.includes(base.toLowerCase().split(' ')[0])
+      );
+      if (matchingBase) {
+        title = matchingBase;
+      }
+      const key = title.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      titles.push(title);
+    }
+    return titles;
   }
 
-  return titles;
-}
-
-/**
- * Main export function - generates contextual section titles using OpenAI only
- */
-async function generateContextualSectionTitles(rfp) {
-  try {
-    const titles = await generateSectionTitles(rfp);
-    
-    // Validate we got titles
+  /** Main convenience method */
+  static async generateContextualSectionTitles(rfp) {
+    const titles = await this.generateSectionTitles(rfp);
     if (!titles || titles.length === 0) {
-      throw new Error("OpenAI returned no section titles");
+      throw new Error('OpenAI returned no section titles');
     }
-    
     console.log(`Generated ${titles.length} contextual section titles`);
     return titles;
-    
-  } catch (error) {
-    console.error("Section title generation error:", error);
-    throw new Error(`Failed to generate section titles: ${error.message}`);
   }
 }
 
-module.exports = {
-  generateSectionTitles,
-  generateContextualSectionTitles,
-  sanitizeSectionTitlesArray,
-};
+module.exports = SectionTitlesGenerator;
 
 
