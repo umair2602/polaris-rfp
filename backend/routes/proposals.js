@@ -210,48 +210,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// Export proposal as JSON (PDF generation would be added later)
-router.get("/:id/export", async (req, res) => {
-  try {
-    const proposal = await Proposal.findById(req.params.id).populate(
-      "rfpId",
-      "title clientName projectType"
-    );
-
-    if (!proposal) {
-      return res.status(404).json({ error: "Proposal not found" });
-    }
-
-    const exportData = {
-      proposal: {
-        title: proposal.title,
-        status: proposal.status,
-        createdAt: proposal.createdAt,
-        updatedAt: proposal.updatedAt,
-      },
-      rfp: {
-        title: proposal.rfpId.title,
-        clientName: proposal.rfpId.clientName,
-        projectType: proposal.rfpId.projectType,
-      },
-      sections: proposal.sections,
-      metadata: {
-        exportedAt: new Date(),
-        exportedBy: "system",
-        version: proposal.version,
-      },
-    };
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${proposal.title.replace(/\s+/g, "_")}.json"`
-    );
-    res.setHeader("Content-Type", "application/json");
-    res.json(exportData);
-  } catch (error) {
-    console.error("Error exporting proposal:", error);
-    res.status(500).json({ error: "Failed to export proposal" });
-  }
-});
+// (Removed earlier duplicate export-pdf route that stripped bold formatting)
 
 router.get("/:id/export-pdf", async (req, res) => {
   try {
@@ -589,167 +548,28 @@ router.get("/:id/export-pdf", async (req, res) => {
           }
         });
       } else if (sectionName === "Project Schedule") {
-        // Project Schedule should always be rendered as text content with headings and paragraphs
-        let cleanContent = sectionData.content || "No content available";
-        
-        // Ensure content is a string
-        if (typeof cleanContent !== 'string') {
-          cleanContent = String(cleanContent);
-        }
-        
-        // Process markdown formatting for Project Schedule
-        cleanContent = cleanContent
-          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
-          .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
-          .replace(/^##\s*(.*)$/gm, '\n$1\n') // Convert ## headings to plain text with spacing
-          .replace(/\n\n+/g, '\n\n'); // Clean up multiple newlines
-        
-        doc
-          .fontSize(11)
-          .fillColor("#000000")
-          .text(cleanContent, {
-            align: "justify",
-            lineGap: 6,
-          });
+        // Render Project Schedule preserving bold and headings
+        const content = typeof sectionData.content === 'string'
+          ? sectionData.content
+          : String(sectionData.content || "No content available");
+
+        renderMarkdownContent(doc, content, {
+          baseFontSize: 11,
+          align: "justify",
+          lineGap: 6,
+        });
       } else if (sectionData.content && typeof sectionData.content === 'string' && sectionData.content.includes("|")) {
         renderTable(doc, sectionData.content);
       } else {
-        // Render content with bold formatting support
-        let content = sectionData.content || "No content available";
-        
-        // Ensure content is a string
-        if (typeof content !== 'string') {
-          content = String(content);
-        }
-        
-        // Remove markdown headers (# ## ###) but keep bold formatting
-        content = content.replace(/^#{1,6}\s*/gm, '');
-        
-        // Replace Unicode bullet points with standard ASCII dash that PDF supports
-        // ● (U+25CF), • (U+2022), ○ (U+25CB), ◦ (U+25E6) all become "-"
-        content = content.replace(/[●•○◦]/g, '-');
-        
-        // Split content by paragraphs (double newlines) to preserve paragraph breaks
-        const paragraphs = content.split(/\n\n+/);
-        
-        paragraphs.forEach((paragraph, paragraphIndex) => {
-          if (!paragraph.trim()) return;
-          
-          // Split each paragraph by single newlines to handle line-by-line rendering
-          const lines = paragraph.split('\n');
-          
-          lines.forEach((line, lineIndex) => {
-            if (!line.trim()) {
-              // Empty line within a paragraph - add small spacing
-              doc.moveDown(0.3);
-              return;
-            }
-            
-            // Check if line starts with a bullet point marker (- )
-            const trimmedLine = line.trim();
-            let bulletText = null;
-            let indentLevel = 0;
-            
-            // Detect bullet points with varying indentation
-            const bulletMatch = trimmedLine.match(/^(-+)\s+(.+)$/);
-            if (bulletMatch) {
-              indentLevel = bulletMatch[1].length - 1; // Number of dashes minus 1 for indent level
-              bulletText = bulletMatch[2];
-            }
-            
-            if (bulletText) {
-              // This is a bullet point - render with bullet symbol
-              const indent = 20 + (indentLevel * 15); // Base indent + extra for nested bullets
-              
-              // Split bullet text into parts with bold and regular text
-              const parts = bulletText.split(/(\*\*.*?\*\*)/g);
-              
-              // Start with bullet symbol
-              doc
-                .font('Helvetica')
-                .fontSize(11)
-                .fillColor("#000000")
-                .text('• ', {
-                  continued: true,
-                  indent: indent,
-                  align: "left",
-                  lineGap: 4,
-                });
-              
-              // Add the rest of the text
-              parts.forEach((part, partIndex) => {
-                if (!part) return;
-                
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  // Bold text
-                  const boldText = part.slice(2, -2);
-                  doc
-                    .font('Helvetica-Bold')
-                    .fontSize(11)
-                    .fillColor("#000000")
-                    .text(boldText, {
-                      continued: partIndex < parts.length - 1,
-                      align: "left",
-                      lineGap: 4,
-                    });
-                } else {
-                  // Regular text - remove any remaining italic markers
-                  const regularText = part.replace(/\*(.*?)\*/g, '$1');
-                  doc
-                    .font('Helvetica')
-                    .fontSize(11)
-                    .fillColor("#000000")
-                    .text(regularText, {
-                      continued: partIndex < parts.length - 1,
-                      align: "left",
-                      lineGap: 4,
-                    });
-                }
-              });
-            } else {
-              // Not a bullet point - render normally
-              // Split line into parts with bold and regular text
-              const parts = line.split(/(\*\*.*?\*\*)/g);
-              
-              parts.forEach((part, partIndex) => {
-                if (!part) return;
-                
-                // Check if this part is bold
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  // Bold text (like "Submitted to:", "Date:", etc.)
-                  const boldText = part.slice(2, -2);
-                  doc
-                    .font('Helvetica-Bold')
-                    .fontSize(11)
-                    .fillColor("#000000")
-                    .text(boldText, {
-                      continued: true, // Continue on same line for the value after the bold label
-                      align: "left",
-                      lineGap: 4,
-                    });
-                } else {
-                  // Regular text - remove any remaining italic markers
-                  const regularText = part.replace(/\*(.*?)\*/g, '$1');
-                  const isLastPart = partIndex === parts.length - 1;
-                  
-                  doc
-                    .font('Helvetica')
-                    .fontSize(11)
-                    .fillColor("#000000")
-                    .text(regularText, {
-                      continued: false, // End the line after regular text
-                      align: "left",
-                      lineGap: 4,
-                    });
-                }
-              });
-            }
-          });
-          
-          // Add spacing between paragraphs (not just lines)
-          if (paragraphIndex < paragraphs.length - 1) {
-            doc.moveDown(0.8);
-          }
+        // Render content preserving bold and markdown headings
+        const content = typeof sectionData.content === 'string'
+          ? sectionData.content
+          : String(sectionData.content || "No content available");
+
+        renderMarkdownContent(doc, content, {
+          baseFontSize: 11,
+          align: "justify",
+          lineGap: 6,
         });
       }
 
@@ -998,6 +818,114 @@ function renderTable(doc, content) {
 
   // Add some space after the table
   doc.y = y + 20;
+  // Reset X to left margin so following content doesn't start at last cell X
+  doc.x = doc.page.margins.left;
+}
+
+// Render markdown-like content with support for bold (**text**), headings (#, ##, ###), and bullets (-)
+function renderMarkdownContent(doc, rawContent, options = {}) {
+  const { baseFontSize = 11, align = "left", lineGap = 6 } = options;
+
+  if (!rawContent) {
+    doc.font('Helvetica').fontSize(baseFontSize).fillColor('#000000').text('No content available');
+    return;
+  }
+
+  // Always start at left margin to avoid inheriting X from previous drawings (e.g., tables)
+  doc.x = doc.page.margins.left;
+
+  // Normalize bullets (various bullet characters to '-')
+  let content = String(rawContent).replace(/[●•○◦]/g, '-');
+
+  // Split by paragraphs
+  const paragraphs = content.split(/\n\n+/);
+
+  paragraphs.forEach((paragraph, pIdx) => {
+    if (!paragraph.trim()) return;
+
+    const lines = paragraph.split(/\n/);
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        doc.moveDown(0.3);
+        return;
+      }
+
+      // Heading detection: ###, ##, # at line start
+      const h3 = trimmed.match(/^###\s+(.*)$/);
+      const h2 = trimmed.match(/^##\s+(.*)$/);
+      const h1 = trimmed.match(/^#\s+(.*)$/);
+
+      if (h3 || h2 || h1) {
+        const level = h1 ? 1 : h2 ? 2 : 3;
+        const text = (h1 || h2 || h3)[1];
+        const size = level === 1 ? baseFontSize + 4 : level === 2 ? baseFontSize + 3 : baseFontSize + 2;
+
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(size)
+          .fillColor('#1a202c')
+          .text(text, { align: 'left', lineGap: lineGap });
+        doc.moveDown(0.2);
+        return;
+      }
+
+      // Bullets: leading one or more '-' followed by space
+      const bulletMatch = trimmed.match(/^(-+)\s+(.*)$/);
+      if (bulletMatch) {
+        const indentLevel = Math.max(0, bulletMatch[1].length - 1);
+        const bulletText = bulletMatch[2];
+        const indent = 20 + indentLevel * 15;
+
+        // Render bullet symbol
+        doc
+          .font('Helvetica')
+          .fontSize(baseFontSize)
+          .fillColor('#000000')
+          .text('• ', { continued: true, indent, align: 'left', lineGap });
+
+        // Render bullet text with inline bold support
+        renderInlineBold(doc, bulletText, { baseFontSize, align: 'left', lineGap, continuedEnd: false });
+        return;
+      }
+
+      // Normal line with inline bold
+      renderInlineBold(doc, trimmed, { baseFontSize, align, lineGap, continuedEnd: false });
+    });
+
+    if (pIdx < paragraphs.length - 1) {
+      doc.moveDown(0.8);
+    }
+  });
+}
+
+// Helper to render inline bold segments separated by ** **
+function renderInlineBold(doc, text, opts) {
+  const { baseFontSize, align, lineGap, continuedEnd } = opts;
+  const parts = String(text).split(/(\*\*.*?\*\*)/g);
+  parts.forEach((part, idx) => {
+    if (!part) return;
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const boldText = part.slice(2, -2);
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(baseFontSize)
+        .fillColor('#000000')
+        .text(boldText, { continued: idx < parts.length - 1, align, lineGap });
+    } else {
+      // strip italic markers
+      const regular = part.replace(/\*(.*?)\*/g, '$1');
+      const isLast = idx === parts.length - 1;
+      doc
+        .font('Helvetica')
+        .fontSize(baseFontSize)
+        .fillColor('#000000')
+        .text(regular, { continued: !isLast, align, lineGap });
+    }
+  });
+  // If last segment ended with continued, close the line
+  doc.text('', { continued: false });
 }
 
 // Update content library selection for a section
