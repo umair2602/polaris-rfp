@@ -261,9 +261,22 @@ class DocxGenerator {
     }
 
     sectionEntries.forEach(([sectionName, sectionData], index) => {
-      // Header logos are already added in the main generation flow
+      // Add spacing before each section (except the first one)
+      if (index > 0) {
+        // Add vertical spacing between sections
+        const spacer1 = docx.createP();
+        spacer1.addText(" ");
+        const spacer2 = docx.createP();
+        spacer2.addText(" ");
+        const spacer3 = docx.createP();
+        spacer3.addText(" ");
+      }
 
-      const heading = docx.createP({ align: "center" });
+      // Section heading with keep-with-next to prevent orphaning
+      const heading = docx.createP({ 
+        align: "center",
+        keepNext: true // Keep heading with next paragraph to prevent orphaning
+      });
       heading.addText(sectionName, {
         bold: true,
         font_size: 13,
@@ -277,21 +290,18 @@ class DocxGenerator {
       } else {
         // Use special formatting for Key Personnel section
         if (sectionName === "Key Personnel") {
-          this.addKeyPersonnelContent(docx, content);
+          this.addKeyPersonnelContent(docx, content, true); // Pass true for first paragraph
         } else {
-          this.addTextContent(docx, content);
+          this.addTextContent(docx, content, true); // Pass true for first paragraph
         }
       }
 
-      // Only add page break if this is not the last section
-      if (index < sectionEntries.length - 1) {
-        docx.putPageBreak();
-      }
+      // No automatic page breaks - let content flow naturally
     });
   }
 
   // ---------------- TEXT CONTENT ----------------
-  addTextContent(docx, content) {
+  addTextContent(docx, content, isFirstParagraph = false) {
     let cleanContent = content || "No content available";
     if (typeof cleanContent !== "string") {
       cleanContent = String(cleanContent);
@@ -304,8 +314,11 @@ class DocxGenerator {
 
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
-    paragraphs.forEach((para) => {
-      const p = docx.createP();
+    paragraphs.forEach((para, paraIndex) => {
+      // First paragraph after heading should stay with heading
+      const p = docx.createP({
+        keepWithPrevious: isFirstParagraph && paraIndex === 0
+      });
       
       // Split paragraph by bold markers
       const parts = para.split(/(\*\*.*?\*\*)/g);
@@ -330,7 +343,7 @@ class DocxGenerator {
   }
 
   // ---------------- KEY PERSONNEL CONTENT ----------------
-  addKeyPersonnelContent(docx, content) {
+  addKeyPersonnelContent(docx, content, isFirstParagraph = false) {
     let cleanContent = content || "No content available";
     if (typeof cleanContent !== "string") {
       cleanContent = String(cleanContent);
@@ -343,13 +356,15 @@ class DocxGenerator {
 
     const paragraphs = cleanContent.split("\n\n").filter((p) => p.trim());
 
-    paragraphs.forEach((para) => {
+    paragraphs.forEach((para, paraIndex) => {
       // Check if paragraph contains lines that start with dashes
       const lines = para.split("\n");
 
       if (lines.length === 1) {
-        // Single line paragraph
-        const p = docx.createP();
+        // Single line paragraph - first paragraph should stay with heading
+        const p = docx.createP({
+          keepWithPrevious: isFirstParagraph && paraIndex === 0
+        });
         // Only convert to bullet if line starts with dash and has content after it
         if (para.trim().startsWith("-") && para.trim().length > 1) {
           const bulletText = para.trim().substring(1).trim();
@@ -390,8 +405,11 @@ class DocxGenerator {
         }
       } else {
         // Multi-line paragraph - check each line
-        lines.forEach((line, index) => {
-          const p = docx.createP();
+        lines.forEach((line, lineIndex) => {
+          // First line of first paragraph should stay with heading
+          const p = docx.createP({
+            keepWithPrevious: isFirstParagraph && paraIndex === 0 && lineIndex === 0
+          });
           // Only convert to bullet if line starts with dash and has content after it
           if (line.trim().startsWith("-") && line.trim().length > 1) {
             const bulletText = line.trim().substring(1).trim();
@@ -440,18 +458,31 @@ class DocxGenerator {
     try {
       const lines = content.split("\n");
       const table = [];
+      let expectedCols = 0;
 
       for (const line of lines) {
         if (!line.trim() || /^[\s\|\-]+$/.test(line)) continue;
 
         if (line.includes("|")) {
-          const cells = line
-            .split("|")
+          // Preserve intentionally empty cells between pipes to keep alignment
+          let parts = line.split("|");
+          if (parts.length && parts[0].trim() === "") parts.shift();
+          if (parts.length && parts[parts.length - 1].trim() === "") parts.pop();
+          const cells = parts
             .map((c) => c.trim())
             .map((c) => c.replace(/\*\*/g, "").replace(/\*/g, "")) // Remove ** and * markdown formatting
-            .map((c) => c.replace(/<br\s*\/?>/gi, "\n")) // Convert <br> tags to line breaks
-            .filter((c) => c !== "");
-          if (cells.length) table.push(cells);
+            .map((c) => c.replace(/<br\s*\/?>(?=.)/gi, "\n")) // Convert <br> tags to line breaks
+            .map((c) => (c === "" ? "\u00A0" : c)); // Use NBSP for empty cells
+
+          if (cells.length) {
+            // Establish expected column count from header row
+            if (expectedCols === 0) expectedCols = cells.length;
+            // Pad/trim to match header width
+            const normalized = cells.length < expectedCols
+              ? [...cells, ...Array(expectedCols - cells.length).fill("\u00A0")]
+              : cells.slice(0, expectedCols);
+            table.push(normalized);
+          }
         }
       }
 
@@ -459,7 +490,7 @@ class DocxGenerator {
         // Determine table type and width based on content
         const tableType = this.determineTableType(table, content);
         const tableData = this.createFormattedTable(table, tableType);
-        const tableStyle = this.createTableStyle(tableType);
+        const tableStyle = this.createTableStyle(tableType, table[0]?.length || 0);
 
         docx.createTable(tableData, tableStyle);
       }
@@ -612,6 +643,10 @@ class DocxGenerator {
   getDataAlignment(tableType, cellIndex) {
     switch (tableType) {
       case "budget":
+        // For 5-col budget: Phase(left), Role(left), Rate(center), Hours(center), Cost(right)
+        if (cellIndex === 0 || cellIndex === 1) return "left";
+        if (cellIndex === 2 || cellIndex === 3) return "center";
+        if (cellIndex === 4) return "right";
         return "center";
       case "timeline":
         return "center";
@@ -635,7 +670,7 @@ class DocxGenerator {
     }
   }
 
-  createTableStyle(tableType = "default") {
+  createTableStyle(tableType = "default", columnCount = 0) {
     const baseStyle = {
       tableSize: 24,
       tableColor: "000000",
@@ -654,13 +689,27 @@ class DocxGenerator {
 
     switch (tableType) {
       case "budget":
+        // Dynamic widths: support 5-col resource budget or fallback to 3-col
+        if (columnCount >= 5) {
+          return {
+            ...baseStyle,
+            tableColWidth: 11000,
+            columns: [
+              { width: 3500 }, // Phase
+              { width: 3000 }, // Role
+              { width: 1500 }, // Hourly Rate
+              { width: 1200 }, // Hours
+              { width: 1800 }, // Cost ($)
+            ],
+          };
+        }
         return {
           ...baseStyle,
-          tableColWidth: 9000, // Moderate increase for better centering
+          tableColWidth: 9000,
           columns: [
-            { width: 3000 }, // Phase column - wider for descriptions
-            { width: 4500 }, // Description column - widest for content
-            { width: 1500 }, // Cost column - wider for numbers
+            { width: 3000 }, // Phase
+            { width: 4500 }, // Description
+            { width: 1500 }, // Cost
           ],
         };
       case "timeline":

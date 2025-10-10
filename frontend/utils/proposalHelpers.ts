@@ -143,14 +143,18 @@ export const formatTableRows = (rows: string[]): string => {
   const headerRow = rows[0];
   const dataRows = rows.slice(1);
 
+  // Parse a markdown table row while preserving intentionally empty cells
   const parseRow = (row: string) => {
-    return row
-      .split("|")
-      .map((cell) => cell.trim())
-      .filter((cell) => cell !== "");
+    // Split into raw parts, then drop only the leading and trailing pipe placeholders
+    const parts = row.split("|");
+    if (parts.length > 0 && parts[0].trim() === "") parts.shift();
+    if (parts.length > 0 && parts[parts.length - 1].trim() === "") parts.pop();
+    // Do NOT filter empty cells; keep them to preserve alignment
+    return parts.map((cell) => cell.trim());
   };
 
   const headerCells = parseRow(headerRow);
+  const expectedCols = headerCells.length;
 
   let tableHtml =
     '<div class="overflow-hidden"><table class="w-full divide-y divide-gray-200 my-4">';
@@ -171,16 +175,28 @@ export const formatTableRows = (rows: string[]): string => {
   // Body
   tableHtml += '<tbody class="bg-white divide-y divide-gray-200">';
   dataRows.forEach((row, index) => {
-    const cells = parseRow(row);
+    let cells = parseRow(row);
+    // Pad or trim to expected column count to keep alignment stable
+    if (cells.length < expectedCols) {
+      cells = [...cells, ...Array(expectedCols - cells.length).fill("")];
+    } else if (cells.length > expectedCols) {
+      cells = cells.slice(0, expectedCols);
+    }
+
+    const isSubtotal = (cells[0] || "").toLowerCase().startsWith("subtotal");
+    const isTotal = (cells[0] || "").toLowerCase().includes("total");
+
     tableHtml += `<tr class="${
       index % 2 === 0 ? "bg-white" : "bg-gray-50"
     }">`;
-    cells.forEach((cell) => {
-      const formattedCell = cell.replace(
+    cells.forEach((cell, ci) => {
+      const content = cell === "" ? "&nbsp;" : cell;
+      const formattedCell = content.replace(
         /\*\*(.*?)\*\*/g,
         "<strong>$1</strong>"
       );
-      tableHtml += `<td class="px-6 py-4 text-sm text-gray-900 break-words">${formattedCell}</td>`;
+      const extraClass = isSubtotal || isTotal ? "font-semibold" : "";
+      tableHtml += `<td class="px-6 py-4 text-sm text-gray-900 break-words ${extraClass}">${formattedCell}</td>`;
     });
     tableHtml += "</tr>";
   });

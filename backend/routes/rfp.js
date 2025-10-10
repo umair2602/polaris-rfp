@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const RFP = require("../models/RFP");
 const rfpAnalyzer = require("../services/rfpAnalyzer");
-const { generateSectionTitles } = require("../services/aiSectionsTitleGenerator");
+const SectionTitlesGenerator = require("../services/aiSectionsTitleGenerator");
 
 const router = express.Router();
 
@@ -152,7 +152,7 @@ router.post("/:id/ai-section-titles", async (req, res) => {
     }
 
     // Otherwise, generate and persist
-    const titles = await generateSectionTitles(rfp);
+  const titles = await SectionTitlesGenerator.generateSectionTitles(rfp);
     rfp.sectionTitles = titles;
     await rfp.save();
     return res.json({ titles });
