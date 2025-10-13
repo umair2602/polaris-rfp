@@ -36,7 +36,7 @@ class TemplateGenerator {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0.1,
-        max_tokens: 500,
+        max_tokens: 16000,
         messages: [{ role: "user", content: prompt }],
       });
       const response = completion.choices[0].message.content.trim();

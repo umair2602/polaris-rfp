@@ -37,8 +37,8 @@ BASE SECTIONS AVAILABLE:
 - Cover Letter (ALWAYS include)
 - Technical Approach and Methodology
 - Key Personnel and Experience  
-- Budget Estimate
-- Project Timeline
+- Budget Estimate (Always include)
+- Project Timeline (Always include)
 - References
 
 ANALYSIS TASK:

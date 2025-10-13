@@ -169,13 +169,13 @@ Extract the following information from the RFP text:
 {
   "title": "string - The main title of the proposal/RFP",
   "clientName": "string - Name of the client/organization requesting the proposal",
-  "submissionDeadline": "string - Deadline for proposal submission (or 'Not mentioned in the document' if not found)",
-  "budgetRange": "string - Budget range mentioned (or 'Not mentioned in the document' if not found)",
+  "projectDeadline": "string - Project completion deadline, project end date, or when the work must be finished in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "budgetRange": "string - Budget range mentioned (or 'Not available' if not found)",
   "projectType": "string - Describe the type/category of project (e.g., 'software_development', 'construction', 'marketing', 'consulting', etc.)",
   "keyRequirements": ["array of strings - Key requirements and specifications"],
   "evaluationCriteria": ["array of strings - Evaluation criteria and scoring methods"],
   "deliverables": ["array of strings - Expected deliverables and outcomes"],
-  "timeline": "string - Project timeline and milestones (or 'Not mentioned in the document' if not found)",
+  "timeline": "string - Project timeline and milestones with dates in USA format MM/DD/YYYY (or 'Not available' if not found)",
   "projectScope": "string - Detailed project scope and objectives",
   "contactInformation": "string - Contact details (emails, phones, names)",
   "location": "string - Project location or client location",
@@ -185,10 +185,12 @@ Extract the following information from the RFP text:
 
 Rules:
 - Extract information exactly as written in the document
-- If information is not found, use "Not mentioned in the document" for strings or empty arrays for arrays
+- If information is not found, use "Not available" for strings or empty arrays for arrays
+- For projectDeadline, look specifically for project completion dates, project end dates, delivery deadlines, or when the actual work must be finished - NOT proposal submission deadlines. Format all dates in USA format MM/DD/YYYY
 - For projectType, describe the type/category of project based on the content. Be specific and descriptive (e.g., 'software_development', 'construction', 'marketing', 'consulting', 'research', etc.). If unclear, use 'general'
 - For arrays, extract all relevant items as separate strings
 - Be comprehensive but accurate - don't invent information
+- Only use "Not available" if the information is truly not present anywhere in the document
 - Return only valid JSON, no additional text or commentary`;
 
     try {
@@ -253,18 +255,18 @@ Rules:
       // Create result compatible with existing RFP model
       const result = {
         _id: undefined, // left empty - populate in DB layer
-        title: extractedData.title || "Not mentioned in the document",
-        clientName: extractedData.clientName || "Not mentioned in the document",
-        submissionDeadline: extractedData.submissionDeadline || "Not mentioned in the document",
-        budgetRange: extractedData.budgetRange || "Not mentioned in the document",
+        title: extractedData.title || "Not available",
+        clientName: extractedData.clientName || "Not available",
+        submissionDeadline: extractedData.projectDeadline || "Not available",
+        budgetRange: extractedData.budgetRange || "Not available",
         projectType: extractedData.projectType || "general",
         keyRequirements: extractedData.keyRequirements || [],
         evaluationCriteria: extractedData.evaluationCriteria || [],
         deliverables: extractedData.deliverables || [],
-        timeline: extractedData.timeline || "Not mentioned in the document",
-        projectScope: extractedData.projectScope || "Not mentioned in the document",
-        contactInformation: extractedData.contactInformation || "Not mentioned in the document",
-        location: extractedData.location || "Not mentioned in the document",
+        timeline: extractedData.timeline || "Not available",
+        projectScope: extractedData.projectScope || "Not available",
+        contactInformation: extractedData.contactInformation || "Not available",
+        location: extractedData.location || "Not available",
         additionalInfo: extractedData.additionalInfo || [],
         specialRequirements: extractedData.specialRequirements || [],
         rawText: text,
@@ -279,9 +281,9 @@ Rules:
 
       // Ensure arrays are properly formatted
       const ensureArray = (a) => {
-        if (!a) return ["Not mentioned in the document"];
+        if (!a) return ["Not available"];
         if (!Array.isArray(a)) return [String(a)];
-        return a.length ? a : ["Not mentioned in the document"];
+        return a.length ? a : ["Not available"];
       };
 
       result.keyRequirements = ensureArray(result.keyRequirements);

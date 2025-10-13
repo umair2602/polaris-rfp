@@ -435,9 +435,28 @@ router.get("/:id/export-pdf", async (req, res) => {
       }
       sectionCount++;
 
-      // Check if we need a page break before the section heading
-      // This ensures heading + some content stays together
-      checkPageBreak(0, true);
+      // Special handling for table sections to prevent orphaned headings
+      const isTableSection = sectionData.content && typeof sectionData.content === 'string' && sectionData.content.includes("|");
+      
+      if (isTableSection) {
+        // For table sections, be very aggressive to prevent orphaned headings
+        const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+        const remainingSpace = pageHeight - (doc.y - doc.page.margins.top);
+        
+        // Count table rows to estimate minimum space needed
+        const tableRows = sectionData.content.split("\n").filter(line => 
+          line.trim().includes("|") && !line.trim().match(/^[\s\-\|]+$/) && line.trim().length > 0
+        );
+        const minTableHeight = Math.max(120, Math.min(tableRows.length * 25, 300)); // At least 120, max 300
+        
+        // If not enough space for heading + minimum table content, start new page
+        if (remainingSpace < minTableHeight) {
+          doc.addPage();
+        }
+      } else {
+        // For non-table sections, use normal orphan prevention
+        checkPageBreak(0, true);
+      }
 
       // Section title
       const titleY = doc.y; // Save Y position for potential rollback
@@ -453,23 +472,25 @@ router.get("/:id/export-pdf", async (req, res) => {
       doc.moveDown(0.5);
       
       // After rendering heading, check if we have enough space for at least some content
-      // If not, move heading to next page
-      const afterHeadingY = doc.y;
-      const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
-      const remainingAfterHeading = pageHeight - (afterHeadingY - doc.page.margins.top);
-      
-      if (remainingAfterHeading < 100) {
-        // Not enough space after heading - move entire heading to next page
-        doc.addPage();
-        doc
-          .font('Helvetica-Bold')
-          .fontSize(16)
-          .fillColor("#1E4E9E")
-          .text(sectionName, {
-            align: "center",
-            width: doc.page.width - doc.page.margins.left - doc.page.margins.right
-          });
-        doc.moveDown(0.5);
+      // If not, move heading to next page (only for non-table sections since tables are handled above)
+      if (!isTableSection) {
+        const afterHeadingY = doc.y;
+        const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+        const remainingAfterHeading = pageHeight - (afterHeadingY - doc.page.margins.top);
+        
+        if (remainingAfterHeading < 100) {
+          // Not enough space after heading - move entire heading to next page
+          doc.addPage();
+          doc
+            .font('Helvetica-Bold')
+            .fontSize(16)
+            .fillColor("#1E4E9E")
+            .text(sectionName, {
+              align: "center",
+              width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+            });
+          doc.moveDown(0.5);
+        }
       }
 
       // Section content
@@ -729,18 +750,8 @@ function renderTable(doc, content) {
   // Column alignments
   const colAlign = isBudget5 ? ["left", "left", "center", "center", "right"] : Array(headerCount).fill("left");
 
-  // Estimate table height
-  const estimatedHeaderHeight = 30;
-  const estimatedMinTableHeight = estimatedHeaderHeight + (dataRows.length * 30); // Rough estimate
-  
-  // Check if we need a page break before starting the table
-  const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
-  const remainingSpace = pageHeight - (doc.y - doc.page.margins.top);
-  
-  // If table won't fit on current page and we're not near the top, start on new page
-  if (remainingSpace < estimatedMinTableHeight && (doc.y - doc.page.margins.top) > 100) {
-    doc.addPage();
-  }
+  // Note: Page break logic is now handled at the section level to prevent orphaned headings
+  // This ensures the section heading and table stay together
 
   const tableTop = doc.y;
 
