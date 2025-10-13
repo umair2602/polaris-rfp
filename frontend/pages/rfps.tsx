@@ -229,12 +229,12 @@ export default function RFPs() {
                         {rfp.submissionDeadline && (
                           <p className="flex items-center text-sm text-gray-500 sm:mt-0">
                             <CalendarDaysIcon className="h-4 w-4 mr-1" />
-                            Due {new Date(rfp.submissionDeadline).toLocaleDateString()}
+                            Due {new Date(rfp.submissionDeadline).toLocaleDateString('en-US')}
                           </p>
                         )}
                       </div>
                       <div className="mt-2 flex items-center text-xs text-gray-400 sm:mt-0">
-                        Uploaded {new Date(rfp.createdAt).toLocaleDateString()}
+                        Uploaded {new Date(rfp.createdAt).toLocaleDateString('en-US')}
                       </div>
                     </div>
                   </div>

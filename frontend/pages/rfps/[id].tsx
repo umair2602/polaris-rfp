@@ -204,7 +204,7 @@ export default function RFPDetail() {
                         <dt className="text-sm font-medium text-gray-500 truncate">Deadline</dt>
                         <dd className="text-lg font-medium text-gray-900">
                           {rfp.submissionDeadline 
-                            ? new Date(rfp.submissionDeadline).toLocaleDateString()
+                            ? new Date(rfp.submissionDeadline).toLocaleDateString('en-US')
                             : 'Not specified'}
                         </dd>
                       </dl>
@@ -241,7 +241,7 @@ export default function RFPDetail() {
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Uploaded</dt>
                         <dd className="text-sm font-medium text-gray-900">
-                          {new Date(rfp.createdAt).toLocaleDateString()}
+                          {new Date(rfp.createdAt).toLocaleDateString('en-US')}
                         </dd>
                       </dl>
                     </div>
