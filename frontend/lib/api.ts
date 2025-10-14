@@ -90,6 +90,7 @@ export const rfpApi = {
   delete: (id: string) => api.delete(`/api/rfp/${id}`),
   getSectionTitles: (id: string) =>
     api.post<{ titles: string[] }>(`/api/rfp/${id}/ai-section-titles`),
+  getProposals: (id: string) => api.get<{ data: Proposal[] }>(`/api/rfp/${id}/proposals`),
 };
 
 // Proposal API calls

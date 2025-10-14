@@ -1,9 +1,10 @@
 import Head from 'next/head'
 import Layout from '../components/Layout'
 import { useState, useEffect } from 'react'
-import { rfpApi, RFP } from '../lib/api'
+import { rfpApi, RFP, Proposal } from '../lib/api'
 import Link from 'next/link'
 import Modal from '../components/ui/Modal'
+import RfpProposalsSection from '../components/rfps/RfpProposalsSection'
 import { 
   DocumentTextIcon, 
   PlusIcon, 
@@ -13,7 +14,9 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   TrashIcon,
-  PencilIcon
+  PencilIcon,
+  ChevronDownIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 
 export default function RFPs() {
@@ -24,6 +27,9 @@ export default function RFPs() {
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [rfpToDelete, setRfpToDelete] = useState<RFP | null>(null)
+  const [expandedRfp, setExpandedRfp] = useState<string | null>(null)
+  const [rfpProposals, setRfpProposals] = useState<Record<string, Proposal[]>>({})
+  const [loadingProposals, setLoadingProposals] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadRFPs()
@@ -79,6 +85,10 @@ export default function RFPs() {
       const updatedRfps = rfps.filter(r => r._id !== rfpToDelete._id)
       setRfps(updatedRfps)
       setFilteredRfps(updatedRfps)
+      // Clear proposals cache for deleted RFP
+      const updatedProposals = { ...rfpProposals }
+      delete updatedProposals[rfpToDelete._id]
+      setRfpProposals(updatedProposals)
     } catch (error) {
       console.error('Error deleting RFP:', error)
     } finally {
@@ -86,6 +96,30 @@ export default function RFPs() {
       setRfpToDelete(null)
     }
   }
+
+  const toggleRfpExpansion = async (rfpId: string) => {
+    if (expandedRfp === rfpId) {
+      setExpandedRfp(null)
+    } else {
+      setExpandedRfp(rfpId)
+      // Load proposals if not already loaded
+      if (!rfpProposals[rfpId] && !loadingProposals[rfpId]) {
+        setLoadingProposals(prev => ({ ...prev, [rfpId]: true }))
+        try {
+          const response = await rfpApi.getProposals(rfpId)
+          const proposalsData = Array.isArray(response.data?.data) ? response.data.data : []
+          setRfpProposals(prev => ({ ...prev, [rfpId]: proposalsData }))
+        } catch (error) {
+          console.error('Error loading proposals:', error)
+          setRfpProposals(prev => ({ ...prev, [rfpId]: [] }))
+        } finally {
+          setLoadingProposals(prev => ({ ...prev, [rfpId]: false }))
+        }
+      }
+    }
+  }
+
+
 
   if (loading) {
     return (
@@ -183,15 +217,32 @@ export default function RFPs() {
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center mr-3">
-                          <DocumentTextIcon className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <Link 
-                          href={`/rfps/${rfp._id}`}
-                          className="text-sm font-medium text-primary-600 truncate hover:text-primary-800"
+                        <button
+                          onClick={() => toggleRfpExpansion(rfp._id)}
+                          className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors shadow-sm hover:shadow-md"
+                          style={{ backgroundColor: '#3b82f6' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
                         >
-                          {rfp.title}
-                        </Link>
+                          {expandedRfp === rfp._id ? (
+                            <ChevronDownIcon className="h-5 w-5 text-white" />
+                          ) : (
+                            <ChevronRightIcon className="h-5 w-5 text-white" />
+                          )}
+                        </button>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <Link 
+                            href={`/rfps/${rfp._id}`}
+                            className="text-sm font-medium text-primary-600 truncate hover:text-primary-800"
+                          >
+                            {rfp.title}
+                          </Link>
+                          {rfpProposals[rfp._id] && (
+                            <span className="text-xs text-gray-500 mt-1">
+                              {rfpProposals[rfp._id].length} proposal{rfpProposals[rfp._id].length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="ml-4 flex items-center space-x-2">
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -237,6 +288,15 @@ export default function RFPs() {
                         Uploaded {new Date(rfp.createdAt).toLocaleDateString('en-US')}
                       </div>
                     </div>
+
+                    {/* Expanded Proposals Section */}
+                    {expandedRfp === rfp._id && (
+                      <RfpProposalsSection
+                        rfpId={rfp._id}
+                        proposals={rfpProposals[rfp._id] || []}
+                        isLoading={loadingProposals[rfp._id] || false}
+                      />
+                    )}
                   </div>
                 </li>
               ))}
