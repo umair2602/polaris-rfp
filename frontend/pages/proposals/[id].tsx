@@ -591,7 +591,7 @@ export default function ProposalDetail() {
                           Created
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {new Date(proposal.createdAt).toLocaleDateString()}
+                          {new Date(proposal.createdAt).toLocaleDateString('en-US')}
                         </dd>
                       </dl>
                     </div>
@@ -769,7 +769,7 @@ export default function ProposalDetail() {
                               Last modified:{" "}
                               {new Date(
                                 sectionData.lastModified
-                              ).toLocaleString()}
+                              ).toLocaleString('en-US')}
                             </div>
                           )}
                         </div>

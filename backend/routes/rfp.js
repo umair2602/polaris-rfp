@@ -199,6 +199,25 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// Get proposals for a specific RFP
+router.get("/:id/proposals", async (req, res) => {
+  try {
+    const rfpId = req.params.id;
+    const Proposal = require("../models/Proposal");
+
+    const proposals = await Proposal.find({ rfpId })
+      .sort({ createdAt: -1 })
+      .select("-sections"); // Exclude large sections data for list view
+
+    res.json({
+      data: proposals
+    });
+  } catch (error) {
+    console.error("Error fetching RFP proposals:", error);
+    res.status(500).json({ error: "Failed to fetch RFP proposals" });
+  }
+});
+
 // Delete RFP
 router.delete("/:id", async (req, res) => {
   try {

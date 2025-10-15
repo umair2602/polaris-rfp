@@ -122,7 +122,11 @@ function getSectionGuidelines() {
     - CRITICAL: Format as a proper markdown table with exactly 5 columns: "Phase", "Role", "Hourly Rate", "Hours", "Cost ($)"
     - Determine the list of phases as follows:
        - If the Methodology/Process section exists, EXTRACT its phase names/headings and use those EXACT names in the Budget table
-       - If Methodology is not available, INFER 4–6 logical phases from the RFP scope and use those names consistently across sections
+       - If Methodology is not available, INFER the appropriate number of logical phases from the RFP scope and complexity (typically 4-8 phases for complex projects, minimum 4 phases for simpler projects)
+       - Complex projects (large scope, multiple deliverables, long duration) should have more than 6 phases
+       - Medium projects should have more than 4 phases  
+       - Simple projects should have at least 4 phases
+       - Use those phase names consistently across all sections (Methodology, Timeline, Budget)
     - Use this exact table header and row structure (do not hardcode example values; compute based on the RFP context):
        | Phase | Role | Hourly Rate | Hours | Cost ($) |
        |------|------|-------------|-------|----------|
@@ -134,18 +138,15 @@ function getSectionGuidelines() {
        |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
        |  | [Role C or additional roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
        | Subtotal Phase 2 |  |  |  | $[Sum of Phase 2] |
-       | Phase 3: [Detailed Phase Name] | [Role A] | $[Rate] | [Hours] | $[Rate*Hours] |
-       |  | [Role B] | $[Rate] | [Hours] | $[Rate*Hours] |
-       |  | [Role C or additional roles as needed] | $[Rate] | [Hours] | $[Rate*Hours] |
-       | Subtotal Phase 3 |  |  |  | $[Sum of Phase 3] |
-       | ... repeat Phase blocks for ALL phases identified ... |
+       | [Continue with Phase 3, Phase 4, Phase 5, Phase 6, etc. as needed based on the project complexity and methodology phases] |
        | TOTAL |  |  |  | $[Grand Total] |
     - Rules and formatting requirements:
        - Use currency format with a dollar sign and thousands separators (e.g., $12,340.00); round to two decimals
        - Keep the Phase cell filled only on the first row for that phase; leave it blank for subsequent role rows in the same phase
        - Ensure subtotals equal the sum of role costs for that phase; ensure TOTAL equals the sum of all subtotals
-       - The number of phases MUST mirror the Methodology section (typically 4–6); do NOT limit to two phases
-       - Do not include ellipsis "..." rows in the final output; generate concrete rows for EVERY phase
+       - NEVER limit to just 2-3 phases; always generate at least 4 phases minimum, preferably 5-8 phases for comprehensive project coverage
+       - Do not include ellipsis "..." rows in the final output; generate concrete rows for EVERY single phase identified in the methodology
+       - Create a complete budget table that accounts for ALL phases of the project lifecycle
        - Do not reuse or copy any example numbers; generate values based on the RFP scope, rates typical for the domain, and stated constraints
        - STRICT MARKDOWN SYNTAX (to prevent column shifts):
           - Every data row must have exactly 5 cells and start and end with a pipe
