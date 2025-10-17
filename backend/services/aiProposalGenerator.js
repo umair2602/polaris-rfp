@@ -79,7 +79,8 @@ GUIDELINES:
 - Use professional, persuasive language that demonstrates expertise
 - Include extensive specific details from the RFP document throughout all sections
 - Reference specific RFP requirements, constraints, objectives, and deliverables in each section
-- Format tables using markdown table syntax with detailed content in each cell
+- **CRITICAL: For Methodology/Process/Phases sections, you MUST use proper markdown table format with 2 columns (Phase | Deliverables). Use <br> tags for line breaks within cells**
+- **CRITICAL: For Budget/Cost sections, you MUST use proper markdown table format with 5 columns (Phase | Role | Hourly Rate | Hours | Cost)**
 - Use bullet points for lists but ensure each point is substantial and detailed
 - Make content highly relevant to the project type, scope, and complexity described in the RFP
 - Ensure each section is comprehensive and thorough - prioritize depth over brevity
@@ -120,9 +121,9 @@ Generate COMPREHENSIVE, DETAILED content for each section based on the section t
 
 - **For Understanding/Approach sections**: Write 4-6 detailed paragraphs (400-600 words) using extensive specific details from the RFP text, reference client's situation, challenges, and requirements thoroughly
 - **For Personnel/Team sections**: Include 4-6 team members with real people only, detailed credentials and achievements, comprehensive experience descriptions relevant to RFP
-- **For Methodology/Process sections**: Create 4-6 detailed phases with comprehensive deliverables, use table format that fully addresses RFP requirements
+- **For Methodology/Process sections**: Create 4-6 detailed phases with comprehensive deliverables. **CRITICAL: MUST use markdown table format with exactly 2 columns: Phase and Deliverables. Use HTML <br> tags for line breaks within table cells. The table must start with header row with pipe separators, followed by separator row with dashes, then data rows. Each phase should have 3-5 numbered deliverables separated by <br> tags.**
 - **For Schedule/Timeline sections**: Create realistic detailed timeline with 4-6 phases, use heading format with comprehensive 3-4 sentence paragraphs per phase
-- **For Budget/Cost sections**: Create detailed cost breakdown with comprehensive descriptions, use table format that justifies all costs based on RFP scope
+- **For Budget/Cost sections**: Create detailed cost breakdown with comprehensive descriptions. **CRITICAL: MUST use markdown table format with exactly 5 columns: Phase, Role, Hourly Rate, Hours, and Cost ($). Include subtotal rows and final total.**
 - **For References/Experience sections**: Include 4-5 highly relevant past projects with detailed scope descriptions that relate to current RFP
 - **For Cover Letter sections**: Use formal letter format with comprehensive, personalized content that addresses RFP specifics
 - **For any other sections**: Generate substantial content (200-400 words) that thoroughly addresses the section topic using RFP details
