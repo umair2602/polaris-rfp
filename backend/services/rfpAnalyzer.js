@@ -170,12 +170,15 @@ Extract the following information from the RFP text:
   "title": "string - The main title of the proposal/RFP",
   "clientName": "string - Name of the client/organization requesting the proposal",
   "projectDeadline": "string - Project completion deadline, project end date, or when the work must be finished in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "questionsDeadline": "string - Deadline for submitting questions about the RFP in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "bidMeetingDate": "string - Date of the bid meeting or pre-proposal conference in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "bidRegistrationDate": "string - Deadline for bid registration or vendor registration in USA format MM/DD/YYYY (or 'Not available' if not found)",
   "budgetRange": "string - Budget range mentioned (or 'Not available' if not found)",
   "projectType": "string - Describe the type/category of project (e.g., 'software_development', 'construction', 'marketing', 'consulting', etc.)",
   "keyRequirements": ["array of strings - Key requirements and specifications"],
   "evaluationCriteria": ["array of strings - Evaluation criteria and scoring methods"],
   "deliverables": ["array of strings - Expected deliverables and outcomes"],
-  "timeline": "string - Project timeline and milestones with dates in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "timeline": "string - Project duration as 'MM/DD/YYYY to MM/DD/YYYY' or '12 months' or 'Not available' if not found",
   "projectScope": "string - Detailed project scope and objectives",
   "contactInformation": "string - Contact details (emails, phones, names)",
   "location": "string - Project location or client location",
@@ -185,12 +188,21 @@ Extract the following information from the RFP text:
 
 Rules:
 - Extract information exactly as written in the document
-- If information is not found, use "Not available" for strings or empty arrays for arrays
+- If information is not found, use "Not available" for strings, false for booleans, or empty arrays for arrays
 - For projectDeadline, look specifically for project completion dates, project end dates, delivery deadlines, or when the actual work must be finished - NOT proposal submission deadlines. Format all dates in USA format MM/DD/YYYY
+- For questionsDeadline, look for deadlines to submit questions, clarifications, or inquiries about the RFP
+- For bidMeetingDate, look for pre-proposal meetings, bid conferences, site visits, or mandatory meetings
+- For bidRegistrationDate, look for vendor registration deadlines, qualification deadlines, or pre-registration requirements
 - For projectType, describe the type/category of project based on the content. Be specific and descriptive (e.g., 'software_development', 'construction', 'marketing', 'consulting', 'research', etc.). If unclear, use 'general'
 - For arrays, extract all relevant items as separate strings
 - Be comprehensive but accurate - don't invent information
 - Only use "Not available" if the information is truly not present anywhere in the document
+- For timeline, extract the overall project duration/period. Format as:
+  * "MM/DD/YYYY to MM/DD/YYYY" for date ranges (e.g., "06/10/2024 to 06/10/2025")
+  * "12 months" or "6 months" if duration is specified in months
+  * Use project start date to project completion/end date when available
+  * Normalize all dates to MM/DD/YYYY format
+  * Return "Not available" if no timeline information is found
 - Return only valid JSON, no additional text or commentary`;
 
     try {
@@ -258,6 +270,9 @@ Rules:
         title: extractedData.title || "Not available",
         clientName: extractedData.clientName || "Not available",
         submissionDeadline: extractedData.projectDeadline || "Not available",
+        questionsDeadline: extractedData.questionsDeadline || "Not available",
+        bidMeetingDate: extractedData.bidMeetingDate || "Not available",
+        bidRegistrationDate: extractedData.bidRegistrationDate || "Not available",
         budgetRange: extractedData.budgetRange || "Not available",
         projectType: extractedData.projectType || "general",
         keyRequirements: extractedData.keyRequirements || [],

@@ -15,6 +15,20 @@ const rfpSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  questionsDeadline: {
+    type: String,
+    trim: true
+  },
+  bidMeetingDate: {
+    type: String,
+    trim: true
+  },
+
+  bidRegistrationDate: {
+    type: String,
+    trim: true
+  },
+
   budgetRange: {
     type: String,
     trim: true

@@ -108,14 +108,6 @@ export default function Dashboard() {
           >
             Upload RFP
           </Button>
-          <Button
-            as={Link}
-            href="/proposals"
-            variant="secondary"
-            icon={<RocketLaunchIcon className="h-5 w-5" />}
-          >
-            New Proposal
-          </Button>
         </div>
       </div>
 
@@ -224,6 +216,7 @@ export default function Dashboard() {
                         </Badge>
                       </div>
                     </div>
+               
                   </div>
                 ))}
               </div>
