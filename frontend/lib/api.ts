@@ -57,6 +57,7 @@ export interface RFP {
   questionsDeadline?: string;
   bidMeetingDate?: string;
   bidRegistrationDate?: string;
+  isDisqualified?: boolean;
 }
 
 export interface Proposal {

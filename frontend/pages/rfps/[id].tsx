@@ -28,6 +28,13 @@ const trimTitle = (title: string, maxLength: number = 60): string => {
   return trimmed + "...";
 };
 
+// Utility function to check if a date has passed
+const isDatePassed = (dateString?: string): boolean => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && date < new Date();
+};
+
 export default function RFPDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -151,6 +158,24 @@ export default function RFPDetail() {
       </Head>
 
       <div>
+        {/* Disqualified Banner */}
+        {rfp.isDisqualified && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">
+                  <span className="font-medium">Disqualified:</span> One or more critical deadlines for this RFP have passed.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-white shadow">
           <div className="px-4 sm:px-6 lg:max-w-6xl lg:mx-auto lg:px-8">
@@ -214,7 +239,7 @@ export default function RFPDetail() {
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Deadline
+                          Submission Deadline
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
                           {rfp.submissionDeadline
@@ -223,6 +248,11 @@ export default function RFPDetail() {
                               ).toLocaleDateString("en-US")
                             : "Not specified"}
                         </dd>
+                        {rfp.submissionDeadline && isDatePassed(rfp.submissionDeadline) && (
+                          <dd className="text-xs font-medium text-red-600 mt-1">
+                            ⚠️ Deadline passed
+                          </dd>
+                        )}
                       </dl>
                     </div>
                   </div>
@@ -267,6 +297,11 @@ export default function RFPDetail() {
                               )
                             : "Not specified"}
                         </dd>
+                        {rfp.bidMeetingDate && isDatePassed(rfp.bidMeetingDate) && (
+                          <dd className="text-xs font-medium text-red-600 mt-1">
+                            ⚠️ Date passed
+                          </dd>
+                        )}
                       </dl>
                     </div>
                   </div>
@@ -290,6 +325,11 @@ export default function RFPDetail() {
                               )
                             : "Not specified"}
                         </dd>
+                        {rfp.bidRegistrationDate && isDatePassed(rfp.bidRegistrationDate) && (
+                          <dd className="text-xs font-medium text-red-600 mt-1">
+                            ⚠️ Date passed
+                          </dd>
+                        )}
                       </dl>
                     </div>
                   </div>
@@ -313,6 +353,11 @@ export default function RFPDetail() {
                               )
                             : "Not specified"}
                         </dd>
+                        {rfp.questionsDeadline && isDatePassed(rfp.questionsDeadline) && (
+                          <dd className="text-xs font-medium text-red-600 mt-1">
+                            ⚠️ Deadline passed
+                          </dd>
+                        )}
                       </dl>
                     </div>
                   </div>
