@@ -1,6 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const Company = require("../models/Company");
+const SharedCompanyInfo = require("../models/SharedCompany");
 const TeamMember = require("../models/TeamMember");
 const ProjectReference = require("../models/ProjectReference");
 const PastProject = require("../models/PastProject");
@@ -80,6 +81,8 @@ router.post("/companies", async (req, res) => {
       return res.status(400).json({ error: "name and description are required" });
     }
 
+    // IMPORTANT: New companies should NEVER be linked unless explicitly specified
+    // This prevents accidental linking of companies
     const newCompany = new Company({
       name,
       tagline,
@@ -99,10 +102,12 @@ router.post("/companies", async (req, res) => {
       socialMedia,
       coverLetter,
       firmQualificationsAndExperience,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
+      sharedInfo: null // Explicitly set to null - new companies are independent by default
     });
 
     await newCompany.save();
+    console.log(`[Create Company] Created independent company: ${newCompany.name} (${newCompany.companyId})`);
     res.status(201).json(newCompany.toObject());
   } catch (error) {
     console.error("Error creating company:", error);
@@ -122,17 +127,53 @@ router.put("/companies/:companyId", async (req, res) => {
     }
     updates.lastUpdated = new Date();
 
-    const updated = await Company.findOneAndUpdate(
-      { companyId: req.params.companyId },
-      { $set: updates },
-      { new: true }
-    ).lean();
+    // Find the company (not using lean() so we can use middleware)
+    const company = await Company.findOne({ companyId: req.params.companyId });
 
-    if (!updated) {
+    if (!company) {
       return res.status(404).json({ error: "Company not found" });
     }
 
-    res.json(updated);
+    // Apply updates
+    Object.assign(company, updates);
+    
+    // Apply dynamic naming if name-related fields were updated
+    if (updates.description || updates.coverLetter || updates.firmQualificationsAndExperience) {
+      company.applyDynamicNaming();
+    }
+    
+    // Save (this will trigger pre-save middleware for linked updates)
+    await company.save();
+
+    // If this company is linked, fetch all linked companies to return updated data
+    let affectedCompanies = [company.toObject()];
+    if (company.sharedInfo) {
+      const sharedInfo = await SharedCompanyInfo.findById(company.sharedInfo);
+      if (sharedInfo && sharedInfo.linkedCompanies && sharedInfo.linkedCompanies.length > 1) {
+        // ONLY fetch companies that are explicitly in the linkedCompanies array
+        // This ensures we only sync the specific linked companies (Eighth Gen + Polaris)
+        const linkedCompanies = await Company.find({
+          _id: { $in: sharedInfo.linkedCompanies }
+        });
+        
+        // Verify we're only dealing with the intended linked companies
+        // Filter to ensure we only return companies that have the SAME sharedInfo ID
+        const verifiedLinkedCompanies = linkedCompanies.filter(c => 
+          c.sharedInfo && c.sharedInfo.toString() === company.sharedInfo.toString()
+        );
+        
+        affectedCompanies = verifiedLinkedCompanies.map(c => c.toObject());
+        
+        console.log(`[Linked Update] Updated ${affectedCompanies.length} companies:`, 
+          affectedCompanies.map(c => c.name).join(', ')
+        );
+      }
+    }
+
+    res.json({ 
+      company: company.toObject(),
+      affectedCompanies: affectedCompanies
+    });
   } catch (error) {
     console.error("Error updating company:", error);
     res.status(500).json({ error: "Failed to update company" });
