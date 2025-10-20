@@ -162,8 +162,18 @@ export default function ContentLibrary() {
         socialMedia: companyForm.socialMedia ?? selectedCompany?.socialMedia,
       };
       const { data } = await contentApi.updateCompanyById(selectedCompany.companyId, payload);
-      setCompanies(companies.map(c => c.companyId === selectedCompany.companyId ? data : c));
-      setSelectedCompany(data);
+      
+      // Handle response - could be just a company object or an object with affectedCompanies
+      const updatedCompany = data.company || data;
+      const affectedCompanies = data.affectedCompanies || [updatedCompany];
+      
+      // Update all affected companies in the state
+      setCompanies(companies.map(c => {
+        const updated = affectedCompanies.find((ac: any) => ac.companyId === c.companyId);
+        return updated || c;
+      }));
+      
+      setSelectedCompany(updatedCompany);
       setEditingCompany(false);
       toast.success("Company information updated successfully!");
     } catch (error) {
