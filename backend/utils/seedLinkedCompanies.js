@@ -203,11 +203,7 @@ if (require.main === module) {
       
       if (!MONGODB_URI) {
         console.error("\n❌ ERROR: No MongoDB connection string found!");
-        console.error("Please set MONGODB_URI or MONGO_URL in your .env file\n");
-        console.error("Example:");
-        console.error("  MONGODB_URI=mongodb://localhost:27017/polaris-rfp");
-        console.error("  or");
-        console.error("  MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/polaris-rfp\n");
+        
         process.exit(1);
       }
 
