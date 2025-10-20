@@ -54,7 +54,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
           <div className="flex items-center space-x-3">
             <div className="flex-shrink-0">
-              <SparklesIcon className="h-8 w-8 text-white" />
+              {/* <SparklesIcon className="h-8 w-8 text-white" /> */}
             </div>
             <h1 className="text-xl font-bold text-white">RFP System</h1>
           </div>

@@ -178,7 +178,7 @@ class TemplateGenerator {
           { role: "user", content: userPrompt },
         ],
       });
-
+    
       const raw = completion.choices[0].message.content.trim();
 
       const buildFallbackTitle = () => {

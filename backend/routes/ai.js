@@ -21,7 +21,7 @@ router.post("/edit-text", async (req, res) => {
     }
 
     const { text, prompt, selectedText } = req.body;
-
+console.log("Received edit-text request:", { text, prompt, selectedText });
     if (!text && !selectedText) {
       return res.status(400).json({
         error: "Either text or selectedText must be provided",
@@ -36,30 +36,40 @@ router.post("/edit-text", async (req, res) => {
 
     // Determine what text to process
     const textToProcess = selectedText || text;
+console.log("Text to process:", textToProcess);
+console.log("Editing prompt:", prompt);
+    // Create a comprehensive prompt for the AI with more aggressive editing instructions
+    const systemPrompt = `You are an expert proposal writer and editor. Your PRIMARY GOAL is to FOLLOW THE USER'S INSTRUCTION EXACTLY and make changes that directly address their specific request.
 
-    // Create a comprehensive prompt for the AI
-    const systemPrompt = `You are a professional text editor assistant. Your task is to edit the provided text according to the user's instructions. 
+CRITICAL INSTRUCTIONS:
+- READ THE USER'S PROMPT CAREFULLY and understand what they want
+- FOCUS ENTIRELY on applying the user's specific instruction
+- If they ask to "make professional" - enhance professionalism
+- If they ask to "add details" - expand with specific information
+- If they ask to "make technical" - add technical terminology and depth
+- If they ask to "shorten" - condense while keeping key points
+- If they ask to "improve" - make substantial quality enhancements
+- ALWAYS make VISIBLE, SIGNIFICANT changes that match the user's intent
+- Preserve markdown formatting (**, *, bullet points, tables with |, etc.)
+- Return ONLY the edited text with NO explanations or meta-commentary
 
-Guidelines:
-- Maintain the original meaning and context
-- Preserve any markdown formatting (**, *, bullet points, etc.)
-- Keep the tone professional and appropriate for business documents
-- If the text appears to be part of a larger document, maintain consistency
-- Only make the requested changes, don't add unnecessary content
-- Return only the edited text, no explanations or meta-commentary
+IMPORTANT: The user's instruction is the HIGHEST PRIORITY. Whatever they ask for, deliver it with clear, substantial changes. Don't be subtle - make bold transformations that match their request.`;
 
-User's request: ${prompt}
+    const userPrompt = `USER'S SPECIFIC INSTRUCTION: "${prompt}"
 
-Text to edit:`;
+Original text:
+${textToProcess}
+
+Apply the above instruction and make clear, substantial changes that directly address what the user asked for. Be bold and make the changes obvious.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: textToProcess },
+        { role: "user", content: userPrompt },
       ],
-      max_tokens: 2000,
-      temperature: 0.3,
+      max_tokens: 4000,
+      temperature: 0.7,
     });
 
     const editedText = completion.choices[0].message.content.trim();
@@ -89,38 +99,49 @@ router.post("/generate-content", async (req, res) => {
     }
 
     const { prompt, context, contentType = "general" } = req.body;
-
+    console.log("Received generate-content request:",{prompt, context, contentType} );
     if (!prompt || !prompt.trim()) {
       return res.status(400).json({
         error: "Prompt is required",
       });
     }
 
-    // Create context-aware system prompt
-    let systemPrompt = `You are a professional content writer specializing in business proposals and technical documents. Generate high-quality content based on the user's request.
+    // Create context-aware system prompt with enhanced instructions
+    let systemPrompt = `You are an expert proposal writer and business content specialist. Your PRIMARY GOAL is to generate content that EXACTLY matches what the user is asking for.
 
-Guidelines:
-- Use professional, clear, and engaging language
-- Structure content with appropriate headings and formatting
-- Include relevant details and examples when appropriate
-- Maintain consistency with business document standards
-- Use markdown formatting for structure (**, *, bullet points, etc.)
-- Keep content focused and relevant to the request
+CRITICAL GUIDELINES:
+- UNDERSTAND THE USER'S REQUEST thoroughly before generating content
+- DELIVER EXACTLY what they asked for - no more, no less (unless they ask for comprehensive content)
+- If they ask for "a paragraph" - provide a well-written paragraph
+- If they ask for "bullet points" - provide formatted bullet points
+- If they ask for "detailed explanation" - provide 300-600 words with specific details
+- If they ask for "brief overview" - provide concise, focused content (100-200 words)
+- Use professional, appropriate language for business/technical documents
+- Include SPECIFIC details, examples, and concrete information when relevant
+- Use markdown formatting effectively (**, *, bullet points, numbered lists, tables)
+- Match the tone and style to the content type and user's request
+- Be thorough when asked, concise when requested
 
-Content type: ${contentType}`;
+Content Type: ${contentType}
+
+IMPORTANT: The user's request is your top priority. Deliver exactly what they're asking for with high quality and relevant detail.`;
 
     if (context) {
-      systemPrompt += `\n\nContext: ${context}`;
+      systemPrompt += `\n\nADDITIONAL CONTEXT TO INCORPORATE:\n${context}`;
     }
 
+    const userPrompt = `USER'S REQUEST: ${prompt}
+
+Generate content that directly addresses the above request. Match the scope, detail level, and format to what the user is asking for.`;
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
+        { role: "user", content: userPrompt },
       ],
-      max_tokens: 2000,
-      temperature: 0.4,
+      max_tokens: 4000,
+      temperature: 0.6,
     });
 
     const generatedContent = completion.choices[0].message.content.trim();

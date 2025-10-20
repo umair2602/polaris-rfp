@@ -304,7 +304,7 @@ export default function RFPDetail() {
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">
-                          Bid Meeting Date
+                          Questions Deadline
                         </dt>
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.questionsDeadline
