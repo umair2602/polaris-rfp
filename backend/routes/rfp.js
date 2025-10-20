@@ -105,10 +105,19 @@ router.get("/", async (req, res) => {
       .limit(limit)
       .select("-rawText -parsedSections");
 
+    // Check disqualification status for each RFP
+    const rfpsWithStatus = rfps.map(rfp => {
+      rfp.checkDisqualification();
+      return rfp;
+    });
+
+    // Save updated disqualification status (batch update)
+    await Promise.all(rfpsWithStatus.map(rfp => rfp.save()));
+
     const total = await RFP.countDocuments();
 
     res.json({
-      data: rfps,
+      data: rfpsWithStatus,
       pagination: {
         page,
         limit,
@@ -130,6 +139,10 @@ router.get("/:id", async (req, res) => {
     if (!rfp) {
       return res.status(404).json({ error: "RFP not found" });
     }
+
+    // Check and update disqualification status
+    rfp.checkDisqualification();
+    await rfp.save();
 
     res.json(rfp);
   } catch (error) {
@@ -179,21 +192,21 @@ router.put("/:id", async (req, res) => {
       "timeline",
     ];
 
-    const updates = {};
-    Object.keys(req.body).forEach((key) => {
-      if (allowedUpdates.includes(key)) {
-        updates[key] = req.body[key];
-      }
-    });
-
-    const rfp = await RFP.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    const rfp = await RFP.findById(req.params.id);
 
     if (!rfp) {
       return res.status(404).json({ error: "RFP not found" });
     }
+
+    // Apply updates
+    Object.keys(req.body).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        rfp[key] = req.body[key];
+      }
+    });
+
+    // Save (this will trigger pre-save hook to check disqualification)
+    await rfp.save();
 
     res.json(rfp);
   } catch (error) {
