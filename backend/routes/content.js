@@ -38,8 +38,8 @@ router.get("/company", async (req, res) => {
 // Get specific company by ID
 router.get("/companies/:companyId", async (req, res) => {
   try {
-    const company = await Company.findOne({ 
-      companyId: req.params.companyId
+    const company = await Company.findOne({
+      companyId: req.params.companyId,
     }).lean();
 
     if (!company) {
@@ -74,11 +74,13 @@ router.post("/companies", async (req, res) => {
       statistics = {},
       socialMedia = {},
       coverLetter,
-      firmQualificationsAndExperience
+      firmQualificationsAndExperience,
     } = req.body || {};
 
     if (!name || !description) {
-      return res.status(400).json({ error: "name and description are required" });
+      return res
+        .status(400)
+        .json({ error: "name and description are required" });
     }
 
     // IMPORTANT: New companies should NEVER be linked unless explicitly specified
@@ -87,7 +89,7 @@ router.post("/companies", async (req, res) => {
       name,
       tagline,
       description,
-      founded: founded ? new Date(founded) : new Date('2010-01-01'),
+      founded: founded ? new Date(founded) : new Date("2010-01-01"),
       location,
       website,
       email,
@@ -103,11 +105,13 @@ router.post("/companies", async (req, res) => {
       coverLetter,
       firmQualificationsAndExperience,
       lastUpdated: new Date(),
-      sharedInfo: null // Explicitly set to null - new companies are independent by default
+      sharedInfo: null, // Explicitly set to null - new companies are independent by default
     });
 
     await newCompany.save();
-    console.log(`[Create Company] Created independent company: ${newCompany.name} (${newCompany.companyId})`);
+    console.log(
+      `[Create Company] Created independent company: ${newCompany.name} (${newCompany.companyId})`
+    );
     res.status(201).json(newCompany.toObject());
   } catch (error) {
     console.error("Error creating company:", error);
@@ -136,12 +140,16 @@ router.put("/companies/:companyId", async (req, res) => {
 
     // Apply updates
     Object.assign(company, updates);
-    
+
     // Apply dynamic naming if name-related fields were updated
-    if (updates.description || updates.coverLetter || updates.firmQualificationsAndExperience) {
+    if (
+      updates.description ||
+      updates.coverLetter ||
+      updates.firmQualificationsAndExperience
+    ) {
       company.applyDynamicNaming();
     }
-    
+
     // Save (this will trigger pre-save middleware for linked updates)
     await company.save();
 
@@ -149,30 +157,37 @@ router.put("/companies/:companyId", async (req, res) => {
     let affectedCompanies = [company.toObject()];
     if (company.sharedInfo) {
       const sharedInfo = await SharedCompanyInfo.findById(company.sharedInfo);
-      if (sharedInfo && sharedInfo.linkedCompanies && sharedInfo.linkedCompanies.length > 1) {
+      if (
+        sharedInfo &&
+        sharedInfo.linkedCompanies &&
+        sharedInfo.linkedCompanies.length > 1
+      ) {
         // ONLY fetch companies that are explicitly in the linkedCompanies array
         // This ensures we only sync the specific linked companies (Eighth Gen + Polaris)
         const linkedCompanies = await Company.find({
-          _id: { $in: sharedInfo.linkedCompanies }
+          _id: { $in: sharedInfo.linkedCompanies },
         });
-        
+
         // Verify we're only dealing with the intended linked companies
         // Filter to ensure we only return companies that have the SAME sharedInfo ID
-        const verifiedLinkedCompanies = linkedCompanies.filter(c => 
-          c.sharedInfo && c.sharedInfo.toString() === company.sharedInfo.toString()
+        const verifiedLinkedCompanies = linkedCompanies.filter(
+          (c) =>
+            c.sharedInfo &&
+            c.sharedInfo.toString() === company.sharedInfo.toString()
         );
-        
-        affectedCompanies = verifiedLinkedCompanies.map(c => c.toObject());
-        
-        console.log(`[Linked Update] Updated ${affectedCompanies.length} companies:`, 
-          affectedCompanies.map(c => c.name).join(', ')
+
+        affectedCompanies = verifiedLinkedCompanies.map((c) => c.toObject());
+
+        console.log(
+          `[Linked Update] Updated ${affectedCompanies.length} companies:`,
+          affectedCompanies.map((c) => c.name).join(", ")
         );
       }
     }
 
-    res.json({ 
+    res.json({
       company: company.toObject(),
-      affectedCompanies: affectedCompanies
+      affectedCompanies: affectedCompanies,
     });
   } catch (error) {
     console.error("Error updating company:", error);
@@ -184,7 +199,7 @@ router.put("/companies/:companyId", async (req, res) => {
 router.delete("/companies/:companyId", async (req, res) => {
   try {
     const deleted = await Company.findOneAndDelete({
-      companyId: req.params.companyId
+      companyId: req.params.companyId,
     });
 
     if (!deleted) {
@@ -241,15 +256,15 @@ router.get("/team", async (req, res) => {
 // Create a team member
 router.post("/team", async (req, res) => {
   try {
-    const {
-      memberId,
-      nameWithCredentials,
-      position,
-      biography,
-    } = req.body || {};
+    const { memberId, nameWithCredentials, position, email, biography } =
+      req.body || {};
 
     if (!nameWithCredentials || !position || !biography) {
-      return res.status(400).json({ error: "nameWithCredentials, position, and biography are required" });
+      return res
+        .status(400)
+        .json({
+          error: "nameWithCredentials, position, and biography are required",
+        });
     }
 
     // Generate a more unique memberId
@@ -260,24 +275,26 @@ router.post("/team", async (req, res) => {
     // If no memberId provided, generate one
     while (!uniqueMemberId && attempts < maxAttempts) {
       const timestamp = Date.now();
-      const randomHex = crypto.randomBytes(8).toString('hex'); // Increased from 6 to 8 bytes
+      const randomHex = crypto.randomBytes(8).toString("hex"); // Increased from 6 to 8 bytes
       const candidateId = `member_${timestamp}_${randomHex}`;
-      
+
       // Check if this memberId already exists
-      const existingMember = await TeamMember.findOne({ memberId: candidateId });
+      const existingMember = await TeamMember.findOne({
+        memberId: candidateId,
+      });
       if (!existingMember) {
         uniqueMemberId = candidateId;
         break;
       }
       attempts++;
-      
+
       // Add small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 1));
+      await new Promise((resolve) => setTimeout(resolve, 1));
     }
 
     if (!uniqueMemberId) {
       // Fallback: use ObjectId as string
-      const mongoose = require('mongoose');
+      const mongoose = require("mongoose");
       uniqueMemberId = `member_${new mongoose.Types.ObjectId().toString()}`;
     }
 
@@ -285,6 +302,7 @@ router.post("/team", async (req, res) => {
       memberId: uniqueMemberId,
       nameWithCredentials,
       position,
+      email,
       biography,
       isActive: true,
     });
@@ -296,19 +314,20 @@ router.post("/team", async (req, res) => {
       // If still getting duplicate key error, it might be due to existing bad data
       if (saveError.code === 11000) {
         console.log(`Duplicate key error for memberId: ${uniqueMemberId}`);
-        
+
         // Try one more time with ObjectId-based approach
-        const mongoose = require('mongoose');
+        const mongoose = require("mongoose");
         const fallbackId = `member_${Date.now()}_${new mongoose.Types.ObjectId().toString()}`;
-        
+
         const fallbackMember = new TeamMember({
           memberId: fallbackId,
           nameWithCredentials,
           position,
+          email,
           biography,
           isActive: true,
         });
-        
+
         await fallbackMember.save();
         res.status(201).json(fallbackMember.toObject());
       } else {
@@ -341,19 +360,20 @@ router.get("/team/:memberId", async (req, res) => {
 // Update a team member
 router.put("/team/:memberId", async (req, res) => {
   try {
-    const {
-      nameWithCredentials,
-      position,
-      biography,
-    } = req.body;
+    const { nameWithCredentials, position, email, biography } = req.body;
 
     if (!nameWithCredentials || !position || !biography) {
-      return res.status(400).json({ error: "nameWithCredentials, position, and biography are required" });
+      return res
+        .status(400)
+        .json({
+          error: "nameWithCredentials, position, and biography are required",
+        });
     }
 
     const updates = {
       nameWithCredentials,
       position,
+      email,
       biography,
     };
 

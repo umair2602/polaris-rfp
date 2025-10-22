@@ -66,7 +66,9 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                         <p className="text-sm font-medium text-gray-900">
                           {member.nameWithCredentials || member.name}
                         </p>
-                        <p className="text-xs text-gray-500">{member.position || member.title}</p>
+                        <p className="text-xs text-gray-500">
+                          {member.position || member.title}
+                        </p>
                       </div>
                     </div>
                     <div className="flex space-x-1">
@@ -124,6 +126,14 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                   <p className="text-sm text-gray-500">
                     {selectedMember.position || selectedMember.title}
                   </p>
+                  {selectedMember.email && (
+                    <a
+                      href={`mailto:${selectedMember.email}`}
+                      className="text-xs text-primary-600 hover:text-primary-700 hover:underline mt-1 inline-block"
+                    >
+                      {selectedMember.email}
+                    </a>
+                  )}
                 </div>
 
                 {selectedMember.biography && (
@@ -132,27 +142,40 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                       Professional Biography
                     </h5>
                     <div className="text-sm text-gray-600 leading-relaxed">
-                      {selectedMember.biography.split('\n').map((line: string, index: number) => {
-                        const trimmedLine = line.trim();
-                        if (!trimmedLine) return <br key={index} />;
-                        
-                        // If line starts with bullet point, render as list item
-                        if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+                      {selectedMember.biography
+                        .split("\n")
+                        .map((line: string, index: number) => {
+                          const trimmedLine = line.trim();
+                          if (!trimmedLine) return <br key={index} />;
+
+                          // If line starts with bullet point, render as list item
+                          if (
+                            trimmedLine.startsWith("•") ||
+                            trimmedLine.startsWith("-") ||
+                            trimmedLine.startsWith("*")
+                          ) {
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-start mb-1"
+                              >
+                                <span className="text-gray-400 mr-2 mt-0.5">
+                                  •
+                                </span>
+                                <span className="flex-1">
+                                  {trimmedLine.replace(/^[•\-*]\s*/, "")}
+                                </span>
+                              </div>
+                            );
+                          }
+
+                          // Regular paragraph
                           return (
-                            <div key={index} className="flex items-start mb-1">
-                              <span className="text-gray-400 mr-2 mt-0.5">•</span>
-                              <span className="flex-1">{trimmedLine.replace(/^[•\-*]\s*/, '')}</span>
-                            </div>
+                            <p key={index} className="mb-2">
+                              {trimmedLine}
+                            </p>
                           );
-                        }
-                        
-                        // Regular paragraph
-                        return (
-                          <p key={index} className="mb-2">
-                            {trimmedLine}
-                          </p>
-                        );
-                      })}
+                        })}
                     </div>
                   </div>
                 )}
@@ -169,42 +192,44 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                   </div>
                 )}
 
-                {selectedMember.education && selectedMember.education.length > 0 && (
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">
-                      Education
-                    </h5>
-                    <ul className="space-y-1">
-                      {selectedMember.education.map(
-                        (edu: string, index: number) => (
-                          <li key={index} className="text-sm text-gray-600">
-                            {edu}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedMember.certifications && selectedMember.certifications.length > 0 && (
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">
-                      Certifications
-                    </h5>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedMember.certifications.map(
-                        (cert: string, index: number) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
-                          >
-                            {cert}
-                          </span>
-                        )
-                      )}
+                {selectedMember.education &&
+                  selectedMember.education.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                        Education
+                      </h5>
+                      <ul className="space-y-1">
+                        {selectedMember.education.map(
+                          (edu: string, index: number) => (
+                            <li key={index} className="text-sm text-gray-600">
+                              {edu}
+                            </li>
+                          )
+                        )}
+                      </ul>
                     </div>
-                  </div>
-                )}
+                  )}
+
+                {selectedMember.certifications &&
+                  selectedMember.certifications.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                        Certifications
+                      </h5>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedMember.certifications.map(
+                          (cert: string, index: number) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                            >
+                              {cert}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                 <div>
                   <h5 className="text-sm font-medium text-gray-700 mb-2">
