@@ -245,6 +245,11 @@ export default function RFPs() {
                         </div>
                       </div>
                       <div className="ml-4 flex items-center space-x-2">
+                        {rfp.isDisqualified && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            Disqualified
+                          </span>
+                        )}
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                           {rfp.projectType.replace('_', ' ')}
                         </span>

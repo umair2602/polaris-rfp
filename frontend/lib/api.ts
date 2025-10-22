@@ -54,6 +54,10 @@ export interface RFP {
   timeline?: string;
   specialRequirements: string[];
   createdAt: string;
+  questionsDeadline?: string;
+  bidMeetingDate?: string;
+  bidRegistrationDate?: string;
+  isDisqualified?: boolean;
 }
 
 export interface Proposal {
@@ -90,7 +94,8 @@ export const rfpApi = {
   delete: (id: string) => api.delete(`/api/rfp/${id}`),
   getSectionTitles: (id: string) =>
     api.post<{ titles: string[] }>(`/api/rfp/${id}/ai-section-titles`),
-  getProposals: (id: string) => api.get<{ data: Proposal[] }>(`/api/rfp/${id}/proposals`),
+  getProposals: (id: string) =>
+    api.get<{ data: Proposal[] }>(`/api/rfp/${id}/proposals`),
 };
 
 // Proposal API calls
@@ -127,11 +132,14 @@ export const templateApi = {
 export const contentApi = {
   getCompany: () => api.get("/api/content/company"),
   getCompanies: () => api.get("/api/content/companies"),
-  getCompanyById: (companyId: string) => api.get(`/api/content/companies/${companyId}`),
+  getCompanyById: (companyId: string) =>
+    api.get(`/api/content/companies/${companyId}`),
   createCompany: (data: any) => api.post("/api/content/companies", data),
   updateCompany: (data: any) => api.put("/api/content/company", data),
-  updateCompanyById: (companyId: string, data: any) => api.put(`/api/content/companies/${companyId}`, data),
-  deleteCompany: (companyId: string) => api.delete(`/api/content/companies/${companyId}`),
+  updateCompanyById: (companyId: string, data: any) =>
+    api.put(`/api/content/companies/${companyId}`, data),
+  deleteCompany: (companyId: string) =>
+    api.delete(`/api/content/companies/${companyId}`),
   getTeam: () => api.get("/api/content/team"),
   getTeamMember: (id: string) => api.get(`/api/content/team/${id}`),
   createTeamMember: (data: any) => api.post("/api/content/team", data),

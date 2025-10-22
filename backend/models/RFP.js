@@ -15,6 +15,23 @@ const rfpSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  questionsDeadline: {
+    type: String,
+    trim: true
+  },
+  bidMeetingDate: {
+    type: String,
+    trim: true
+  },
+
+  bidRegistrationDate: {
+    type: String,
+    trim: true
+  },
+  isDisqualified: {
+    type: Boolean,
+    default: false
+  },
   budgetRange: {
     type: String,
     trim: true
@@ -80,9 +97,32 @@ const rfpSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Simple method to check if any deadline has passed
+rfpSchema.methods.checkDisqualification = function() {
+  const now = new Date();
+  const deadlines = [this.submissionDeadline, this.questionsDeadline, this.bidMeetingDate, this.bidRegistrationDate];
+  
+  for (const deadline of deadlines) {
+    if (deadline && new Date(deadline) < now) {
+      this.isDisqualified = true;
+      return true;
+    }
+  }
+  
+  this.isDisqualified = false;
+  return false;
+};
+
+// Pre-save hook to automatically check disqualification
+rfpSchema.pre('save', function(next) {
+  this.checkDisqualification();
+  next();
+});
+
 // Indexes
 rfpSchema.index({ projectType: 1 });
 rfpSchema.index({ clientName: 1 });
 rfpSchema.index({ createdAt: -1 });
+rfpSchema.index({ isDisqualified: 1 });
 
 module.exports = mongoose.model('RFP', rfpSchema);

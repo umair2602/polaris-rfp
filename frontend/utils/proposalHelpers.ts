@@ -75,10 +75,14 @@ export const renderSectionContent = (content: any, sectionName: string): string 
   const contentStr = typeof content === 'string' ? content : String(content);
   if (!contentStr) return "No content available";
 
-  // Check if this section contains table data (Budget Estimate or Project Timeline)
+  // Check if this section contains table data (Budget, Timeline, Methodology, Technical Approach, etc.)
   const isTableSection =
     sectionName.toLowerCase().includes("budget") ||
     sectionName.toLowerCase().includes("timeline") ||
+    sectionName.toLowerCase().includes("methodology") ||
+    sectionName.toLowerCase().includes("by phase") ||
+    sectionName.toLowerCase().includes("technical approach") ||
+    sectionName.toLowerCase().includes("approach") ||
     contentStr.includes("|"); // Contains pipe characters (markdown table)
 
   if (isTableSection && contentStr.includes("|")) {
