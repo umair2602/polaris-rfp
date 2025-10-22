@@ -9,8 +9,14 @@ interface TeamMember {
   nameWithCredentials: string;
   position: string;
   email?: string;
+  companyId?: string;
   biography: string;
   isActive: boolean;
+  company?: {
+    companyId: string;
+    name: string;
+    sharedInfo?: string;
+  };
 }
 
 interface ProjectReference {

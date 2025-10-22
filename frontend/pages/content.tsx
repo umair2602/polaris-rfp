@@ -53,6 +53,8 @@ export default function ContentLibrary() {
   const [memberForm, setMemberForm] = useState<any>({
     nameWithCredentials: "",
     position: "",
+    email: "",
+    companyId: null,
     biography: "",
   });
   const [projects, setProjects] = useState<any[]>([]);
@@ -92,7 +94,7 @@ export default function ContentLibrary() {
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'company' | 'member' | 'project' | 'reference';
+    type: "company" | "member" | "project" | "reference";
     item: any;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -114,7 +116,9 @@ export default function ContentLibrary() {
         contentApi.getProjects?.() || Promise.resolve({ data: [] }),
         contentApi.getReferences(),
       ]);
-      const companiesData = Array.isArray(companiesResponse.data) ? companiesResponse.data : [];
+      const companiesData = Array.isArray(companiesResponse.data)
+        ? companiesResponse.data
+        : [];
       setCompanies(companiesData);
       if (companiesData.length > 0) {
         setSelectedCompany(companiesData[0]);
@@ -152,27 +156,39 @@ export default function ContentLibrary() {
         website: companyForm.website ?? selectedCompany?.website,
         email: companyForm.email ?? selectedCompany?.email,
         phone: companyForm.phone ?? selectedCompany?.phone,
-        coreCapabilities: companyForm.coreCapabilities ?? selectedCompany?.coreCapabilities,
-        certifications: companyForm.certifications ?? selectedCompany?.certifications,
-        industryFocus: companyForm.industryFocus ?? selectedCompany?.industryFocus,
-        missionStatement: companyForm.missionStatement ?? selectedCompany?.missionStatement,
-        visionStatement: companyForm.visionStatement ?? selectedCompany?.visionStatement,
+        coreCapabilities:
+          companyForm.coreCapabilities ?? selectedCompany?.coreCapabilities,
+        certifications:
+          companyForm.certifications ?? selectedCompany?.certifications,
+        industryFocus:
+          companyForm.industryFocus ?? selectedCompany?.industryFocus,
+        missionStatement:
+          companyForm.missionStatement ?? selectedCompany?.missionStatement,
+        visionStatement:
+          companyForm.visionStatement ?? selectedCompany?.visionStatement,
         values: companyForm.values ?? selectedCompany?.values,
         statistics: companyForm.statistics ?? selectedCompany?.statistics,
         socialMedia: companyForm.socialMedia ?? selectedCompany?.socialMedia,
       };
-      const { data } = await contentApi.updateCompanyById(selectedCompany.companyId, payload);
-      
+      const { data } = await contentApi.updateCompanyById(
+        selectedCompany.companyId,
+        payload
+      );
+
       // Handle response - could be just a company object or an object with affectedCompanies
       const updatedCompany = data.company || data;
       const affectedCompanies = data.affectedCompanies || [updatedCompany];
-      
+
       // Update all affected companies in the state
-      setCompanies(companies.map(c => {
-        const updated = affectedCompanies.find((ac: any) => ac.companyId === c.companyId);
-        return updated || c;
-      }));
-      
+      setCompanies(
+        companies.map((c) => {
+          const updated = affectedCompanies.find(
+            (ac: any) => ac.companyId === c.companyId
+          );
+          return updated || c;
+        })
+      );
+
       setSelectedCompany(updatedCompany);
       setEditingCompany(false);
       toast.success("Company information updated successfully!");
@@ -202,7 +218,7 @@ export default function ContentLibrary() {
   };
 
   const handleDeleteCompany = (companyToDelete: any) => {
-    setDeleteTarget({ type: 'company', item: companyToDelete });
+    setDeleteTarget({ type: "company", item: companyToDelete });
     setShowDeleteModal(true);
   };
 
@@ -212,27 +228,39 @@ export default function ContentLibrary() {
     setIsDeleting(true);
     try {
       switch (deleteTarget.type) {
-        case 'company':
+        case "company":
           await contentApi.deleteCompany(deleteTarget.item.companyId);
-          setCompanies(companies.filter(c => c.companyId !== deleteTarget.item.companyId));
+          setCompanies(
+            companies.filter((c) => c.companyId !== deleteTarget.item.companyId)
+          );
           if (selectedCompany?.companyId === deleteTarget.item.companyId) {
-            setSelectedCompany(companies.length > 1 ? companies.find(c => c.companyId !== deleteTarget.item.companyId) : null);
+            setSelectedCompany(
+              companies.length > 1
+                ? companies.find(
+                    (c) => c.companyId !== deleteTarget.item.companyId
+                  )
+                : null
+            );
           }
           toast.success("Company deleted successfully!");
           break;
-        case 'reference':
+        case "reference":
           await contentApi.deleteReference(deleteTarget.item._id);
-          setReferences(references.filter(r => r._id !== deleteTarget.item._id));
+          setReferences(
+            references.filter((r) => r._id !== deleteTarget.item._id)
+          );
           toast.success("Reference deleted successfully!");
           break;
-        case 'member':
+        case "member":
           await contentApi.deleteTeamMember(deleteTarget.item.memberId);
-          setTeam(team.filter((m: any) => m.memberId !== deleteTarget.item.memberId));
+          setTeam(
+            team.filter((m: any) => m.memberId !== deleteTarget.item.memberId)
+          );
           toast.success("Team member deleted successfully!");
           break;
         // Add other cases for project deletion here
       }
-      
+
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (error) {
@@ -275,6 +303,8 @@ export default function ContentLibrary() {
     setMemberForm({
       nameWithCredentials: "",
       position: "",
+      email: "",
+      companyId: null,
       biography: "",
     });
     setShowAddMember(true);
@@ -287,6 +317,8 @@ export default function ContentLibrary() {
       setMemberForm({
         nameWithCredentials: "",
         position: "",
+        email: "",
+        companyId: null,
         biography: "",
       });
       setShowAddMember(false);
@@ -298,7 +330,7 @@ export default function ContentLibrary() {
   };
 
   const handleDeleteMember = (memberToDelete: any) => {
-    setDeleteTarget({ type: 'member', item: memberToDelete });
+    setDeleteTarget({ type: "member", item: memberToDelete });
     setShowDeleteModal(true);
   };
 
@@ -385,7 +417,7 @@ export default function ContentLibrary() {
   };
 
   const handleDeleteProject = (projectToDelete: any) => {
-    setDeleteTarget({ type: 'project', item: projectToDelete });
+    setDeleteTarget({ type: "project", item: projectToDelete });
     setShowDeleteModal(true);
   };
 
@@ -436,7 +468,7 @@ export default function ContentLibrary() {
   };
 
   const handleDeleteReference = (referenceToDelete: any) => {
-    setDeleteTarget({ type: 'reference', item: referenceToDelete });
+    setDeleteTarget({ type: "reference", item: referenceToDelete });
     setShowDeleteModal(true);
   };
 
@@ -680,9 +712,29 @@ export default function ContentLibrary() {
           isOpen={showDeleteModal}
           onClose={cancelDelete}
           onConfirm={confirmDelete}
-          title={deleteTarget ? `Delete ${deleteTarget.type === 'company' ? 'Company' : deleteTarget.type === 'member' ? 'Team Member' : deleteTarget.type === 'project' ? 'Project' : 'Reference'}` : 'Delete Item'}
-          message={deleteTarget ? `Are you sure you want to delete this ${deleteTarget.type}?` : 'Are you sure you want to delete this item?'}
-          itemName={deleteTarget?.item?.name || deleteTarget?.item?.clientName || deleteTarget?.item?.title}
+          title={
+            deleteTarget
+              ? `Delete ${
+                  deleteTarget.type === "company"
+                    ? "Company"
+                    : deleteTarget.type === "member"
+                    ? "Team Member"
+                    : deleteTarget.type === "project"
+                    ? "Project"
+                    : "Reference"
+                }`
+              : "Delete Item"
+          }
+          message={
+            deleteTarget
+              ? `Are you sure you want to delete this ${deleteTarget.type}?`
+              : "Are you sure you want to delete this item?"
+          }
+          itemName={
+            deleteTarget?.item?.name ||
+            deleteTarget?.item?.clientName ||
+            deleteTarget?.item?.title
+          }
           isDeleting={isDeleting}
         />
       </div>

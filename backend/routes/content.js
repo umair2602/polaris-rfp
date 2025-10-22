@@ -244,7 +244,9 @@ router.put("/company", async (req, res) => {
 // Get all team members
 router.get("/team", async (req, res) => {
   try {
-    let teamMembers = await TeamMember.find({ isActive: true }).lean();
+    let teamMembers = await TeamMember.find({ isActive: true })
+      .populate("company")
+      .lean();
 
     res.json(teamMembers);
   } catch (error) {
@@ -256,15 +258,27 @@ router.get("/team", async (req, res) => {
 // Create a team member
 router.post("/team", async (req, res) => {
   try {
-    const { memberId, nameWithCredentials, position, email, biography } =
-      req.body || {};
+    const {
+      memberId,
+      nameWithCredentials,
+      position,
+      email,
+      companyId,
+      biography,
+    } = req.body || {};
 
     if (!nameWithCredentials || !position || !biography) {
-      return res
-        .status(400)
-        .json({
-          error: "nameWithCredentials, position, and biography are required",
-        });
+      return res.status(400).json({
+        error: "nameWithCredentials, position, and biography are required",
+      });
+    }
+
+    // Validate companyId if provided
+    if (companyId) {
+      const companyExists = await Company.findOne({ companyId });
+      if (!companyExists) {
+        return res.status(400).json({ error: "Invalid company reference" });
+      }
     }
 
     // Generate a more unique memberId
@@ -303,12 +317,16 @@ router.post("/team", async (req, res) => {
       nameWithCredentials,
       position,
       email,
+      companyId,
       biography,
       isActive: true,
     });
 
     try {
       await newMember.save();
+
+      // Populate company before sending response
+      await newMember.populate("company");
       res.status(201).json(newMember.toObject());
     } catch (saveError) {
       // If still getting duplicate key error, it might be due to existing bad data
@@ -324,11 +342,13 @@ router.post("/team", async (req, res) => {
           nameWithCredentials,
           position,
           email,
+          companyId,
           biography,
           isActive: true,
         });
 
         await fallbackMember.save();
+        await fallbackMember.populate("company");
         res.status(201).json(fallbackMember.toObject());
       } else {
         throw saveError;
@@ -346,7 +366,9 @@ router.get("/team/:memberId", async (req, res) => {
     const member = await TeamMember.findOne({
       memberId: req.params.memberId,
       isActive: true,
-    }).lean();
+    })
+      .populate("company")
+      .lean();
     if (!member) {
       return res.status(404).json({ error: "Team member not found" });
     }
@@ -360,20 +382,28 @@ router.get("/team/:memberId", async (req, res) => {
 // Update a team member
 router.put("/team/:memberId", async (req, res) => {
   try {
-    const { nameWithCredentials, position, email, biography } = req.body;
+    const { nameWithCredentials, position, email, companyId, biography } =
+      req.body;
 
     if (!nameWithCredentials || !position || !biography) {
-      return res
-        .status(400)
-        .json({
-          error: "nameWithCredentials, position, and biography are required",
-        });
+      return res.status(400).json({
+        error: "nameWithCredentials, position, and biography are required",
+      });
+    }
+
+    // Validate companyId if provided
+    if (companyId) {
+      const companyExists = await Company.findOne({ companyId });
+      if (!companyExists) {
+        return res.status(400).json({ error: "Invalid company reference" });
+      }
     }
 
     const updates = {
       nameWithCredentials,
       position,
       email,
+      companyId,
       biography,
     };
 
@@ -381,7 +411,9 @@ router.put("/team/:memberId", async (req, res) => {
       { memberId: req.params.memberId },
       { $set: updates },
       { new: true, runValidators: true }
-    ).lean();
+    )
+      .populate("company")
+      .lean();
 
     if (!updated) {
       return res.status(404).json({ error: "Team member not found" });

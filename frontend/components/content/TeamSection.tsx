@@ -134,6 +134,19 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                       {selectedMember.email}
                     </a>
                   )}
+                  {selectedMember.company && (
+                    <div className="mt-2 flex items-center justify-center text-xs text-gray-600">
+                      <span className="font-medium">Company:</span>
+                      <span className="ml-1">
+                        {selectedMember.company.name}
+                      </span>
+                      {selectedMember.company.sharedInfo && (
+                        <span className="ml-1" title="Shared company data">
+                          🔗
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {selectedMember.biography && (
@@ -230,22 +243,6 @@ export default function TeamSection({ ctx }: { ctx: any }) {
                       </div>
                     </div>
                   )}
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                    Key Responsibilities
-                  </h5>
-                  <ul className="space-y-1">
-                    {selectedMember.responsibilities
-                      ?.slice(0, 4)
-                      .map((resp: string, index: number) => (
-                        <li key={index} className="flex items-start space-x-1">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-xs text-gray-600">{resp}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
               </div>
             ) : (
               <div className="text-center py-8">
