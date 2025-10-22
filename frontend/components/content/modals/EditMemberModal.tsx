@@ -33,9 +33,9 @@ export default function EditMemberModal({
                 type="text"
                 value={memberForm.nameWithCredentials}
                 onChange={(e) =>
-                  setMemberForm({ 
-                    ...memberForm, 
-                    nameWithCredentials: e.target.value 
+                  setMemberForm({
+                    ...memberForm,
+                    nameWithCredentials: e.target.value,
                   })
                 }
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
@@ -51,13 +51,31 @@ export default function EditMemberModal({
                 type="text"
                 value={memberForm.position}
                 onChange={(e) =>
-                  setMemberForm({ 
-                    ...memberForm, 
-                    position: e.target.value 
+                  setMemberForm({
+                    ...memberForm,
+                    position: e.target.value,
                   })
                 }
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="e.g., Project Manager"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={memberForm.email || ""}
+                onChange={(e) =>
+                  setMemberForm({
+                    ...memberForm,
+                    email: e.target.value,
+                  })
+                }
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="e.g., saxon.metzger@example.com"
               />
             </div>
 
@@ -69,38 +87,39 @@ export default function EditMemberModal({
                 value={memberForm.biography}
                 onChange={(e) => {
                   let value = e.target.value;
-                  
+
                   // Ensure it starts with a bullet point if not empty
-                  if (value && !value.startsWith('• ')) {
-                    value = '• ' + value;
+                  if (value && !value.startsWith("• ")) {
+                    value = "• " + value;
                   }
-                  
-                  setMemberForm({ 
-                    ...memberForm, 
-                    biography: value 
+
+                  setMemberForm({
+                    ...memberForm,
+                    biography: value,
                   });
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     const textarea = e.target as HTMLTextAreaElement;
                     const cursorPosition = textarea.selectionStart;
-                    const currentValue = memberForm.biography || '';
-                    
+                    const currentValue = memberForm.biography || "";
+
                     // Insert new line with bullet point
-                    const newValue = 
-                      currentValue.slice(0, cursorPosition) + 
-                      '\n• ' + 
+                    const newValue =
+                      currentValue.slice(0, cursorPosition) +
+                      "\n• " +
                       currentValue.slice(cursorPosition);
-                    
-                    setMemberForm({ 
-                      ...memberForm, 
-                      biography: newValue 
+
+                    setMemberForm({
+                      ...memberForm,
+                      biography: newValue,
                     });
-                    
+
                     // Set cursor position after the bullet point
                     setTimeout(() => {
-                      textarea.selectionStart = textarea.selectionEnd = cursorPosition + 3;
+                      textarea.selectionStart = textarea.selectionEnd =
+                        cursorPosition + 3;
                     }, 0);
                   }
                 }}
@@ -108,9 +127,9 @@ export default function EditMemberModal({
                   const textarea = e.target as HTMLTextAreaElement;
                   // If empty, start with a bullet point
                   if (!memberForm.biography) {
-                    setMemberForm({ 
-                      ...memberForm, 
-                      biography: '• ' 
+                    setMemberForm({
+                      ...memberForm,
+                      biography: "• ",
                     });
                     setTimeout(() => {
                       textarea.selectionStart = textarea.selectionEnd = 2;
