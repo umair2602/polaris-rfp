@@ -181,7 +181,50 @@ companySchema.methods.replaceCompanyName = function (text, targetCompanyName) {
   return result;
 };
 
-// Method to apply dynamic name replacement to all text fields
+// Method to dynamically replace website URLs in text fields
+companySchema.methods.replaceWebsite = function (text, targetCompanyName) {
+  if (!text || typeof text !== "string") return text;
+
+  // Map company names to their respective websites
+  const websiteMap = {
+    "Eighth Generation Consulting": "https://eighthgen.com",
+    "Polaris EcoSystems": "https://polariseco.com"
+  };
+
+  // Get all websites
+  const websites = Object.values(websiteMap);
+  const targetWebsite = websiteMap[targetCompanyName];
+  
+  if (!targetWebsite) return text;
+
+  let result = text;
+  
+  // Replace all other websites with the target company's website
+  websites.forEach(website => {
+    if (website !== targetWebsite) {
+      // Replace with and without protocol
+      const withProtocol = new RegExp(website.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const withoutProtocol = new RegExp(website.replace('https://', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      
+      result = result.replace(withProtocol, targetWebsite);
+      result = result.replace(withoutProtocol, targetWebsite.replace('https://', ''));
+    }
+  });
+
+  return result;
+};
+
+// Method to get the correct website for a company
+companySchema.methods.getCompanyWebsite = function (companyName) {
+  const websiteMap = {
+    "Eighth Generation Consulting": "https://eighthgen.com",
+    "Polaris EcoSystems": "https://polariseco.com"
+  };
+
+  return websiteMap[companyName || this.name] || "https://eighthgen.com"; // Default fallback
+};
+
+// Method to apply dynamic name and website replacement to all text fields
 companySchema.methods.applyDynamicNaming = function () {
   const textFields = [
     "description",
@@ -195,15 +238,21 @@ companySchema.methods.applyDynamicNaming = function () {
   textFields.forEach((field) => {
     if (this[field]) {
       this[field] = this.replaceCompanyName(this[field], this.name);
+      this[field] = this.replaceWebsite(this[field], this.name);
     }
   });
 
   // Handle array fields
   if (this.values && Array.isArray(this.values)) {
-    this.values = this.values.map((value) =>
-      this.replaceCompanyName(value, this.name)
-    );
+    this.values = this.values.map((value) => {
+      let replaced = this.replaceCompanyName(value, this.name);
+      replaced = this.replaceWebsite(replaced, this.name);
+      return replaced;
+    });
   }
+
+  // Update the website field itself
+  this.website = this.getCompanyWebsite(this.name);
 
   return this;
 };

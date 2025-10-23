@@ -127,6 +127,7 @@ We appreciate your consideration and look forward to working together.`,
       ...sharedData,
       name: "Polaris EcoSystems",
       email: "info@polarisecosystems.com",
+      website: "https://polariseco.com", // Set Polaris-specific website
       companyId: `company_polaris_${Date.now()}`,
       sharedInfo: sharedInfo._id,
     };

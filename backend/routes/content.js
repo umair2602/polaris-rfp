@@ -12,12 +12,111 @@ const router = express.Router();
 router.get("/companies", async (req, res) => {
   try {
     const companies = await Company.find().lean();
-    res.json(companies);
+    
+    // Apply dynamic name and website replacement for each company
+    const companiesWithReplacedContent = companies.map(company => {
+      const companyObj = { ...company };
+      
+      // Apply name replacement to text fields
+      const textFields = [
+        'description',
+        'tagline',
+        'missionStatement',
+        'visionStatement',
+        'coverLetter',
+        'firmQualificationsAndExperience'
+      ];
+      
+      textFields.forEach(field => {
+        if (companyObj[field] && typeof companyObj[field] === 'string') {
+          companyObj[field] = replaceCompanyName(companyObj[field], company.name);
+          companyObj[field] = replaceWebsite(companyObj[field], company.name);
+        }
+      });
+      
+      // Handle array fields
+      if (companyObj.values && Array.isArray(companyObj.values)) {
+        companyObj.values = companyObj.values.map(value => {
+          let replaced = replaceCompanyName(value, company.name);
+          replaced = replaceWebsite(replaced, company.name);
+          return replaced;
+        });
+      }
+      
+      // Apply website replacement to the website field itself
+      if (companyObj.website) {
+        companyObj.website = getCompanyWebsite(company.name);
+      }
+      
+      return companyObj;
+    });
+    
+    res.json(companiesWithReplacedContent);
   } catch (error) {
     console.error("Error fetching companies:", error);
     res.status(500).json({ error: "Failed to fetch companies" });
   }
 });
+
+// Helper function to replace company names
+function replaceCompanyName(text, targetCompanyName) {
+  if (!text || typeof text !== 'string' || !targetCompanyName) return text;
+
+  const companyNames = ['Eighth Generation Consulting', 'Polaris EcoSystems'];
+
+  let result = text;
+  companyNames.forEach(name => {
+    if (name !== targetCompanyName) {
+      const regex = new RegExp(name, 'gi');
+      result = result.replace(regex, targetCompanyName);
+    }
+  });
+
+  return result;
+}
+
+// Helper function to replace website URLs
+function replaceWebsite(text, targetCompanyName) {
+  if (!text || typeof text !== 'string' || !targetCompanyName) return text;
+
+  // Map company names to their respective websites
+  const websiteMap = {
+    'Eighth Generation Consulting': 'https://eighthgen.com',
+    'Polaris EcoSystems': 'https://polariseco.com'
+  };
+
+  // Get all websites
+  const websites = Object.values(websiteMap);
+  const targetWebsite = websiteMap[targetCompanyName];
+  
+  if (!targetWebsite) return text;
+
+  let result = text;
+  
+  // Replace all other websites with the target company's website
+  websites.forEach(website => {
+    if (website !== targetWebsite) {
+      // Replace with and without protocol
+      const withProtocol = new RegExp(website.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const withoutProtocol = new RegExp(website.replace('https://', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      
+      result = result.replace(withProtocol, targetWebsite);
+      result = result.replace(withoutProtocol, targetWebsite.replace('https://', ''));
+    }
+  });
+
+  return result;
+}
+
+// Helper function to get the correct website for a company
+function getCompanyWebsite(companyName) {
+  const websiteMap = {
+    'Eighth Generation Consulting': 'https://eighthgen.com',
+    'Polaris EcoSystems': 'https://polariseco.com'
+  };
+
+  return websiteMap[companyName] || 'https://eighthgen.com'; // Default fallback
+}
 
 // Get company profile (backward compatibility - returns first company)
 router.get("/company", async (req, res) => {
@@ -26,6 +125,36 @@ router.get("/company", async (req, res) => {
 
     if (!profile) {
       return res.status(404).json({ error: "Company profile not found" });
+    }
+
+    // Apply dynamic name and website replacement
+    const textFields = [
+      'description',
+      'tagline',
+      'missionStatement',
+      'visionStatement',
+      'coverLetter',
+      'firmQualificationsAndExperience'
+    ];
+    
+    textFields.forEach(field => {
+      if (profile[field] && typeof profile[field] === 'string') {
+        profile[field] = replaceCompanyName(profile[field], profile.name);
+        profile[field] = replaceWebsite(profile[field], profile.name);
+      }
+    });
+    
+    if (profile.values && Array.isArray(profile.values)) {
+      profile.values = profile.values.map(value => {
+        let replaced = replaceCompanyName(value, profile.name);
+        replaced = replaceWebsite(replaced, profile.name);
+        return replaced;
+      });
+    }
+
+    // Apply website replacement to the website field itself
+    if (profile.website) {
+      profile.website = getCompanyWebsite(profile.name);
     }
 
     res.json(profile);
@@ -44,6 +173,36 @@ router.get("/companies/:companyId", async (req, res) => {
 
     if (!company) {
       return res.status(404).json({ error: "Company not found" });
+    }
+
+    // Apply dynamic name and website replacement
+    const textFields = [
+      'description',
+      'tagline',
+      'missionStatement',
+      'visionStatement',
+      'coverLetter',
+      'firmQualificationsAndExperience'
+    ];
+    
+    textFields.forEach(field => {
+      if (company[field] && typeof company[field] === 'string') {
+        company[field] = replaceCompanyName(company[field], company.name);
+        company[field] = replaceWebsite(company[field], company.name);
+      }
+    });
+    
+    if (company.values && Array.isArray(company.values)) {
+      company.values = company.values.map(value => {
+        let replaced = replaceCompanyName(value, company.name);
+        replaced = replaceWebsite(replaced, company.name);
+        return replaced;
+      });
+    }
+
+    // Apply website replacement to the website field itself
+    if (company.website) {
+      company.website = getCompanyWebsite(company.name);
     }
 
     res.json(company);
