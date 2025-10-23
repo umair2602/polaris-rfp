@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import api from "../../../lib/api";
 
 type EditMemberModalProps = {
   open: boolean;
@@ -15,6 +16,29 @@ export default function EditMemberModal({
   onSave,
   onClose,
 }: EditMemberModalProps) {
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  // Fetch companies when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchCompanies();
+    }
+  }, [open]);
+
+  const fetchCompanies = async () => {
+    try {
+      setLoadingCompanies(true);
+      const response = await api.get("/api/content/companies");
+      setCompanies(response.data || []);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      setCompanies([]);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -77,6 +101,41 @@ export default function EditMemberModal({
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="e.g., saxon.metzger@example.com"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Company
+              </label>
+              <select
+                value={memberForm.companyId || ""}
+                onChange={(e) =>
+                  setMemberForm({
+                    ...memberForm,
+                    companyId: e.target.value || null,
+                  })
+                }
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-white"
+                disabled={loadingCompanies}
+              >
+                <option value="">No Company</option>
+                {companies.map((company) => (
+                  <option key={company.companyId} value={company.companyId}>
+                    {company.name}
+                    {company.sharedInfo ? " 🔗" : ""}
+                  </option>
+                ))}
+              </select>
+              {loadingCompanies && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Loading companies...
+                </p>
+              )}
+              {!loadingCompanies && companies.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  No companies available
+                </p>
+              )}
             </div>
 
             <div>

@@ -231,10 +231,28 @@ export const getContentLibraryType = (sectionName: string): 'team' | 'references
     return 'company';
   }
 
-  // Check for experience and qualifications sections
-  if (title.includes('experience') ||
-      title.includes('qualification') ||
-      title.includes('firm qualification') ||
+  // Check for personnel/team sections FIRST (before experience check)
+  // This handles "Key Personnel and Experience" correctly
+  if (title.includes('personnel') || 
+      title.includes('team') || 
+      title.includes('staff') || 
+      title.includes('key personnel') ||
+      title.includes('project team') ||
+      title.includes('team member') ||
+      title.includes('human resource')) {
+    return 'team';
+  }
+  
+  // Check for references sections
+  if (title.includes('reference') || 
+      title.includes('past project') ||
+      title.includes('client reference') ||
+      title.includes('project portfolio')) {
+    return 'references';
+  }
+
+  // Check for company experience and qualifications sections (after personnel/team check)
+  if (title.includes('firm qualification') ||
       title.includes('company qualification') ||
       title.includes('firm experience') ||
       title.includes('company experience') ||
@@ -243,29 +261,10 @@ export const getContentLibraryType = (sectionName: string): 'team' | 'references
       title.includes('expertise') ||
       title.includes('credentials') ||
       title.includes('track record') ||
-      title.includes('company profile')) {
+      title.includes('company profile') ||
+      title.includes('qualification') ||
+      title.includes('experience')) {
     return 'company';
-  }
-  
-  // Check for personnel/team sections
-  if (title.includes('personnel') || 
-      title.includes('team') || 
-      title.includes('staff') || 
-      title.includes('key personnel') ||
-      title.includes('project team') ||
-      title.includes('team member') ||
-      title.includes('human resource') ||
-      title.includes('expertise')) {
-    return 'team';
-  }
-  
-  // Check for references/experience sections
-  if (title.includes('reference') || 
-      (title.includes('experience') && !title.includes('personnel') && !title.includes('team') && !title.includes('key')) ||
-      title.includes('past project') ||
-      title.includes('client reference') ||
-      title.includes('project portfolio')) {
-    return 'references';
   }
   
   return null;

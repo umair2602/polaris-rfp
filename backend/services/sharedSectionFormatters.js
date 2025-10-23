@@ -16,6 +16,61 @@ class SharedSectionFormatters {
   }
 
   /**
+   * Replace company names in text to match the current company
+   */
+  static replaceCompanyName(text, targetCompanyName) {
+    if (!text || typeof text !== "string" || !targetCompanyName) return text;
+
+    const companyNames = ["Eighth Generation Consulting", "Polaris EcoSystems"];
+
+    // Replace any occurrence of other company names with the target company's name
+    let result = text;
+    companyNames.forEach((name) => {
+      if (name !== targetCompanyName) {
+        const regex = new RegExp(name, "gi");
+        result = result.replace(regex, targetCompanyName);
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Replace website URLs in text to match the current company
+   */
+  static replaceWebsite(text, targetCompanyName) {
+    if (!text || typeof text !== "string" || !targetCompanyName) return text;
+
+    // Map company names to their respective websites
+    const websiteMap = {
+      "Eighth Generation Consulting": "https://eighthgen.com",
+      "Polaris EcoSystems": "https://polariseco.com"
+    };
+
+    // Get all websites
+    const websites = Object.values(websiteMap);
+    const targetWebsite = websiteMap[targetCompanyName];
+    
+    if (!targetWebsite) return text;
+
+    let result = text;
+    
+    // Replace all other websites with the target company's website
+    websites.forEach(website => {
+      if (website !== targetWebsite) {
+        // Replace with and without protocol
+        const withProtocol = new RegExp(website.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const withoutProtocol = new RegExp(website.replace('https://', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        
+        result = result.replace(withProtocol, targetWebsite);
+        result = result.replace(withoutProtocol, targetWebsite.replace('https://', ''));
+      }
+    });
+
+    return result;
+  }
+
+  /**
    * Fetch company information from the content library
    */
   static async fetchCompanyInfo() {
@@ -98,9 +153,14 @@ class SharedSectionFormatters {
     const currentDate = new Date().toLocaleDateString("en-US");
     const clientName = rfp.clientName || rfp.title || "Valued Client";
     const salutation = rfp.clientName ? `Dear ${rfp.clientName} Team` : "Dear Hiring Manager";
-    const coverLetterContent =
+    
+    // Apply company name and website replacement to cover letter content
+    let coverLetterContent = this.replaceCompanyName(
       companyInfo.coverLetter ||
-      `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`;
+        `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`,
+      companyInfo.name
+    );
+    coverLetterContent = this.replaceWebsite(coverLetterContent, companyInfo.name);
 
     const contactName = companyInfo.name ? `${companyInfo.name.split(" ")[0]} Representative` : "Project Manager";
     const contactTitle = "Project Director";
@@ -211,10 +271,17 @@ ${contactPhone}`;
     const openai = this.openai;
     if (openai && companyInfo.firmQualificationsAndExperience) {
       try {
+        // Apply company name and website replacement before sending to AI
+        let replacedContent = this.replaceCompanyName(
+          companyInfo.firmQualificationsAndExperience,
+          companyInfo.name
+        );
+        replacedContent = this.replaceWebsite(replacedContent, companyInfo.name);
+
         const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
 
 Company Experience Content:
-${companyInfo.firmQualificationsAndExperience}
+${replacedContent}
 
 RFP Project Context:
 - Title: ${rfp.title || 'Not specified'}
@@ -248,9 +315,13 @@ Return only the clean, simply formatted content without markdown headings or exc
       }
     }
 
-    const baseContent =
+    // Apply company name and website replacement to base content as well
+    let baseContent = this.replaceCompanyName(
       companyInfo.firmQualificationsAndExperience ||
-      `${companyInfo.name || "Our company"} brings extensive experience and proven qualifications to deliver exceptional results for your project.`;
+        `${companyInfo.name || "Our company"} brings extensive experience and proven qualifications to deliver exceptional results for your project.`,
+      companyInfo.name
+    );
+    baseContent = this.replaceWebsite(baseContent, companyInfo.name);
 
     let formattedContent = baseContent;
 
