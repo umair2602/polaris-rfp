@@ -1,54 +1,12 @@
 import { useState, useEffect } from "react";
-import Modal from "./ui/Modal";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import api from "../lib/api";
-
-interface TeamMember {
-  _id: string;
-  memberId: string;
-  nameWithCredentials: string;
-  position: string;
-  email?: string;
-  companyId?: string;
-  biography: string;
-  isActive: boolean;
-  company?: {
-    companyId: string;
-    name: string;
-    sharedInfo?: string;
-  };
-}
-
-interface ProjectReference {
-  _id: string;
-  organizationName: string;
-  timePeriod?: string;
-  contactName: string;
-  contactTitle?: string;
-  additionalTitle?: string;
-  scopeOfWork: string;
-  contactEmail: string;
-  contactPhone?: string;
-}
-
-interface Company {
-  _id: string;
-  companyId: string;
-  name: string;
-  description: string;
-  email?: string;
-  phone?: string;
-  coverLetter?: string;
-}
-
-interface ContentLibraryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onApply: (selectedIds: string[]) => void;
-  type: "team" | "references" | "company";
-  currentSelectedIds?: string[];
-  isLoading?: boolean;
-}
+import type {
+  TeamMember,
+  ProjectReference,
+  Company,
+  ContentLibraryModalProps,
+} from "../types/contentLibrary";
 
 export default function ContentLibraryModal({
   isOpen,
@@ -231,14 +189,63 @@ export default function ContentLibraryModal({
       ? "No project references available in the content library."
       : "No company profiles available in the content library.";
 
+  if (!isOpen) return null;
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      size="lg"
-      footer={
-        <>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop with blur */}
+      <div 
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm" 
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={isLoading}
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 flex-1 overflow-y-auto">
+          <div className="space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-600">{error}</p>
+                <button
+                  onClick={loadItems}
+                  className="mt-2 text-sm text-primary-600 hover:text-primary-700"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
+            ) : (
+              <div className="space-y-3">
+                {type === "team"
+                  ? items.map((item) => renderTeamMember(item as TeamMember))
+                  : type === "references"
+                  ? items.map((item) => renderReference(item as ProjectReference))
+                  : items.map((item) => renderCompany(item as Company))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3">
           <button
             onClick={onClose}
             className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -260,36 +267,8 @@ export default function ContentLibraryModal({
               `Apply Selection (${selectedIds.length})`
             )}
           </button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-600">{error}</p>
-            <button
-              onClick={loadItems}
-              className="mt-2 text-sm text-primary-600 hover:text-primary-700"
-            >
-              Try again
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
-        ) : (
-          <div className="max-h-96 overflow-y-auto space-y-3">
-            {type === "team"
-              ? items.map((item) => renderTeamMember(item as TeamMember))
-              : type === "references"
-              ? items.map((item) => renderReference(item as ProjectReference))
-              : items.map((item) => renderCompany(item as Company))}
-          </div>
-        )}
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 }

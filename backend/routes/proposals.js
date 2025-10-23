@@ -1019,7 +1019,9 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
           // Determine section type based on section name
           const sectionTitle = sectionName.toLowerCase();
           if (sectionTitle === 'title') {
-            content = SharedSectionFormatters.formatTitleSection(selectedCompany, rfp || {});
+            // Title section returns an object, not a string
+            const titleData = SharedSectionFormatters.formatTitleSection(selectedCompany, rfp || {});
+            content = titleData; // Store the object directly
           } else if (sectionTitle.includes('cover letter') || 
               sectionTitle.includes('introduction letter') || 
               sectionTitle.includes('transmittal letter')) {
@@ -1097,7 +1099,7 @@ router.put("/:id/content-library/:sectionName", async (req, res) => {
       ...proposal.sections,
       [sectionName]: {
         ...proposal.sections[sectionName],
-        content: content.trim(),
+        content: typeof content === 'string' ? content.trim() : content,
         type: 'content-library',
         lastModified: new Date().toISOString(),
         selectedIds: selectedIds // Store the selected IDs for future reference
