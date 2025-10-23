@@ -518,13 +518,19 @@ class DocxGenerator {
     ) {
       return "budget";
     }
-    // Timeline table detection - look for schedule/timeline columns
+    // Timeline table detection - look for schedule/timeline/milestone columns
     else if (
       firstRow.includes("timeline") ||
       firstRow.includes("schedule") ||
       firstRow.includes("milestone") ||
       firstRow.includes("deadline") ||
-      contentLower.includes("project schedule")
+      firstRow.includes("duration") ||
+      contentLower.includes("project schedule") ||
+      contentLower.includes("timeline") ||
+      contentLower.includes("schedule") ||
+      (columnCount === 3 && firstRow.includes("phase") && 
+       (firstRow.includes("timeline") || firstRow.includes("key activities") || 
+        firstRow.includes("milestones") || firstRow.includes("activities")))
     ) {
       return "timeline";
     }
@@ -649,7 +655,11 @@ class DocxGenerator {
         if (cellIndex === 4) return "right";
         return "center";
       case "timeline":
-        return "center";
+        // For 3-col timeline: Phase(left), Timeline(center), Activities(left)
+        if (cellIndex === 0) return "left";    // Phase
+        if (cellIndex === 1) return "center";  // Timeline
+        if (cellIndex === 2) return "left";    // Key Activities
+        return "left";
       case "team":
         return "left";
       default:
@@ -662,7 +672,7 @@ class DocxGenerator {
       case "budget":
         return "E6F3FF"; // Light blue
       case "timeline":
-        return "E6FFE6"; // Light green
+        return "FFF4E6"; // Light amber/yellow - for schedule/timeline
       case "team":
         return "FFF0E6"; // Light orange
       default:
@@ -713,9 +723,22 @@ class DocxGenerator {
           ],
         };
       case "timeline":
+        // Support 3-column timeline table: Phase | Timeline | Key Activities & Milestones
+        if (columnCount === 3) {
+          return {
+            ...baseStyle,
+            tableColWidth: 10000,
+            columns: [
+              { width: 2800 }, // Phase column
+              { width: 2200 }, // Timeline column
+              { width: 5000 }, // Key Activities & Milestones column - wider for detailed descriptions
+            ],
+          };
+        }
+        // Fallback for other timeline formats
         return {
           ...baseStyle,
-          tableColWidth: 9000, // Moderate increase for better centering
+          tableColWidth: 9000,
           columns: [
             { width: 2500 }, // Phase column
             { width: 3000 }, // Timeline column

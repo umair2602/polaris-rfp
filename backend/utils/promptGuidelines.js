@@ -102,16 +102,16 @@ function getSectionGuidelines() {
    - If specific deadlines are mentioned in the RFP, work backwards from those dates
    - If not specified, create a logical timeline based on project scope and industry standards
    - Include 4-6 phases that align with the methodology and deliverables
-   - CRITICAL: Format as simple headings and paragraphs, NOT as a table
-   - Use this exact format:
-     ## Phase 1: [Detailed Phase Name matching methodology]
-     **Timeline:** [Specific duration with start/end dates if RFP provides deadline]
-     
-     [Detailed 3-4 sentence paragraph describing the phase activities, key milestones, deliverables, and outcomes. Include specific tasks, meetings, reviews, and checkpoints. Explain what will be accomplished and how it contributes to the overall project success. Reference specific RFP requirements that will be addressed in this phase.]
-   - Each phase should have realistic timeline estimates and comprehensive paragraph descriptions
-   - Use **bold** for "Timeline:" labels and ## for phase headings
-   - Write detailed paragraphs (3-4 sentences each) that explain what will be accomplished in each phase
+   - CRITICAL: Format as a proper markdown table with exactly 3 columns: "Phase", "Timeline", and "Key Activities & Milestones"
+   - Use this exact table format:
+     | Phase | Timeline | Key Activities & Milestones |
+     |-------|----------|----------------------------|
+     | Phase 1: [Detailed Phase Name matching methodology] | [Specific duration with start/end dates if RFP provides deadline] | [Detailed 3-4 sentence paragraph describing the phase activities, key milestones, deliverables, and outcomes. Include specific tasks, meetings, reviews, and checkpoints. Explain what will be accomplished and how it contributes to the overall project success. Reference specific RFP requirements that will be addressed in this phase.] |
+     | Phase 2: [Detailed Phase Name matching methodology] | [Specific duration with start/end dates if RFP provides deadline] | [Detailed 3-4 sentence paragraph describing the phase activities, key milestones, deliverables, and outcomes. Include specific tasks, meetings, reviews, and checkpoints. Explain what will be accomplished and how it contributes to the overall project success. Reference specific RFP requirements that will be addressed in this phase.] |
+   - Each phase should have realistic timeline estimates and comprehensive descriptions
+   - Write detailed content (3-4 sentences) in the "Key Activities & Milestones" column explaining what will be accomplished in each phase
    - Include specific milestones, deliverables, and review points for each phase
+   - Ensure all rows have exactly 3 cells with proper markdown table syntax
 
 **For sections related to Budget, Cost, or Financial** (containing words like "budget", "cost", "financial", "pricing", "fees"):
     Provide a resource-based cost breakdown by phase that matches the methodology phases

@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import AddCompanyModal from "./modals/AddCompanyModal";
+import { useState } from "react";
 
 // Using a single ctx prop to keep wiring simple during extraction
 export default function CompanySection({ ctx }: { ctx: any }) {
@@ -27,7 +28,7 @@ export default function CompanySection({ ctx }: { ctx: any }) {
     handleAddCompany,
     handleDeleteCompany,
   } = ctx;
-
+  const [isSaving, setIsSaving] = useState(false);
   const addArrayItem = (field: string) => {
     setCompanyForm({
       ...companyForm,
@@ -83,7 +84,16 @@ export default function CompanySection({ ctx }: { ctx: any }) {
     });
     setShowAddCompany(true);
   };
-
+  const onSaveCompany=async()=>{
+    try{
+      setIsSaving(true);
+      await handleSaveCompany();
+    }catch(error){
+      console.error("Error saving company:", error);
+    }finally{
+      setIsSaving(false);
+    }
+  }
   return (
     <div className="space-y-6">
       {/* Company Selection and Actions */}
@@ -193,6 +203,7 @@ export default function CompanySection({ ctx }: { ctx: any }) {
                   <>
                     <button
                       onClick={handleSaveCompany}
+                      disabled={isSaving}
                       className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700"
                     >
                       <CheckIcon className="h-3 w-3 mr-1" />
