@@ -100,7 +100,7 @@ const rfpSchema = new mongoose.Schema({
 // Simple method to check if any deadline has passed
 rfpSchema.methods.checkDisqualification = function() {
   const now = new Date();
-  const deadlines = [this.submissionDeadline, this.questionsDeadline, this.bidMeetingDate, this.bidRegistrationDate];
+  const deadlines = [this.submissionDeadline, this.bidMeetingDate];
   
   for (const deadline of deadlines) {
     if (deadline && new Date(deadline) < now) {
