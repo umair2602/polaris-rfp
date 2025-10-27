@@ -113,6 +113,20 @@ RFP Information:
 - Deliverables: ${rfp.deliverables?.join(', ') || 'Not specified'}
 - Contact Information: ${rfp.contactInformation || 'Not specified'}
 
+${rfp.attachments && rfp.attachments.length > 0 ? `
+RFP Attachments (${rfp.attachments.length} files):
+${rfp.attachments.map((att, idx) => {
+  let info = `${idx + 1}. ${att.originalName} (${att.fileType.toUpperCase()}, ${(att.fileSize / 1024).toFixed(1)} KB)`;
+  if (att.description) info += ` - ${att.description}`;
+  if (att.textContent && att.textContent.trim().length > 0) {
+    info += `\n   Content: ${att.textContent.substring(0, 5000)}${att.textContent.length > 5000 ? '... (truncated)' : ''}`;
+  }
+  return info;
+}).join('\n\n')}
+
+Note: The RFP includes these attached documents with their extracted content above. Use this information to create a comprehensive and detailed proposal that addresses all requirements from both the main RFP and the attachments.
+` : ''}
+
 ${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText}` : ''}
 
 INSTRUCTIONS:

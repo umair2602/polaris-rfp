@@ -113,6 +113,13 @@ const rfpSchema = new mongoose.Schema({
     description: {
       type: String,
       trim: true
+    },
+    textContent: {
+      type: String, // Extracted text content from PDF, DOC, TXT files
+      trim: true
+    },
+    textLength: {
+      type: Number // Length of extracted text
     }
   }],
   rawText: {

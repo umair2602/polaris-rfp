@@ -3,6 +3,8 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const RFP = require("../models/RFP");
+const pdf = require("pdf-parse");
+const mammoth = require("mammoth");
 
 const router = express.Router();
 
@@ -75,6 +77,38 @@ const getFileTypeCategory = (mimeType) => {
   return "other";
 };
 
+// Helper function to extract text content from files
+const extractTextContent = async (filePath, mimeType) => {
+  try {
+    // Extract text from PDF
+    if (mimeType === "application/pdf") {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      return pdfData.text;
+    }
+
+    // Extract text from DOCX
+    if (
+      mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    }
+
+    // Extract text from plain text files
+    if (mimeType === "text/plain") {
+      return fs.readFileSync(filePath, "utf-8");
+    }
+
+    // For other file types, return null
+    return null;
+  } catch (error) {
+    console.error("Error extracting text from file:", error);
+    return null;
+  }
+};
+
 // Upload attachments to an RFP
 router.post(
   "/:id/upload-attachments",
@@ -99,17 +133,28 @@ router.post(
         return res.status(400).json({ error: "No files uploaded" });
       }
 
-      // Process each uploaded file
-      const attachments = req.files.map((file) => ({
-        fileName: file.filename,
-        originalName: file.originalname,
-        fileSize: file.size,
-        mimeType: file.mimetype,
-        fileType: getFileTypeCategory(file.mimetype),
-        filePath: file.path,
-        uploadedAt: new Date(),
-        description: req.body.description || "",
-      }));
+      // Process each uploaded file and extract text content
+      const attachments = await Promise.all(
+        req.files.map(async (file) => {
+          const textContent = await extractTextContent(
+            file.path,
+            file.mimetype
+          );
+
+          return {
+            fileName: file.filename,
+            originalName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            fileType: getFileTypeCategory(file.mimetype),
+            filePath: file.path,
+            uploadedAt: new Date(),
+            description: req.body.description || "",
+            textContent: textContent,
+            textLength: textContent ? textContent.length : 0,
+          };
+        })
+      );
 
       // Add attachments to RFP
       rfp.attachments.push(...attachments);

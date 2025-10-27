@@ -131,7 +131,7 @@ export default function AttachmentUploadModal({
                       Upload Attachments
                     </Dialog.Title>
                     <p className="mt-1 text-sm text-gray-500">
-                      Upload files related to this RFP (PDF, DOC, DOCX, XLS, XLSX, TXT, Images, ZIP)
+                      Upload files related to this RFP (PDF, DOC, DOCX, XLS, XLSX, TXT)
                     </p>
                   </div>
                 </div>
