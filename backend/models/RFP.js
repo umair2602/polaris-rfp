@@ -77,6 +77,44 @@ const rfpSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  questionsAndAnswers: {
+    type: mongoose.Schema.Types.Mixed,
+    default: []
+  },
+  attachments: [{
+    fileName: {
+      type: String,
+      required: true
+    },
+    originalName: {
+      type: String,
+      required: true
+    },
+    fileSize: {
+      type: Number,
+      required: true
+    },
+    mimeType: {
+      type: String,
+      required: true
+    },
+    fileType: {
+      type: String, // 'pdf', 'doc', 'docx', 'txt', 'image', 'other'
+      required: true
+    },
+    filePath: {
+      type: String, // S3 URL or local file path
+      required: true
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    },
+    description: {
+      type: String,
+      trim: true
+    }
+  }],
   rawText: {
     type: String
   },
@@ -87,6 +125,7 @@ const rfpSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  
   fileName: {
     type: String
   },

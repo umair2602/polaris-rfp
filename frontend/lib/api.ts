@@ -58,6 +58,8 @@ export interface RFP {
   bidMeetingDate?: string;
   bidRegistrationDate?: string;
   isDisqualified?: boolean;
+  questionsAndAnswers?: string[];
+  Attachments?: any[];
 }
 
 export interface Proposal {
@@ -96,6 +98,8 @@ export const rfpApi = {
     api.post<{ titles: string[] }>(`/api/rfp/${id}/ai-section-titles`),
   getProposals: (id: string) =>
     api.get<{ data: Proposal[] }>(`/api/rfp/${id}/proposals`),
+  uploadAttachments: (id: string, data: FormData) =>
+    api.post(`/api/rfp/${id}/upload-attachments`, data),
 };
 
 // Proposal API calls

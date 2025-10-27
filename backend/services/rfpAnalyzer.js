@@ -183,7 +183,8 @@ Extract the following information from the RFP text:
   "contactInformation": "string - Contact details (emails, phones, names)",
   "location": "string - Project location or client location",
   "specialRequirements": ["array of strings - Special requirements like certifications, compliance, etc."],
-  "additionalInfo": ["array of strings - Any additional important information"]
+  "additionalInfo": ["array of strings - Any additional important information"],
+  "questionsAndAnswers": ["array of strings - Any Q&A sections found in the RFP, including questions posed by vendors and answers provided by the issuer. Format each Q&A as 'Q: [question text] A: [answer text]'"]
 }
 
 Rules:
@@ -203,6 +204,12 @@ Rules:
   * Use project start date to project completion/end date when available
   * Normalize all dates to MM/DD/YYYY format
   * Return "Not available" if no timeline information is found
+- For "questionsAndAnswers", follow this two-step approach:
+  * STEP 1: First, check if the RFP document contains any existing Q&A sections, addenda, clarifications, or pre-bid meeting notes. If found, extract them exactly as written in the format "Q: [question text] A: [answer text]"
+  * STEP 2: If NO existing Q&A sections are found in the document, then generate 5-8 relevant and insightful questions and answers based on the specific RFP content. The questions should be natural, context-specific, and address important aspects that vendors would genuinely need clarification on based on what's written (or missing) in this particular RFP.
+  * For generated Q&A, provide clear, accurate answers based strictly on information available in the RFP document. If the RFP doesn't contain the answer, acknowledge it appropriately (e.g., "This information is not specified in the RFP").
+  * Format all Q&A (both extracted and generated) as "Q: [question text] A: [answer text]"
+  * Always return at least some Q&A - either extracted from document OR AI-generated based on RFP content
 - Return only valid JSON, no additional text or commentary`;
 
     try {
@@ -284,6 +291,7 @@ Rules:
         location: extractedData.location || "Not available",
         additionalInfo: extractedData.additionalInfo || [],
         specialRequirements: extractedData.specialRequirements || [],
+        questionsAndAnswers: extractedData.questionsAndAnswers || [],
         rawText: text,
         parsedSections: {
           textLength: text.length,
@@ -306,6 +314,7 @@ Rules:
       result.deliverables = ensureArray(result.deliverables);
       result.additionalInfo = ensureArray(result.additionalInfo);
       result.specialRequirements = ensureArray(result.specialRequirements);
+      result.questionsAndAnswers = ensureArray(result.questionsAndAnswers);
 
       return result;
     } catch (err) {
