@@ -10,8 +10,16 @@ import {
   BuildingOfficeIcon,
   ClockIcon,
   PlusIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PaperClipIcon,
+  ArrowDownTrayIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import AIPreviewModal from "../../components/AIPreviewModal";
+import AttachmentUploadModal from "../../components/AttachmentUploadModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
+import { useToast } from "../../components/ui/Toast";
 
 // Utility function to trim title properly
 const trimTitle = (title: string, maxLength: number = 60): string => {
@@ -47,6 +55,12 @@ export default function RFPDetail() {
   );
   const [showAIPreviewModal, setShowAIPreviewModal] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -61,6 +75,7 @@ export default function RFPDetail() {
         templateApi.list(),
       ]);
       setRfp(rfpResponse.data);
+      console;
       const templatesData =
         templatesResponse.data?.data || templatesResponse.data || [];
       setTemplates(Array.isArray(templatesData) ? templatesData : []);
@@ -69,6 +84,51 @@ export default function RFPDetail() {
       setError("Failed to load RFP details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAttachmentUpload = async (files: FileList | null) => {
+    if (!rfp || !files) return;
+
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      await rfpApi.uploadAttachments(rfp._id, formData);
+      toast.success("Attachments uploaded successfully");
+      // Reload RFP data to show newly uploaded attachments
+      await loadRFP(rfp._id);
+    } catch (error) {
+      console.error("Error uploading attachments:", error);
+      const message = (error && (error as any).message) || "Failed to upload attachments. Please try again.";
+      toast.error(message);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string, fileName: string) => {
+    setAttachmentToDelete({ id: attachmentId, name: fileName });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteAttachment = async () => {
+    if (!rfp || !attachmentToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await rfpApi.deleteAttachment(rfp._id, attachmentToDelete.id);
+      toast.success("Attachment deleted successfully");
+      // Reload RFP data to update attachments list
+      await loadRFP(rfp._id);
+      setDeleteModalOpen(false);
+      setAttachmentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      const message = (error && (error as any).message) || "Failed to delete attachment. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -117,6 +177,12 @@ export default function RFPDetail() {
     }
   };
 
+  const toggleQuestion = (index: number) => {
+    setExpandedQuestions((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -163,13 +229,23 @@ export default function RFPDetail() {
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  <span className="font-medium">Disqualified:</span> One or more critical deadlines for this RFP have passed.
+                  <span className="font-medium">Disqualified:</span> One or more
+                  critical deadlines for this RFP have passed.
                 </p>
               </div>
             </div>
@@ -248,11 +324,12 @@ export default function RFPDetail() {
                               ).toLocaleDateString("en-US")
                             : "Not specified"}
                         </dd>
-                        {rfp.submissionDeadline && isDatePassed(rfp.submissionDeadline) && (
-                          <dd className="text-xs font-medium text-red-600 mt-1">
-                            ⚠️ Deadline passed
-                          </dd>
-                        )}
+                        {rfp.submissionDeadline &&
+                          isDatePassed(rfp.submissionDeadline) && (
+                            <dd className="text-xs font-medium text-red-600 mt-1">
+                              ⚠️ Deadline passed
+                            </dd>
+                          )}
                       </dl>
                     </div>
                   </div>
@@ -297,17 +374,18 @@ export default function RFPDetail() {
                               )
                             : "Not specified"}
                         </dd>
-                        {rfp.bidMeetingDate && isDatePassed(rfp.bidMeetingDate) && (
-                          <dd className="text-xs font-medium text-red-600 mt-1">
-                            ⚠️ Date passed
-                          </dd>
-                        )}
+                        {rfp.bidMeetingDate &&
+                          isDatePassed(rfp.bidMeetingDate) && (
+                            <dd className="text-xs font-medium text-red-600 mt-1">
+                              ⚠️ Date passed
+                            </dd>
+                          )}
                       </dl>
                     </div>
                   </div>
                 </div>
               </div>
-               <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -320,22 +398,23 @@ export default function RFPDetail() {
                         </dt>
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.bidRegistrationDate
-                            ? new Date(rfp.bidRegistrationDate).toLocaleDateString(
-                                "en-US"
-                              )
+                            ? new Date(
+                                rfp.bidRegistrationDate
+                              ).toLocaleDateString("en-US")
                             : "Not specified"}
                         </dd>
-                        {rfp.bidRegistrationDate && isDatePassed(rfp.bidRegistrationDate) && (
-                          <dd className="text-xs font-medium text-red-600 mt-1">
-                            ⚠️ Date passed
-                          </dd>
-                        )}
+                        {rfp.bidRegistrationDate &&
+                          isDatePassed(rfp.bidRegistrationDate) && (
+                            <dd className="text-xs font-medium text-red-600 mt-1">
+                              ⚠️ Date passed
+                            </dd>
+                          )}
                       </dl>
                     </div>
                   </div>
                 </div>
               </div>
-               <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -348,25 +427,79 @@ export default function RFPDetail() {
                         </dt>
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.questionsDeadline
-                            ? new Date(rfp.questionsDeadline).toLocaleDateString(
-                                "en-US"
-                              )
+                            ? new Date(
+                                rfp.questionsDeadline
+                              ).toLocaleDateString("en-US")
                             : "Not specified"}
                         </dd>
-                        {rfp.questionsDeadline && isDatePassed(rfp.questionsDeadline) && (
-                          <dd className="text-xs font-medium text-red-600 mt-1">
-                            ⚠️ Deadline passed
-                          </dd>
-                        )}
+                        {rfp.questionsDeadline &&
+                          isDatePassed(rfp.questionsDeadline) && (
+                            <dd className="text-xs font-medium text-red-600 mt-1">
+                              ⚠️ Deadline passed
+                            </dd>
+                          )}
                       </dl>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
+            <div className="mt-8 bg-white shadow rounded-lg">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Attachments
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Upload and manage files related to this RFP
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAttachmentModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  >
+                    <PaperClipIcon className="h-5 w-5 mr-2" />
+                    Add Attachments
+                  </button>
+                </div>
+              </div>
+              
+             <div className="px-6 py-4">
+        {rfp?.attachments?.length ? (
+          <ul role="list" className="divide-y divide-gray-200">
+            {rfp.attachments.map((file) => (
+              <li key={file.fileName} className="py-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <PaperClipIcon className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {file.originalName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(file.fileSize / 1024).toFixed(1)} KB • {file.fileType.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleDeleteAttachment(file._id, file.originalName)}
+                    className="inline-flex items-center p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                    title="Delete attachment"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500">No attachments uploaded yet</p>
+        )}
+      </div>
+            </div>
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Key Requirements */}
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-5 border-b border-gray-200">
@@ -472,7 +605,6 @@ export default function RFPDetail() {
                 </div>
               </div>
 
-              {/* Special Requirements */}
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-5 border-b border-gray-200">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -507,6 +639,67 @@ export default function RFPDetail() {
                 </div>
               </div>
             </div>
+            {/* Question and Answers Section */}
+            <div className="mt-8 bg-white shadow rounded-lg">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Questions and Answers
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Click on any question to view the answer
+                </p>
+              </div>
+              <div className="px-6 py-4">
+                {rfp.questionsAndAnswers &&
+                rfp.questionsAndAnswers.length > 0 ? (
+                  <div className="space-y-3">
+                    {rfp.questionsAndAnswers.map((qa, index) => {
+                      const [questionPart, answerPart] = qa.split(/A:\s*/);
+                      const question = questionPart
+                        ?.replace(/^Q:\s*/, "")
+                        .trim();
+                      const answer = answerPart?.trim();
+                      const isExpanded = expandedQuestions.includes(index);
+
+                      return (
+                        <div
+                          key={index}
+                          className="border border-gray-200 rounded-lg overflow-hidden hover:border-primary-300 transition-colors"
+                        >
+                          <button
+                            onClick={() => toggleQuestion(index)}
+                            className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="text-sm font-medium text-gray-900 pr-4">
+                              {question}
+                            </span>
+                            <div className="flex-shrink-0">
+                              {isExpanded ? (
+                                <ChevronUpIcon className="h-5 w-5 text-primary-600" />
+                              ) : (
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                          </button>
+                          {isExpanded && answer && (
+                            <div className="px-4 py-3 bg-white border-t border-gray-200">
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {answer}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No questions and answers identified
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Generate Section */}
 
             {/* Generate Section */}
             <div className="mt-8 bg-white shadow rounded-lg">
@@ -637,6 +830,27 @@ export default function RFPDetail() {
         onGenerate={handleAIGenerate}
         isLoading={generatingAI}
         rfpId={rfp._id}
+      />
+
+      {/* Attachment Upload Modal */}
+      <AttachmentUploadModal
+        isOpen={showAttachmentModal}
+        onClose={() => setShowAttachmentModal(false)}
+        onUpload={handleAttachmentUpload}
+        rfpId={rfp._id}
+      />
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setAttachmentToDelete(null);
+        }}
+        onConfirm={confirmDeleteAttachment}
+        title="Delete Attachment"
+        message={`Are you sure you want to delete "${attachmentToDelete?.name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
       />
     </Layout>
   );

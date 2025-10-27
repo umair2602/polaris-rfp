@@ -6,7 +6,7 @@ const SectionTitlesGenerator = require("../services/aiSectionsTitleGenerator");
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for RFP file uploads (PDF only)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {

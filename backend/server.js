@@ -6,6 +6,7 @@ const morgan = require("morgan");
 require("dotenv").config();
 
 const rfpRoutes = require("./routes/rfp");
+const attachmentRoutes = require("./routes/attachments");
 const proposalRoutes = require("./routes/proposals");
 const templateRoutes = require("./routes/templates");
 const contentRoutes = require("./routes/content");
@@ -55,6 +56,7 @@ if (MONGODB_URI) {
 
 // Routes
 app.use("/api/rfp", rfpRoutes);
+app.use("/api/rfp", attachmentRoutes);
 app.use("/api/proposals", proposalRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/content", contentRoutes);
