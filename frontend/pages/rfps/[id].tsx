@@ -13,9 +13,13 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   PaperClipIcon,
+  ArrowDownTrayIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import AIPreviewModal from "../../components/AIPreviewModal";
 import AttachmentUploadModal from "../../components/AttachmentUploadModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
+import { useToast } from "../../components/ui/Toast";
 
 // Utility function to trim title properly
 const trimTitle = (title: string, maxLength: number = 60): string => {
@@ -53,6 +57,10 @@ export default function RFPDetail() {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -89,10 +97,38 @@ export default function RFPDetail() {
 
     try {
       await rfpApi.uploadAttachments(rfp._id, formData);
-      alert("Attachments uploaded successfully");
+      toast.success("Attachments uploaded successfully");
+      // Reload RFP data to show newly uploaded attachments
+      await loadRFP(rfp._id);
     } catch (error) {
       console.error("Error uploading attachments:", error);
-      alert("Failed to upload attachments. Please try again.");
+      const message = (error && (error as any).message) || "Failed to upload attachments. Please try again.";
+      toast.error(message);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string, fileName: string) => {
+    setAttachmentToDelete({ id: attachmentId, name: fileName });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteAttachment = async () => {
+    if (!rfp || !attachmentToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await rfpApi.deleteAttachment(rfp._id, attachmentToDelete.id);
+      toast.success("Attachment deleted successfully");
+      // Reload RFP data to update attachments list
+      await loadRFP(rfp._id);
+      setDeleteModalOpen(false);
+      setAttachmentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      const message = (error && (error as any).message) || "Failed to delete attachment. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -428,11 +464,39 @@ export default function RFPDetail() {
                   </button>
                 </div>
               </div>
-              <div className="px-6 py-4">
-                <p className="text-sm text-gray-500">
-                  No attachments uploaded yet
-                </p>
-              </div>
+              
+             <div className="px-6 py-4">
+        {rfp?.attachments?.length ? (
+          <ul role="list" className="divide-y divide-gray-200">
+            {rfp.attachments.map((file) => (
+              <li key={file.fileName} className="py-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <PaperClipIcon className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {file.originalName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(file.fileSize / 1024).toFixed(1)} KB • {file.fileType.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleDeleteAttachment(file._id, file.originalName)}
+                    className="inline-flex items-center p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                    title="Delete attachment"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500">No attachments uploaded yet</p>
+        )}
+      </div>
             </div>
             {/* Main Content Grid */}
             <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -774,6 +838,19 @@ export default function RFPDetail() {
         onClose={() => setShowAttachmentModal(false)}
         onUpload={handleAttachmentUpload}
         rfpId={rfp._id}
+      />
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setAttachmentToDelete(null);
+        }}
+        onConfirm={confirmDeleteAttachment}
+        title="Delete Attachment"
+        message={`Are you sure you want to delete "${attachmentToDelete?.name}"? This action cannot be undone.`}
+        isDeleting={isDeleting}
       />
     </Layout>
   );

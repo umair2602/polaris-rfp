@@ -60,12 +60,14 @@ const getFileTypeCategory = (mimeType) => {
   if (mimeType === "application/pdf") return "pdf";
   if (
     mimeType === "application/msword" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   )
     return "doc";
   if (
     mimeType === "application/vnd.ms-excel" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   )
     return "excel";
   if (mimeType === "text/plain") return "txt";
@@ -74,12 +76,60 @@ const getFileTypeCategory = (mimeType) => {
 };
 
 // Upload attachments to an RFP
-router.post("/:id/upload-attachments", attachmentUpload.array("files", 10), async (req, res) => {
-  try {
-    const rfp = await RFP.findById(req.params.id);
+router.post(
+  "/:id/upload-attachments",
+  attachmentUpload.array("files", 10),
+  async (req, res) => {
+    try {
+      const rfp = await RFP.findById(req.params.id);
 
-    if (!rfp) {
-      // Clean up uploaded files if RFP not found
+      if (!rfp) {
+        // Clean up uploaded files if RFP not found
+        if (req.files) {
+          req.files.forEach((file) => {
+            fs.unlink(file.path, (err) => {
+              if (err) console.error("Error deleting file:", err);
+            });
+          });
+        }
+        return res.status(404).json({ error: "RFP not found" });
+      }
+
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      // Process each uploaded file
+      const attachments = req.files.map((file) => ({
+        fileName: file.filename,
+        originalName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        fileType: getFileTypeCategory(file.mimetype),
+        filePath: file.path,
+        uploadedAt: new Date(),
+        description: req.body.description || "",
+      }));
+
+      // Add attachments to RFP
+      rfp.attachments.push(...attachments);
+      await rfp.save();
+
+      res.json({
+        message: `${attachments.length} file(s) uploaded successfully`,
+        attachments: attachments.map((att) => ({
+          id: att._id,
+          fileName: att.fileName,
+          originalName: att.originalName,
+          fileSize: att.fileSize,
+          fileType: att.fileType,
+          uploadedAt: att.uploadedAt,
+          description: att.description,
+        })),
+      });
+    } catch (error) {
+      console.error("Error uploading attachments:", error);
+      // Clean up uploaded files on error
       if (req.files) {
         req.files.forEach((file) => {
           fs.unlink(file.path, (err) => {
@@ -87,54 +137,10 @@ router.post("/:id/upload-attachments", attachmentUpload.array("files", 10), asyn
           });
         });
       }
-      return res.status(404).json({ error: "RFP not found" });
+      res.status(500).json({ error: "Failed to upload attachments" });
     }
-
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
-    }
-
-    // Process each uploaded file
-    const attachments = req.files.map((file) => ({
-      fileName: file.filename,
-      originalName: file.originalname,
-      fileSize: file.size,
-      mimeType: file.mimetype,
-      fileType: getFileTypeCategory(file.mimetype),
-      filePath: file.path,
-      uploadedAt: new Date(),
-      description: req.body.description || "",
-    }));
-
-    // Add attachments to RFP
-    rfp.attachments.push(...attachments);
-    await rfp.save();
-
-    res.json({
-      message: `${attachments.length} file(s) uploaded successfully`,
-      attachments: attachments.map((att) => ({
-        id: att._id,
-        fileName: att.fileName,
-        originalName: att.originalName,
-        fileSize: att.fileSize,
-        fileType: att.fileType,
-        uploadedAt: att.uploadedAt,
-        description: att.description,
-      })),
-    });
-  } catch (error) {
-    console.error("Error uploading attachments:", error);
-    // Clean up uploaded files on error
-    if (req.files) {
-      req.files.forEach((file) => {
-        fs.unlink(file.path, (err) => {
-          if (err) console.error("Error deleting file:", err);
-        });
-      });
-    }
-    res.status(500).json({ error: "Failed to upload attachments" });
   }
-});
+);
 
 // Get all attachments for an RFP
 router.get("/:id/attachments", async (req, res) => {

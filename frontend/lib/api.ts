@@ -59,7 +59,7 @@ export interface RFP {
   bidRegistrationDate?: string;
   isDisqualified?: boolean;
   questionsAndAnswers?: string[];
-  Attachments?: any[];
+  attachments?: any[];
 }
 
 export interface Proposal {
@@ -100,6 +100,8 @@ export const rfpApi = {
     api.get<{ data: Proposal[] }>(`/api/rfp/${id}/proposals`),
   uploadAttachments: (id: string, data: FormData) =>
     api.post(`/api/rfp/${id}/upload-attachments`, data),
+  deleteAttachment: (rfpId: string, attachmentId: string) =>
+    api.delete(`/api/rfp/${rfpId}/attachments/${attachmentId}`),
 };
 
 // Proposal API calls
