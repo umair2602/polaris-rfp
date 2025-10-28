@@ -252,12 +252,12 @@ router.post('/:templateId/preview', (req, res) => {
     let customizedTemplate = JSON.parse(JSON.stringify(template));
 
     // Add RFP-specific sections if needed
-    if (rfpData.specialRequirements && rfpData.specialRequirements.length > 0) {
+    if (rfpData.criticalInformation && rfpData.criticalInformation.length > 0) {
       const complianceSection = {
-        title: 'Compliance & Special Requirements',
+        title: 'Compliance & Critical Information',
         contentType: 'compliance_details',
         required: true,
-        specialRequirements: rfpData.specialRequirements
+        criticalInformation: rfpData.criticalInformation
       };
       customizedTemplate.sections.splice(-1, 0, complianceSection);
     }
