@@ -188,7 +188,7 @@ router.put("/:id", async (req, res) => {
       "budgetRange",
       "keyRequirements",
       "deliverables",
-      "specialRequirements",
+      "criticalInformation",
       "timeline",
     ];
 

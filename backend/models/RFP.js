@@ -73,7 +73,7 @@ const rfpSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: []
   },
-  specialRequirements: [{
+  criticalInformation: [{
     type: String,
     trim: true
   }],

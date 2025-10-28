@@ -52,7 +52,7 @@ export interface RFP {
   evaluationCriteria: any[];
   deliverables: string[];
   timeline?: string;
-  specialRequirements: string[];
+  criticalInformation: string[];
   createdAt: string;
   questionsDeadline?: string;
   bidMeetingDate?: string;

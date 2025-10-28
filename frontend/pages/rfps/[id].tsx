@@ -608,14 +608,14 @@ export default function RFPDetail() {
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-5 border-b border-gray-200">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Special Requirements
+                    Critical Information
                   </h3>
                 </div>
                 <div className="px-6 py-4">
-                  {rfp.specialRequirements &&
-                  rfp.specialRequirements.length > 0 ? (
+                  {rfp.criticalInformation &&
+                  rfp.criticalInformation.length > 0 ? (
                     <ul className="space-y-2">
-                      {rfp.specialRequirements
+                      {rfp.criticalInformation
                         .slice(0, 5)
                         .map((requirement, index) => (
                           <li
@@ -633,7 +633,7 @@ export default function RFPDetail() {
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      No special requirements identified
+                      No critical information identified
                     </p>
                   )}
                 </div>

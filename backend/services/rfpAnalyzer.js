@@ -29,7 +29,7 @@ class RFPAnalyzer {
         .join("\n");
       text = text.replace(/[ \t]{2,}/g, " ");
       text = text.trim();
-      
+
       return text;
     } catch (err) {
       throw new Error(`PDF extraction failed: ${err.message || err}`);
@@ -42,86 +42,100 @@ class RFPAnalyzer {
   async extractTextFromURL(url) {
     try {
       console.log("Fetching content from URL:", url);
-      
+
       // Check if URL points to a PDF file (by extension or make a HEAD request to check content type)
-      const isPdfUrl = url.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf?') || url.toLowerCase().includes('.pdf#');
-      
+      const isPdfUrl =
+        url.toLowerCase().endsWith(".pdf") ||
+        url.toLowerCase().includes(".pdf?") ||
+        url.toLowerCase().includes(".pdf#");
+
       if (isPdfUrl) {
         console.log("Detected PDF URL, downloading and parsing as PDF...");
-        
+
         // Download PDF content
         const response = await axios.get(url, {
-          responseType: 'arraybuffer',
+          responseType: "arraybuffer",
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          }
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          },
         });
-        
+
         // Convert to buffer and extract text using PDF parser
         const pdfBuffer = Buffer.from(response.data);
         return await this.extractTextFromPDF(pdfBuffer);
       }
-      
+
       // For non-PDF URLs, first check content type with a HEAD request
       try {
         const headResponse = await axios.head(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          }
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          },
         });
-        
-        const contentType = headResponse.headers['content-type'] || '';
-        if (contentType.includes('application/pdf')) {
-          console.log("Detected PDF content type, downloading and parsing as PDF...");
-          
+
+        const contentType = headResponse.headers["content-type"] || "";
+        if (contentType.includes("application/pdf")) {
+          console.log(
+            "Detected PDF content type, downloading and parsing as PDF..."
+          );
+
           // Download PDF content
           const response = await axios.get(url, {
-            responseType: 'arraybuffer',
+            responseType: "arraybuffer",
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            },
           });
-          
+
           // Convert to buffer and extract text using PDF parser
           const pdfBuffer = Buffer.from(response.data);
           return await this.extractTextFromPDF(pdfBuffer);
         }
       } catch (headError) {
-        console.log("HEAD request failed, proceeding with regular HTML extraction:", headError.message);
+        console.log(
+          "HEAD request failed, proceeding with regular HTML extraction:",
+          headError.message
+        );
       }
-      
+
       // Fetch the web page for HTML content
       const response = await axios.get(url, {
         // timeout: 30000, // 30 second timeout
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        },
       });
 
       // Load HTML into Cheerio
       const $ = cheerio.load(response.data);
 
       // Remove unwanted elements (scripts, styles, navigation, etc.)
-      $('script, style, nav, header, footer, .nav, .navigation, .menu, .sidebar, .ads, .advertisement, .cookie-banner, .popup, .modal').remove();
+      $(
+        "script, style, nav, header, footer, .nav, .navigation, .menu, .sidebar, .ads, .advertisement, .cookie-banner, .popup, .modal"
+      ).remove();
 
       // Extract text content from main content areas
-      let text = '';
-      
+      let text = "";
+
       // Try to find main content areas first
       const mainSelectors = [
-        'main',
-        'article', 
-        '.content',
-        '.main-content',
-        '.post-content',
-        '.entry-content',
-        '#content',
-        '#main',
-        '.container .row',
-        '.page-content'
+        "main",
+        "article",
+        ".content",
+        ".main-content",
+        ".post-content",
+        ".entry-content",
+        "#content",
+        "#main",
+        ".container .row",
+        ".page-content",
       ];
 
-      let mainContent = '';
+      let mainContent = "";
       for (const selector of mainSelectors) {
         const element = $(selector);
         if (element.length > 0) {
@@ -132,7 +146,7 @@ class RFPAnalyzer {
 
       // If no main content found, extract from body
       if (!mainContent.trim()) {
-        mainContent = $('body').text();
+        mainContent = $("body").text();
       }
 
       // Clean up the text
@@ -182,7 +196,33 @@ Extract the following information from the RFP text:
   "projectScope": "string - Detailed project scope and objectives",
   "contactInformation": "string - Contact details (emails, phones, names)",
   "location": "string - Project location or client location",
-  "specialRequirements": ["array of strings - Special requirements like certifications, compliance, etc."],
+  "criticalInformation": ["array of strings - Extract ONLY the most CRITICAL, HIGH-STAKES requirements that represent significant barriers to entry or disqualification risks. Be HIGHLY SELECTIVE and include ONLY items that are:
+
+    TIER 1 - ABSOLUTE DISQUALIFIERS (extract with specific details):
+    - Named certifications/licenses with version/level (e.g., 'ISO 27001:2013 certification required', 'Active PE license in structural engineering', 'Top Secret security clearance for key personnel')
+    - Specific insurance minimums with dollar amounts (e.g., 'General liability insurance minimum $5M', 'Professional liability coverage of at least $2M per occurrence')
+    - Bonding requirements with amounts (e.g., 'Performance bond of 100% contract value required', 'Bid bond minimum $500,000')
+    - Mandatory minimum experience with numbers (e.g., 'Minimum 10 years experience in municipal zoning', 'Must have completed at least 5 projects over $1M in last 3 years', 'Lead consultant must have 15+ years in urban planning')
+    
+    TIER 2 - CRITICAL COMPLIANCE & LEGAL (extract with specifics):
+    - Explicit legal/regulatory compliance with penalties mentioned (e.g., 'Non-compliance with GDPR may result in immediate disqualification', 'Must comply with Davis-Bacon prevailing wage requirements')
+    - Government/industry-specific mandates with consequences (e.g., 'HIPAA compliance mandatory - violations void contract', 'Section 508 accessibility compliance required for all deliverables')
+    - Contractual obligations with financial penalties (e.g., 'Liquidated damages of $1,000/day for delays', 'Performance guarantee with 10% penalty clause')
+    
+    TIER 3 - SHOWSTOPPERS (extract with context):
+    - Technical requirements that would require major capability/infrastructure (e.g., 'Must maintain 24/7 SOC with minimum 10 certified analysts', 'Dedicated on-site office within 25 miles of project location required')
+    - Mandatory pre-qualification or registration with deadlines (e.g., 'Must be pre-qualified by 01/15/2025 - late applications rejected', 'Vendor registration portal closes 02/01/2025')
+    - Required attendance at meetings with disqualification clause (e.g., 'Attendance at mandatory pre-bid conference on 12/05/2024 required - failure to attend = automatic disqualification')
+    
+    EXCLUSIONS - DO NOT EXTRACT:
+    ❌ General compliance statements without penalties ('must comply with Ohio Revised Code')
+    ❌ Standard deliverable descriptions ('deliverables must be user-friendly')
+    ❌ Vague preferences ('experience in similar projects preferred')
+    ❌ Common sense requirements ('engagement with stakeholders')
+    ❌ Evaluation criteria that are scored but not disqualifying
+    ❌ Items already covered in keyRequirements or deliverables
+    
+    FORMAT: Each entry must be concrete, specific, and actionable with numbers, names, or clear thresholds. Think: 'Would a vendor need to make a significant investment, obtain a difficult certification, or risk disqualification if they lack this?' If not, don't include it."],
   "additionalInfo": ["array of strings - Any additional important information"],
   "questionsAndAnswers": ["array of strings - Any Q&A sections found in the RFP, including questions posed by vendors and answers provided by the issuer. Format each Q&A as 'Q: [question text] A: [answer text]'"]
 }
@@ -238,17 +278,23 @@ Rules:
   // ------------------------------
   async analyzeRFP(input, source = "uploaded_rfp.pdf") {
     try {
-      let text = '';
-      let extractionMethod = '';
+      let text = "";
+      let extractionMethod = "";
 
       // Detect input type and extract text accordingly
-      if (typeof input === 'string' && (input.startsWith('http://') || input.startsWith('https://'))) {
+      if (
+        typeof input === "string" &&
+        (input.startsWith("http://") || input.startsWith("https://"))
+      ) {
         // Input is a URL
         console.log("Detected URL input, extracting text...");
         text = await this.extractTextFromURL(input);
-        
+
         // Determine extraction method based on URL type
-        const isPdfUrl = input.toLowerCase().endsWith('.pdf') || input.toLowerCase().includes('.pdf?') || input.toLowerCase().includes('.pdf#');
+        const isPdfUrl =
+          input.toLowerCase().endsWith(".pdf") ||
+          input.toLowerCase().includes(".pdf?") ||
+          input.toLowerCase().includes(".pdf#");
         extractionMethod = isPdfUrl ? "pdf-from-url" : "web-scraping";
         source = input; // Use URL as source
       } else if (Buffer.isBuffer(input)) {
@@ -257,7 +303,9 @@ Rules:
         text = await this.extractTextFromPDF(input);
         extractionMethod = "pdf-parsing";
       } else {
-        throw new Error("Invalid input type. Expected URL string or PDF buffer.");
+        throw new Error(
+          "Invalid input type. Expected URL string or PDF buffer."
+        );
       }
 
       if (!text || text.length < 50) {
@@ -265,10 +313,10 @@ Rules:
       }
 
       console.log("Starting AI analysis...");
-      
+
       // Use AI to extract structured data
       const extractedData = await this.extractStructuredDataWithAI(text);
-      
+
       console.log("AI analysis completed successfully");
 
       // Create result compatible with existing RFP model
@@ -279,7 +327,8 @@ Rules:
         submissionDeadline: extractedData.projectDeadline || "Not available",
         questionsDeadline: extractedData.questionsDeadline || "Not available",
         bidMeetingDate: extractedData.bidMeetingDate || "Not available",
-        bidRegistrationDate: extractedData.bidRegistrationDate || "Not available",
+        bidRegistrationDate:
+          extractedData.bidRegistrationDate || "Not available",
         budgetRange: extractedData.budgetRange || "Not available",
         projectType: extractedData.projectType || "general",
         keyRequirements: extractedData.keyRequirements || [],
@@ -290,7 +339,7 @@ Rules:
         contactInformation: extractedData.contactInformation || "Not available",
         location: extractedData.location || "Not available",
         additionalInfo: extractedData.additionalInfo || [],
-        specialRequirements: extractedData.specialRequirements || [],
+        criticalInformation: extractedData.criticalInformation || [],
         questionsAndAnswers: extractedData.questionsAndAnswers || [],
         rawText: text,
         parsedSections: {
@@ -313,7 +362,7 @@ Rules:
       result.evaluationCriteria = ensureArray(result.evaluationCriteria);
       result.deliverables = ensureArray(result.deliverables);
       result.additionalInfo = ensureArray(result.additionalInfo);
-      result.specialRequirements = ensureArray(result.specialRequirements);
+      result.criticalInformation = ensureArray(result.criticalInformation);
       result.questionsAndAnswers = ensureArray(result.questionsAndAnswers);
 
       return result;
@@ -321,7 +370,6 @@ Rules:
       throw new Error(`RFP analysis failed: ${err.message || err}`);
     }
   }
-
 }
 
 module.exports = new RFPAnalyzer();

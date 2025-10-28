@@ -675,8 +675,8 @@ export default function ProposalDetail() {
                           {sectionName}
                         </h3>
                         <div className="flex items-center space-x-2">
-                          {/* Content Library Button - only show for content library sections */}
-                          {isContentLibrarySection(sectionData) && getContentLibraryType(sectionName) && (
+                          {/* Content Library Button - only show for content library sections, excluding Title */}
+                          {isContentLibrarySection(sectionData) && getContentLibraryType(sectionName) && sectionName !== 'Title' && (
                             <button
                               onClick={() => openContentLibrary(sectionName)}
                               className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
