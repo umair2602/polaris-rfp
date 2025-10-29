@@ -89,16 +89,55 @@ ANALYSIS INSTRUCTIONS:
    - Timeline/schedule/phases mentioned? → Include "Project Timeline"
    - References/past work/case studies mentioned? → Include "References"
 
-3. IDENTIFY unique requirements in this RFP that need additional sections:
-   - Compliance/regulatory requirements → Add appropriate compliance section
-   - Quality assurance/testing → Add quality section  
-   - Risk management → Add risk section
-   - Innovation/technology → Add innovation section
-   - Sustainability/environmental → Add sustainability section
-   - Training/support → Add training section
-   - Any other unique RFP requirements
+3. IDENTIFY unique requirements and create ADDITIONAL SECTIONS (be comprehensive - add 3-8 additional sections based on RFP content):
+   
+   ALWAYS CONSIDER THESE COMMON SECTIONS:
+   - Understanding & Analysis → Add if RFP describes client challenges, current situation, or project context
+   - Project Scope & Objectives → Add if RFP defines specific scope boundaries or objectives
+   - Deliverables → Add if RFP lists specific outputs, products, or deliverables
+   - Implementation Strategy → Add if RFP requires execution plan or deployment approach
+   - Quality Assurance → Add if RFP mentions quality standards, testing, validation, or acceptance criteria
+   - Risk Management → Add if RFP discusses potential risks, contingencies, or mitigation strategies
+   - Communication Plan → Add if RFP mentions stakeholder engagement, reporting, or coordination
+   - Change Management → Add if RFP involves organizational change, training, or adoption
+   
+   BASED ON SPECIFIC RFP CONTENT, ADD (these are EXAMPLES - create custom section titles that match the RFP's actual language and requirements):
+   
+   EXAMPLE SECTION IDEAS (adapt the title to match the RFP's specific terminology):
+   - Compliance-related: "Compliance & Regulatory Requirements", "Legal Framework", "Standards Adherence", or custom title based on specific regulations mentioned
+   - Security-related: "Security & Data Protection", "Cybersecurity Measures", "Information Security", or custom title based on security requirements
+   - Innovation-related: "Innovation & Technology", "Technical Innovation", "Emerging Technologies", or custom title matching the innovation focus
+   - Environmental: "Sustainability & Environmental Impact", "Green Initiatives", "Environmental Stewardship", or custom title for environmental concerns
+   - Training: "Training & Knowledge Transfer", "Capacity Building", "Staff Development", or custom title for training needs
+   - Support: "Maintenance & Support", "Post-Implementation Services", "Ongoing Operations", or custom title for support requirements
+   - Metrics: "Performance Metrics & KPIs", "Success Measurement", "Evaluation Framework", or custom title for performance tracking
+   - Stakeholders: "Stakeholder Engagement", "Community Involvement", "Public Participation", or custom title for stakeholder activities
+   - Transition: "Transition Planning", "Migration Strategy", "Handover Plan", or custom title for transition needs
+   - Testing: "Testing & Validation", "Quality Testing", "Pilot Programs", or custom title for testing requirements
+   - Readiness: "Organizational Readiness", "Capacity Assessment", "Preparedness Evaluation", or custom title for readiness topics
+   - Growth: "Scalability & Future Growth", "Long-term Vision", "Expansion Planning", or custom title for future planning
+   - Accessibility: "Accessibility & Inclusion", "Universal Design", "ADA Compliance", or custom title for accessibility requirements
+   - Integration: "Integration Requirements", "System Integration", "Platform Connectivity", or custom title for integration needs
+   - Qualifications: "Vendor Qualifications", "Company Credentials", "Organizational Capabilities", or custom title for qualification requirements
+   
+   IMPORTANT FLEXIBILITY RULES:
+   - These are EXAMPLES ONLY - you are NOT limited to these exact titles
+   - READ the RFP carefully and create section titles using the ACTUAL terminology and language from the RFP
+   - If the RFP uses specific terms (e.g., "Community Benefits Plan", "Equity Strategy", "Heritage Preservation"), use those as section titles
+   - Create custom sections for ANY significant topic, requirement, or evaluation criterion mentioned in the RFP
+   - Prioritize RFP-specific terminology over generic examples
+   - If the RFP has unique requirements not covered by examples above, CREATE NEW appropriate section titles
+   
+   BE STRATEGIC: Select 3-8 additional sections that are most relevant to THIS specific RFP, not all possible sections
 
-4. ORDER sections logically (Title first, Cover Letter second, then technical sections, then administrative sections)
+4. ORDER sections logically:
+   - Position 1: "Title" (always first)
+   - Position 2: "Cover Letter" (always second)
+   - Position 3-N: Technical and implementation sections (Understanding, Methodology, Personnel, Scope, Deliverables, Implementation, Quality, Risk, Communication, etc.)
+   - Near End: Administrative/supporting sections (Budget Estimate, Project Timeline)
+   - Final Position: "References" (always last if included)
+   
+   CRITICAL: Place all additional sections BEFORE "References" - References should always be the last section
 
 Return a JSON array of section titles that are specifically relevant to THIS RFP based on its actual content and requirements.`;
 
@@ -134,20 +173,38 @@ Return a JSON array of section titles that are specifically relevant to THIS RFP
 
     const cleaned = this.sanitizeSectionTitlesArray(titles);
 
+    // Separate sections into categories
     const compulsory = ['Title', 'Cover Letter'];
     const finalSections = [];
     const seenSections = new Set();
+    let referencesSection = null;
+    
+    // Add compulsory sections first
     for (const section of compulsory) {
       finalSections.push(section);
       seenSections.add(section.toLowerCase());
     }
+    
+    // Add all other sections, but hold References for the end
     for (const section of cleaned) {
       const lowerSection = section.toLowerCase();
       if (!seenSections.has(lowerSection)) {
-        finalSections.push(section);
-        seenSections.add(lowerSection);
+        // Check if this is the References section
+        if (lowerSection === 'references' || lowerSection.includes('reference')) {
+          referencesSection = section;
+          seenSections.add(lowerSection);
+        } else {
+          finalSections.push(section);
+          seenSections.add(lowerSection);
+        }
       }
     }
+    
+    // Add References at the end if it was included
+    if (referencesSection) {
+      finalSections.push(referencesSection);
+    }
+    
     return finalSections.slice(0, 15);
   }
 

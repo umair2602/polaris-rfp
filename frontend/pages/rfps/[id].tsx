@@ -639,62 +639,37 @@ export default function RFPDetail() {
                 </div>
               </div>
             </div>
-            {/* Question and Answers Section */}
+            {/* Clarification Questions Section */}
             <div className="mt-8 bg-white shadow rounded-lg">
               <div className="px-6 py-5 border-b border-gray-200">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Questions and Answers
+                  Clarification Questions
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Click on any question to view the answer
+                  Questions to ask the RFP issuer for clarification on ambiguous or missing information
                 </p>
               </div>
               <div className="px-6 py-4">
-                {rfp.questionsAndAnswers &&
-                rfp.questionsAndAnswers.length > 0 ? (
-                  <div className="space-y-3">
-                    {rfp.questionsAndAnswers.map((qa, index) => {
-                      const [questionPart, answerPart] = qa.split(/A:\s*/);
-                      const question = questionPart
-                        ?.replace(/^Q:\s*/, "")
-                        .trim();
-                      const answer = answerPart?.trim();
-                      const isExpanded = expandedQuestions.includes(index);
-
-                      return (
-                        <div
-                          key={index}
-                          className="border border-gray-200 rounded-lg overflow-hidden hover:border-primary-300 transition-colors"
-                        >
-                          <button
-                            onClick={() => toggleQuestion(index)}
-                            className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 transition-colors"
-                          >
-                            <span className="text-sm font-medium text-gray-900 pr-4">
-                              {question}
-                            </span>
-                            <div className="flex-shrink-0">
-                              {isExpanded ? (
-                                <ChevronUpIcon className="h-5 w-5 text-primary-600" />
-                              ) : (
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              )}
-                            </div>
-                          </button>
-                          {isExpanded && answer && (
-                            <div className="px-4 py-3 bg-white border-t border-gray-200">
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {answer}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                {rfp.clarificationQuestions &&
+                rfp.clarificationQuestions.length > 0 ? (
+                  <div className="space-y-2">
+                    {rfp.clarificationQuestions.map((question, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <span className="flex-shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary-100 text-primary-600 text-xs font-medium mr-3 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                          {question}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">
-                    No questions and answers identified
+                    No clarification questions identified
                   </p>
                 )}
               </div>

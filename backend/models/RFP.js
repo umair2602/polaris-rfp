@@ -77,10 +77,10 @@ const rfpSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
-  questionsAndAnswers: {
-    type: mongoose.Schema.Types.Mixed,
-    default: []
-  },
+  clarificationQuestions: [{
+    type: String,
+    trim: true
+  }],
   attachments: [{
     fileName: {
       type: String,
