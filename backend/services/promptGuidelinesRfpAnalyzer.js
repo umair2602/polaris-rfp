@@ -142,8 +142,117 @@ Extract the following information from the RFP text:
     
     This array should be EXTENSIVE - aim for 50-200+ items for a typical RFP, more for complex RFPs. Every important detail should be captured here."],
   "additionalInfo": ["array of strings - Any additional important information"],
-  "clarificationQuestions": ["array of strings - Questions that need clarification about ambiguous, missing, or confusing aspects of the RFP. Only include questions, no answers."]
-}
+"clarificationQuestions": ["array of strings - Generate 5-10 strategic business clarification questions that identify ambiguities, gaps, or unclear aspects in the PROJECT REQUIREMENTS and BUSINESS NEEDS that could impact accurate scoping, pricing, and project execution.
+
+FOCUS ON BUSINESS & PROJECT CLARITY - NOT PROPOSAL MECHANICS
+
+**Ambiguous Business Requirements:**
+- Vague scope boundaries or undefined deliverable specifications
+- Unclear success criteria or performance expectations (e.g., 'improve engagement' - by how much? measured how?)
+- Undefined technical requirements, integrations, or compatibility needs
+- Unclear functional requirements lacking measurable acceptance criteria
+- Contradictory business objectives or conflicting priorities
+
+**Missing Project Details:**
+- Undefined baseline data or current state information needed for planning
+- Missing details about existing systems, infrastructure, or resources to work with
+- Unclear access to personnel, data, facilities, or other project dependencies
+- Unspecified volumes, quantities, or scale (e.g., number of users, transaction volumes, data sizes)
+- Missing information about stakeholders, decision-makers, or approval processes
+
+**Unclear Deliverable Expectations:**
+- Ambiguous deliverable quality standards or acceptance criteria
+- Undefined level of detail, depth, or comprehensiveness expected
+- Missing specifications for deliverable components or content requirements
+- Unclear formats, mediums, or platforms for deliverables (beyond basic file types)
+- Unspecified post-delivery support, training, or knowledge transfer expectations
+
+**Scope & Operational Ambiguities:**
+- Undefined project boundaries (what's in scope vs. out of scope)
+- Unclear roles and responsibilities between client and vendor
+- Missing details about existing processes, workflows, or constraints
+- Ambiguous change management or governance procedures
+- Unspecified assumptions about resources, timelines, or dependencies
+
+**Technical & Business Context:**
+- Missing information about target audience characteristics or needs
+- Unclear business drivers, pain points, or root causes being addressed
+- Undefined constraints (regulatory, technical, organizational, cultural)
+- Missing context about previous attempts, lessons learned, or known challenges
+- Unclear integration with existing initiatives or strategic plans
+
+**Success Metrics & Outcomes:**
+- Vague outcome expectations without quantifiable targets
+- Undefined measurement methodology or data collection approaches
+- Missing baseline metrics or benchmarks for comparison
+- Unclear reporting frequency, KPIs, or performance monitoring approach
+
+QUESTION FORMAT:
+- Focus on clarifying BUSINESS NEEDS and PROJECT REQUIREMENTS
+- Ask about scope, deliverables, success criteria, technical needs, stakeholder expectations
+- Avoid questions about proposal format, submission, or evaluation process
+- Frame questions to understand what needs to be delivered and how success is measured
+- Use specific references to RFP content when possible
+
+Examples of GOOD business questions:
+✓ 'What is the current baseline engagement score, and what specific improvement target would be considered successful (e.g., increase from X% to Y%)?'
+✓ 'How many employees are expected to participate in the focus groups and interviews, and are there specific demographic or departmental representation requirements?'
+✓ 'Are there existing engagement survey tools or data sets that the vendor should analyze or integrate with, or will new instruments need to be developed?'
+✓ 'What specific departmental or organizational barriers to engagement have been identified previously, if any?'
+✓ 'Will the vendor have direct access to employee contact information and HR systems, or will all communication be coordinated through a college liaison?'
+✓ 'What level of executive/leadership involvement is expected in the research process (interviews, review, implementation)?'
+✓ 'Are there any recent organizational changes (restructuring, policy changes, leadership transitions) that should inform the research approach?'
+
+Examples of BAD questions to AVOID:
+✗ 'What format should the proposal be submitted in?' (proposal mechanics)
+✗ 'How will proposals be evaluated?' (evaluation process)
+✗ 'What is the budget for this project?' (already should be in budgetRange field)
+✗ 'When is the proposal due?' (already in submissionDeadline field)
+✗ 'Can you clarify the page limits for the proposal?' (proposal formatting)
+
+OUTPUT: Return 5-10 questions as an array of strings, each focused on clarifying BUSINESS REQUIREMENTS, PROJECT SCOPE, and DELIVERABLE EXPECTATIONS. Questions only - no answers, explanations, or commentary."];
+FOCUS ON BUSINESS & PROJECT CLARITY - NOT PROPOSAL MECHANICS
+
+**Ambiguous Business Requirements:**
+- Vague scope boundaries or undefined deliverable specifications
+- Unclear success criteria or performance expectations (e.g., 'improve engagement' - by how much? measured how?)
+- Undefined technical requirements, integrations, or compatibility needs
+- Unclear functional requirements lacking measurable acceptance criteria
+- Contradictory business objectives or conflicting priorities
+
+**Missing Project Details:**
+- Undefined baseline data or current state information needed for planning
+- Missing details about existing systems, infrastructure, or resources to work with
+- Unclear access to personnel, data, facilities, or other project dependencies
+- Unspecified volumes, quantities, or scale (e.g., number of users, transaction volumes, data sizes)
+- Missing information about stakeholders, decision-makers, or approval processes
+
+**Unclear Deliverable Expectations:**
+- Ambiguous deliverable quality standards or acceptance criteria
+- Undefined level of detail, depth, or comprehensiveness expected
+- Missing specifications for deliverable components or content requirements
+- Unclear formats, mediums, or platforms for deliverables (beyond basic file types)
+- Unspecified post-delivery support, training, or knowledge transfer expectations
+
+**Scope & Operational Ambiguities:**
+- Undefined project boundaries (what's in scope vs. out of scope)
+- Unclear roles and responsibilities between client and vendor
+- Missing details about existing processes, workflows, or constraints
+- Ambiguous change management or governance procedures
+- Unspecified assumptions about resources, timelines, or dependencies
+
+**Technical & Business Context:**
+- Missing information about target audience characteristics or needs
+- Unclear business drivers, pain points, or root causes being addressed
+- Undefined constraints (regulatory, technical, organizational, cultural)
+- Missing context about previous attempts, lessons learned, or known challenges
+- Unclear integration with existing initiatives or strategic plans
+
+**Success Metrics & Outcomes:**
+- Vague outcome expectations without quantifiable targets
+- Undefined measurement methodology or data collection approaches
+- Missing baseline metrics or benchmarks for comparison
+- Unclear reporting frequency, KPIs, or performance monitoring approach
 
 Rules:
 - Extract information exactly as written in the document
@@ -156,26 +265,7 @@ Rules:
 - For arrays, extract all relevant items as separate strings
 - Be comprehensive but accurate - don't invent information
 - Only use "Not available" if the information is truly not present anywhere in the document
-- For timeline, extract the overall project duration/period. Format as:
-  * "MM/DD/YYYY to MM/DD/YYYY" for date ranges (e.g., "06/10/2024 to 06/10/2025")
-  * "12 months" or "6 months" if duration is specified in months
-  * Use project start date to project completion/end date when available
-  * Normalize all dates to MM/DD/YYYY format
-  * Return "Not available" if no timeline information is found
-- For "clarificationQuestions", generate 5-10 insightful questions that identify ambiguous, unclear, missing, or potentially confusing aspects of the RFP that vendors would genuinely need clarification on. Focus on:
-  * Ambiguous requirements or specifications that could be interpreted multiple ways
-  * Missing information that is critical for accurate proposal preparation (budget details, technical specs, timelines, deliverable formats, etc.)
-  * Contradictory or conflicting statements in the RFP
-  * Vague terms or undefined acronyms/terminology
-  * Unclear evaluation criteria or scoring methodology
-  * Missing submission requirements or format specifications
-  * Unstated assumptions that need confirmation
-  * Technical or logistical details that are not clearly specified
-  * Format: "What is the expected format for [deliverable]?" or "Can you clarify the requirement for [ambiguous item]?" or "Is [assumption] correct?"
-  * Return ONLY questions, no answers - these are meant to be sent to the RFP issuer for clarification
-  * Questions should be professional, specific, and actionable
-  * Avoid generic questions - make them specific to THIS RFP's content and gaps
-- Return only valid JSON, no additional text or commentary`;
+`;
   }
 }
 

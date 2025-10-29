@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const { getSectionGuidelines, getGeneralGuidelines } = require('../utils/promptGuidelines');
+const promptGuidelines = require('../utils/promptGuidelines');
 const SharedSectionFormatters = require('./sharedSectionFormatters');
 
 class AIProposalGenerator {
@@ -72,9 +72,9 @@ CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
 ${JSON.stringify(aiOnlySections)}
 
 SECTION GUIDELINES:
-${getSectionGuidelines()}
+${promptGuidelines.getSectionGuidelines()}
 
-${getGeneralGuidelines()}
+${promptGuidelines.getGeneralGuidelines()}
 
 CRITICAL: Return the sections as a JSON object with EXACTLY the above section titles as keys and content as values.
 For the "Title" key, return contact info as a multi-line string with exactly these fields:

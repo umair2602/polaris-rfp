@@ -1,8 +1,9 @@
 // Centralized section guidelines used by both AI generators
 // Keep this as the single source of truth for formatting and structure
 
-function getSectionGuidelines() {
-  return `
+class PromptGuidelines {
+  getSectionGuidelines() {
+    return `
 **For "Title" sections** (if present):
    Carefully scan the entire text for ANY contact information and extract the following:
    
@@ -210,10 +211,10 @@ function getSectionGuidelines() {
      * Use tables (properly formatted markdown) when presenting structured information, comparisons, or frameworks
    - **NEVER USE PLACEHOLDERS**: Never write "not available", "not specified", "to be determined", or similar placeholders - always provide substantive, actionable, relevant content
    - **MAINTAIN PROPOSAL VOICE**: Write confidently and professionally, using "we will", "our approach", "our team" to demonstrate capability and commitment`;
-}
+  }
 
-function getGeneralGuidelines() {
-  return `
+  getGeneralGuidelines() {
+    return `
 GENERAL GUIDELINES:
 - Generate COMPREHENSIVE, DETAILED content for each section - avoid brief or superficial responses
 - Use professional, persuasive language that demonstrates expertise
@@ -235,6 +236,7 @@ FORMATTING RULES:
 - No need for hardcoded section names - use pattern matching on section titles
 - Apply table formats for Methodology, Timeline, Budget sections based on keyword detection
 - Use proper markdown syntax throughout`;
+  }
 }
 
-module.exports = { getSectionGuidelines, getGeneralGuidelines };
+module.exports = new PromptGuidelines();
