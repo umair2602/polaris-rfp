@@ -108,7 +108,7 @@ export default function SignupPage() {
               <span className="text-sm text-gray-600 me-1.5">Already have an account?</span>
               <Link
                 href={from ? `/login?from=${from}` : '/login'}
-                className="text-sm text-primary hover:text-primary-dark transition-colors"
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
               >
                 Log in
               </Link>
