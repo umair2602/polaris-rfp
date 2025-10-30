@@ -2,6 +2,7 @@ import '../styles/globals.css'
 import Head from 'next/head'
 import type { AppProps } from 'next/app'
 import { ToastProvider } from '../components/ui/Toast'
+import { AuthProvider } from '../lib/auth'
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -12,9 +13,11 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="shortcut icon" href="/favicon.png" />
       </Head>
       <ToastProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Component {...pageProps} />
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-gray-50">
+            <Component {...pageProps} />
+          </div>
+        </AuthProvider>
       </ToastProvider>
     </>
   )

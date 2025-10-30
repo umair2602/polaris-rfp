@@ -3,17 +3,8 @@ class MockDatabase {
   constructor() {
     this.rfps = [];
     this.proposals = [];
-    this.users = [
-      {
-        _id: 'admin_user_id',
-        username: 'admin',
-        email: 'admin@eighthgen.com',
-        fullName: 'System Administrator',
-        role: 'admin',
-        isActive: true,
-        password: '$2a$12$kqyzAOLAaIwXzzdY04Nfce3LqQytuKehXdcJRWvkoAv8lXdpjoBBW' // admin123
-      }
-    ];
+    // Start with no pre-created users for a simple public signup/login flow
+    this.users = [];
     this.nextId = 1;
   }
 

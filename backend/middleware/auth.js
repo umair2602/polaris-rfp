@@ -27,12 +27,5 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const adminMiddleware = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    next();
-  } else {
-    res.status(403).json({ error: 'Admin access required.' });
-  }
-};
-
-module.exports = { authMiddleware, adminMiddleware };
+// No admin middleware: app supports only regular user authentication
+module.exports = { authMiddleware };

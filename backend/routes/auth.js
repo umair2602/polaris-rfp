@@ -60,7 +60,6 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.json({
       username: req.user.username,
       email: req.user.email,
-      full_name: req.user.fullName,
       role: req.user.role
     });
   } catch (error) {
@@ -68,12 +67,11 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
-// Register (admin only - for demo purposes)
-router.post('/register', [
+// Public signup (open to all users)
+router.post('/signup', [
   body('username').isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('fullName').notEmpty().withMessage('Full name is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -81,7 +79,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password, fullName } = req.body;
+    const { username, email, password,  } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -97,18 +95,26 @@ router.post('/register', [
       username,
       email,
       password,
-      fullName,
       role: 'user'
     });
 
     await user.save();
 
+    // Generate token for the new user (same format as login)
+    const token = jwt.sign(
+      { userId: user._id, username: user.username },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: process.env.JWT_EXPIRE || '24h' }
+    );
+
     res.status(201).json({
       message: 'User created successfully',
+      access_token: token,
+      token_type: 'bearer',
+      expires_in: process.env.JWT_EXPIRE || '24h',
       user: {
         username: user.username,
         email: user.email,
-        fullName: user.fullName
       }
     });
   } catch (error) {

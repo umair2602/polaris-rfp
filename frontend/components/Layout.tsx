@@ -15,6 +15,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import GlobalSearch from "./GlobalSearch";
+import { useAuth } from '../lib/auth'
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,7 +23,10 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false)
+  const [footerMenuOpen, setFooterMenuOpen] = useState(false)
   const router = useRouter();
+  const { user, logout } = useAuth()
 
   // Search moved to GlobalSearch component
 
@@ -96,11 +100,37 @@ export default function Layout({ children }: LayoutProps) {
         {/* Sidebar footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 relative">
               <UserCircleIcon className="h-8 w-8 text-gray-400" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Admin User</p>
-                <p className="text-xs text-gray-500">admin@rfpsystem.com</p>
+                {user ? (
+                  <>
+                    <button
+                      onClick={() => setFooterMenuOpen((s) => !s)}
+                      className="text-left"
+                      aria-expanded={footerMenuOpen}
+                    >
+                      <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                      <p className="text-xs text-gray-500">{user.email || ''}</p>
+                    </button>
+                    {footerMenuOpen && (
+                      <div className="absolute left-0 -top-36 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                        <div className="py-1">
+                          <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile</Link>
+                          <button
+                            onClick={async () => { setFooterMenuOpen(false); await logout(); router.push('/login') }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                          >Sign out</button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-900">Guest</p>
+                    <Link href="/login" className="text-xs text-blue-600">Sign in</Link>
+                  </>
+                )}
               </div>
             </div>
             <ChevronDownIcon className="h-5 w-5 text-gray-400" />
@@ -135,13 +165,38 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
               </button> */}
               
-              <div className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                <UserCircleIcon className="h-8 w-8 text-gray-600" />
-                <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">Admin</p>
-                  <p className="text-xs text-gray-500">Online</p>
-                </div>
-                {/* <ChevronDownIcon className="h-4 w-4 text-gray-400" /> */}
+              <div className="relative">
+                <button
+                  onClick={() => setTopMenuOpen((s) => !s)}
+                  className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                  aria-expanded={topMenuOpen}
+                >
+                  <UserCircleIcon className="h-8 w-8 text-gray-600" />
+                  <div className="hidden sm:block text-left">
+                    {user ? (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                        <p className="text-xs text-gray-500">Online</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">Guest</p>
+                        <p className="text-xs text-gray-500">Offline</p>
+                      </>
+                    )}
+                  </div>
+                </button>
+                {topMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile</Link>
+                      <button
+                        onClick={async () => { setTopMenuOpen(false); await logout(); router.push('/login') }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                      >Sign out</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
+import api from './api'
 
 interface User {
   username: string
   email?: string
-  full_name?: string
 }
 
 interface AuthContextType {
   user: User | null
   login: (username: string, password: string) => Promise<boolean>
+  setToken: (token: string) => Promise<void>
   logout: () => void
   loading: boolean
 }
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
       fetchCurrentUser()
     } else {
       setLoading(false)
@@ -32,26 +32,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await axios.get(`${process.env.API_BASE_URL}/api/auth/me`)
+      const response = await api.get(`/api/auth/me`)
       setUser(response.data)
     } catch (error) {
       localStorage.removeItem('token')
-      delete axios.defaults.headers.common['Authorization']
+      delete api.defaults.headers.common['Authorization']
     } finally {
       setLoading(false)
     }
   }
 
+  const setToken = async (token: string) => {
+    try {
+  localStorage.setItem('token', token)
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // fetch and set current user
+      await fetchCurrentUser()
+    } catch (err) {
+      console.error('setToken error', err)
+    }
+  }
+
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await axios.post(`${process.env.API_BASE_URL}/api/auth/login`, {
+      const response = await api.post(`/api/auth/login`, {
         username,
         password
       })
       
       const { access_token } = response.data
       localStorage.setItem('token', access_token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
       
       await fetchCurrentUser()
       return true
@@ -62,12 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
+    delete api.defaults.headers.common['Authorization']
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, setToken, logout, loading }}>
       {children}
     </AuthContext.Provider>
   )

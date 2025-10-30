@@ -17,17 +17,8 @@ class FileStorage {
     // Initialize data files if they don't exist
     this.initializeFile(this.rfpFile, []);
     this.initializeFile(this.proposalFile, []);
-    this.initializeFile(this.userFile, [
-      {
-        _id: 'admin_user_id',
-        username: 'admin',
-        email: 'admin@eighthgen.com',
-        fullName: 'System Administrator',
-        role: 'admin',
-        isActive: true,
-        password: '$2a$12$kqyzAOLAaIwXzzdY04Nfce3LqQytuKehXdcJRWvkoAv8lXdpjoBBW' // admin123
-      }
-    ]);
+    // Start with an empty users list by default (no built-in admin user)
+    this.initializeFile(this.userFile, []);
     
     this.nextId = this.getNextId();
   }
