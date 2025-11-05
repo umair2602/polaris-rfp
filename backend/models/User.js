@@ -22,13 +22,16 @@ const userSchema = new mongoose.Schema({
     minlength: 6
   },
   fullName: {
-    type: String,
-    required: true,
-    trim: true
+    // fullName removed — username will be used as the primary display identifier
+    // kept here commented for reference
+    // type: String,
+    // required: true,
+    // trim: true
   },
   role: {
     type: String,
-    enum: ['admin', 'user'],
+    // Simplified: only regular users are supported in this application
+    enum: ['user'],
     default: 'user'
   },
   isActive: {

@@ -11,6 +11,8 @@ const proposalRoutes = require("./routes/proposals");
 const templateRoutes = require("./routes/templates");
 const contentRoutes = require("./routes/content");
 const aiRoutes = require("./routes/ai");
+const authRoutes = require("./routes/auth");
+
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -61,6 +63,7 @@ app.use("/api/proposals", proposalRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/auth", authRoutes);
 
 // Health check
 app.get("/", (req, res) => {

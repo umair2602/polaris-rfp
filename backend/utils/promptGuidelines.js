@@ -1,8 +1,9 @@
 // Centralized section guidelines used by both AI generators
 // Keep this as the single source of truth for formatting and structure
 
-function getSectionGuidelines() {
-  return `
+class PromptGuidelines {
+  getSectionGuidelines() {
+    return `
 **For "Title" sections** (if present):
    Carefully scan the entire text for ANY contact information and extract the following:
    
@@ -174,14 +175,68 @@ function getSectionGuidelines() {
    - Focus on projects that demonstrate relevant capabilities for the current RFP
 
 **For any other sections**:
-   Generate comprehensive content that is directly relevant to the section title and RFP requirements
-   - Write substantial content (200-400 words per section depending on importance)
-   - Use specific details and terminology from the RFP document when available
-   - Address the section topic thoroughly with multiple paragraphs or detailed bullet points
-   - Show deep understanding of the RFP requirements and how they relate to this section
-   - **IMPORTANT**: Even if the RFP doesn't explicitly mention the section topic (e.g., "Sustainability", "Innovation", "Quality Assurance"), generate thoughtful, relevant content that demonstrates how your approach to this RFP addresses that topic
-   - For sections not directly mentioned in RFP, infer and propose how this topic relates to the project goals, deliverables, and client needs
-   - Never write "not available" or "not specified" - always provide substantive, relevant content`;
+   Generate comprehensive, detailed content that is directly relevant to the section title and RFP requirements
+   - **DEPTH BASED ON IMPORTANCE**: Scale the depth and detail of your response based on the section's importance to the RFP requirements and the amount of relevant information available in the RFP document
+   - **STRUCTURE YOUR RESPONSE**:
+     * Start with an opening paragraph that connects the section topic to the specific RFP requirements and project goals
+     * Include multiple detailed body paragraphs or major subsections, each addressing a different aspect of the topic (adjust based on complexity and RFP details)
+     * Conclude with a summary paragraph that ties everything back to delivering value for this specific project
+   - **USE SPECIFIC DETAILS**:
+     * Reference specific requirements, deliverables, and constraints from the RFP document
+     * Use industry-standard terminology and technical language appropriate to the project domain
+     * Include concrete examples, methodologies, tools, or approaches relevant to this section topic
+     * Incorporate quantifiable metrics, standards, or benchmarks where applicable (e.g., "achieving 99.9% uptime", "reducing processing time by 40%", "ISO 9001 compliance")
+   - **DEMONSTRATE DEEP UNDERSTANDING**:
+     * Show how this section's topic directly supports the RFP's stated objectives and success criteria
+     * Explain WHY this aspect matters for the client's specific situation and project context
+     * Address potential challenges or risks related to this topic and how they'll be mitigated
+     * Connect this section to other aspects of the proposal (methodology, timeline, team expertise)
+   - **FOR SECTIONS NOT EXPLICITLY IN RFP**:
+     * **CRITICAL**: Even if the RFP doesn't explicitly mention this section topic (e.g., "Sustainability", "Innovation", "Quality Assurance", "Risk Management", "Data Security"), you MUST generate thoughtful, comprehensive content
+     * Infer and explain how this topic relates to the project's goals, deliverables, industry best practices, and client needs
+     * Propose specific strategies, frameworks, or approaches for how this aspect will be addressed in the project execution
+     * Demonstrate thought leadership by addressing this topic proactively, showing foresight and comprehensive planning
+   - **CONTENT DEPTH EXAMPLES BY SECTION TYPE**:
+     * Quality Assurance: Describe QA methodologies, testing protocols, review processes, quality metrics, compliance checks, acceptance criteria, and continuous improvement processes
+     * Risk Management: Identify potential risks (technical, schedule, budget, resource, external), mitigation strategies, contingency plans, monitoring approach, and escalation procedures
+     * Innovation/Technology: Detail innovative approaches, cutting-edge tools/technologies, modern methodologies, competitive advantages, and how innovation drives project success
+     * Sustainability: Address environmental impact, sustainable practices, long-term viability, resource efficiency, social responsibility, and alignment with sustainability goals
+     * Data Security/Privacy: Explain security frameworks, data protection measures, compliance requirements, access controls, encryption, backup/recovery, and incident response
+     * Communication Plan: Detail stakeholder communication strategies, reporting frequency/formats, escalation paths, collaboration tools, meeting cadence, and documentation approaches
+     * Change Management: Describe change management methodology, stakeholder engagement, training plans, adoption strategies, resistance management, and success measurement
+   - **FORMATTING FOR READABILITY**:
+     * Use clear paragraph breaks for prose-heavy sections
+     * Use bullet points or numbered lists for multi-faceted topics with distinct components
+     * Include subheadings (using **bold** text) to organize complex sections into logical subsections
+     * Use tables (properly formatted markdown) when presenting structured information, comparisons, or frameworks
+   - **NEVER USE PLACEHOLDERS**: Never write "not available", "not specified", "to be determined", or similar placeholders - always provide substantive, actionable, relevant content
+   - **MAINTAIN PROPOSAL VOICE**: Write confidently and professionally, using "we will", "our approach", "our team" to demonstrate capability and commitment`;
+  }
+
+  getGeneralGuidelines() {
+    return `
+GENERAL GUIDELINES:
+- Generate COMPREHENSIVE, DETAILED content for each section - avoid brief or superficial responses
+- Use professional, persuasive language that demonstrates expertise
+- Include extensive specific details from the RFP document throughout all sections
+- Reference specific RFP requirements, constraints, objectives, and deliverables in each section
+- **CRITICAL: For Methodology/Process/Phases sections, you MUST use proper markdown table format with 2 columns (Phase | Deliverables). Use <br> tags for line breaks within cells**
+- **CRITICAL: For Budget/Cost sections, you MUST use proper markdown table format with 5 columns (Phase | Role | Hourly Rate | Hours | Cost)**
+- Use bullet points for lists but ensure each point is substantial and detailed
+- Make content highly relevant to the project type, scope, and complexity described in the RFP
+- Ensure each section is comprehensive and thorough - prioritize depth over brevity
+- Use **bold** for emphasis and *italics* for important details
+- Adapt language and examples to match the RFP's project type and industry context
+- Draw extensively from the RFP raw text to create content that shows deep document analysis
+- Each section should feel substantial and valuable to proposal evaluators
+- **CRITICAL**: For sections not explicitly mentioned in the RFP, demonstrate how your expertise in that area will benefit the project - DO NOT say "not available" or similar phrases
+
+FORMATTING RULES:
+- The AI should intelligently detect section types based on keywords in the section titles and apply appropriate formatting automatically
+- No need for hardcoded section names - use pattern matching on section titles
+- Apply table formats for Methodology, Timeline, Budget sections based on keyword detection
+- Use proper markdown syntax throughout`;
+  }
 }
 
-module.exports = { getSectionGuidelines };
+module.exports = new PromptGuidelines();

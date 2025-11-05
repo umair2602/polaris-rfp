@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -11,10 +11,12 @@ import {
   XMarkIcon,
   BellIcon,
   UserCircleIcon,
+  ChevronUpIcon,
   ChevronDownIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import GlobalSearch from "./GlobalSearch";
+import { useAuth } from '../lib/auth'
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,7 +24,38 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false)
+  const [footerMenuOpen, setFooterMenuOpen] = useState(false)
   const router = useRouter();
+  const { user, logout } = useAuth()
+  const topMenuRef = useRef<HTMLDivElement | null>(null)
+  const footerMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    function handleDocClick(e: MouseEvent) {
+      const target = e.target as Node
+      if (topMenuRef.current && !topMenuRef.current.contains(target)) {
+        setTopMenuOpen(false)
+      }
+      if (footerMenuRef.current && !footerMenuRef.current.contains(target)) {
+        setFooterMenuOpen(false)
+      }
+    }
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setTopMenuOpen(false)
+        setFooterMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleDocClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleDocClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [])
 
   // Search moved to GlobalSearch component
 
@@ -96,14 +129,48 @@ export default function Layout({ children }: LayoutProps) {
         {/* Sidebar footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl">
-            <div className="flex items-center space-x-3">
+            <div ref={footerMenuRef} className="flex items-center space-x-3 relative">
               <UserCircleIcon className="h-8 w-8 text-gray-400" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Admin User</p>
-                <p className="text-xs text-gray-500">admin@rfpsystem.com</p>
+                {user ? (
+                  <>
+                    <button
+                      onClick={() => setFooterMenuOpen((s) => !s)}
+                      className="text-left"
+                      aria-expanded={footerMenuOpen}
+                    >
+                      <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                      <p className="text-xs text-gray-500">{user.email || ''}</p>
+                    </button>
+                    {footerMenuOpen && (
+                      <div className="absolute left-0 bottom-full mb-4 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                        <div className="py-1.5">
+                          <button
+                            onClick={async () => { setFooterMenuOpen(false); await logout(); router.push('/login') }}
+                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-150 flex items-center gap-2 rounded-md"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-900">Guest</p>
+                    <Link href="/login" className="text-xs text-blue-600">Sign in</Link>
+                  </>
+                )}
               </div>
             </div>
-            <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+            {footerMenuOpen ? (
+              <ChevronUpIcon className="h-5 w-5 text-gray-400" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+            )}
           </div>
         </div>
       </div>
@@ -135,13 +202,48 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
               </button> */}
               
-              <div className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                <UserCircleIcon className="h-8 w-8 text-gray-600" />
-                <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">Admin</p>
-                  <p className="text-xs text-gray-500">Online</p>
-                </div>
-                {/* <ChevronDownIcon className="h-4 w-4 text-gray-400" /> */}
+              <div ref={topMenuRef} className="relative">
+                <button
+                  onClick={() => setTopMenuOpen((s) => !s)}
+                  className="flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                  aria-expanded={topMenuOpen}
+                >
+                  <UserCircleIcon className="h-8 w-8 text-gray-600" />
+                  <div className="hidden sm:block text-left">
+                    {user ? (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                        <p className="text-xs text-gray-500">Online</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">Guest</p>
+                        <p className="text-xs text-gray-500">Offline</p>
+                      </>
+                    )}
+                  </div>
+                    {/* chevron indicating menu state */}
+                    {topMenuOpen ? (
+                      <ChevronUpIcon className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                    )}
+                </button>
+                {topMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                    <div className="py-1.5">
+                      <button
+                        onClick={async () => { setTopMenuOpen(false); await logout(); router.push('/login') }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-150 flex items-center gap-2 rounded-md"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

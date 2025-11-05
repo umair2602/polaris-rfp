@@ -1,7 +1,7 @@
 const OpenAI = require("openai");
 const SharedSectionFormatters = require("./sharedSectionFormatters");
 const AIProposalGenerator = require("./aiProposalGenerator");
-const { getSectionGuidelines } = require("../utils/promptGuidelines");
+const promptGuidelines = require("../utils/promptGuidelines");
 
 class TemplateGenerator {
   // Lazy OpenAI initialization
@@ -217,7 +217,7 @@ class TemplateGenerator {
 
     const systemPrompt = `You are an expert proposal writer. Generate a comprehensive proposal strictly using the template-provided section titles and the RFP context. \n\nNOTE: Some sections will be handled separately using content library data. Generate content ONLY for the following sections:\n\n${dynamicList}\n\nCRITICAL: Use EXACTLY these section titles as JSON keys, in this order:\n${JSON.stringify(
       aiOnlySections
-    )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- **CRITICAL: For Methodology/Process/Phases sections, you MUST use proper markdown table format with 2 columns (Phase | Deliverables)**\n- **CRITICAL: For Budget/Cost sections, you MUST use proper markdown table format with 5 columns (Phase | Role | Hourly Rate | Hours | Cost)**\n- Use <br> tags for line breaks within table cells\n- Keep content grounded in the RFP context; avoid hallucinations\n\nSECTION GUIDELINES:\n${getSectionGuidelines()}\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
+    )}${coverLetterInstructions}\n\nFormatting rules:\n- Each JSON value must be markdown-formatted content for that section\n- Do not include any extra keys or wrapper text outside the JSON\n- Use professional, persuasive language\n- **CRITICAL: For Methodology/Process/Phases sections, you MUST use proper markdown table format with 2 columns (Phase | Deliverables)**\n- **CRITICAL: For Budget/Cost sections, you MUST use proper markdown table format with 5 columns (Phase | Role | Hourly Rate | Hours | Cost)**\n- Use <br> tags for line breaks within table cells\n- Keep content grounded in the RFP context; avoid hallucinations\n\nSECTION GUIDELINES:\n${promptGuidelines.getSectionGuidelines()}\n\nTemplate guidance for each non-compulsory section (use as hints, adapt to the RFP):\n${perSectionGuidance}`;
 
     const userPrompt = `RFP Information:\n- Title: ${rfp.title}\n- Client: ${
       rfp.clientName

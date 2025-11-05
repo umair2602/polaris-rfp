@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const { getSectionGuidelines } = require('../utils/promptGuidelines');
+const promptGuidelines = require('../utils/promptGuidelines');
 const SharedSectionFormatters = require('./sharedSectionFormatters');
 
 class AIProposalGenerator {
@@ -72,25 +72,9 @@ CRITICAL: Use EXACTLY these section titles as JSON keys, in this order:
 ${JSON.stringify(aiOnlySections)}
 
 SECTION GUIDELINES:
-${getSectionGuidelines()}
+${promptGuidelines.getSectionGuidelines()}
 
-GUIDELINES:
-- Generate COMPREHENSIVE, DETAILED content for each section - avoid brief or superficial responses
-- Use professional, persuasive language that demonstrates expertise
-- Include extensive specific details from the RFP document throughout all sections
-- Reference specific RFP requirements, constraints, objectives, and deliverables in each section
-- **CRITICAL: For Methodology/Process/Phases sections, you MUST use proper markdown table format with 2 columns (Phase | Deliverables). Use <br> tags for line breaks within cells**
-- **CRITICAL: For Budget/Cost sections, you MUST use proper markdown table format with 5 columns (Phase | Role | Hourly Rate | Hours | Cost)**
-- Use bullet points for lists but ensure each point is substantial and detailed
-- Make content highly relevant to the project type, scope, and complexity described in the RFP
-- Ensure each section is comprehensive and thorough - prioritize depth over brevity
-- Use **bold** for emphasis and *italics* for important details
-- Adapt language and examples to match the RFP's project type and industry context
-- Draw extensively from the RFP raw text to create content that shows deep document analysis
-- Each section should feel substantial and valuable to proposal evaluators
-- **CRITICAL**: For sections not explicitly mentioned in the RFP, demonstrate how your expertise in that area will benefit the project - DO NOT say "not available" or similar phrases
-
-IMPORTANT: The AI should intelligently detect section types based on keywords in the section titles and apply appropriate formatting automatically. No need for hardcoded section names.
+${promptGuidelines.getGeneralGuidelines()}
 
 CRITICAL: Return the sections as a JSON object with EXACTLY the above section titles as keys and content as values.
 For the "Title" key, return contact info as a multi-line string with exactly these fields:
@@ -130,24 +114,16 @@ Note: The RFP includes these attached documents with their extracted content abo
 ${rfp.rawText ? `\nRFP Full Text:\n${rfp.rawText}` : ''}
 
 INSTRUCTIONS:
-
-Generate COMPREHENSIVE, DETAILED content for each section based on the section title and RFP requirements:
-
-- **For Understanding/Approach sections**: Write 4-6 detailed paragraphs (400-600 words) using extensive specific details from the RFP text, reference client's situation, challenges, and requirements thoroughly
-- **For Personnel/Team sections**: Include 4-6 team members with real people only, detailed credentials and achievements, comprehensive experience descriptions relevant to RFP
-- **For Methodology/Process sections**: Create 4-6 detailed phases with comprehensive deliverables. **CRITICAL: MUST use markdown table format with exactly 2 columns: Phase and Deliverables. Use HTML <br> tags for line breaks within table cells. The table must start with header row with pipe separators, followed by separator row with dashes, then data rows. Each phase should have 3-5 numbered deliverables separated by <br> tags.**
-- **For Schedule/Timeline sections**: Create realistic detailed timeline with 4-6 phases, use heading format with comprehensive 3-4 sentence paragraphs per phase
-- **For Budget/Cost sections**: Create detailed cost breakdown with comprehensive descriptions. **CRITICAL: MUST use markdown table format with exactly 5 columns: Phase, Role, Hourly Rate, Hours, and Cost ($). Include subtotal rows and final total.**
-- **For References/Experience sections**: Include 4-5 highly relevant past projects with detailed scope descriptions that relate to current RFP
-- **For Cover Letter sections**: Use formal letter format with comprehensive, personalized content that addresses RFP specifics
-- **For any other sections**: Generate substantial content (200-400 words) that thoroughly addresses the section topic using RFP details
+Generate comprehensive proposal content for each section following the SECTION GUIDELINES provided above. All formatting rules, content depth requirements, and section-specific instructions are defined in those guidelines.
 
 CRITICAL REQUIREMENTS:
+- Follow the section-specific formatting rules from SECTION GUIDELINES based on keyword detection in section titles
 - Each section must be SUBSTANTIAL and COMPREHENSIVE - avoid brief responses
 - Use extensive details from the RFP document throughout all sections
-- Apply appropriate formatting rules based on section content type detection
+- Apply appropriate formatting (tables, bullet points, paragraphs) based on section type
 - Demonstrate deep analysis and understanding of the RFP requirements
 - Generate content that would impress proposal evaluators with its thoroughness and relevance
+- For sections not explicitly mentioned in the RFP, demonstrate thought leadership and expertise
 
 Generate a comprehensive proposal with all sections formatted as markdown, using the information provided in the RFP data.`;
 

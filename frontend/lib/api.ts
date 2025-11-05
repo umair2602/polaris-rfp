@@ -58,7 +58,7 @@ export interface RFP {
   bidMeetingDate?: string;
   bidRegistrationDate?: string;
   isDisqualified?: boolean;
-  questionsAndAnswers?: string[];
+  clarificationQuestions?: string[];
   attachments?: any[];
 }
 

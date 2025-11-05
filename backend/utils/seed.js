@@ -7,25 +7,8 @@ async function seedDatabase() {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rfp_system');
     console.log('Connected to MongoDB');
 
-    // Check if admin user exists
-    const existingAdmin = await User.findOne({ username: 'admin' });
-    
-    if (!existingAdmin) {
-      const adminUser = new User({
-        username: 'admin',
-        email: 'admin@eighthgen.com',
-        password: 'admin123',
-        fullName: 'System Administrator',
-        role: 'admin'
-      });
-
-      await adminUser.save();
-      console.log('Admin user created successfully');
-      console.log('Username: admin');
-      console.log('Password: admin123');
-    } else {
-      console.log('Admin user already exists');
-    }
+    // No admin seeding required for simple user signup/login flow
+    console.log('Skipping admin user seed; application uses public signup/login.');
 
     await mongoose.connection.close();
     console.log('Database seeded successfully');
