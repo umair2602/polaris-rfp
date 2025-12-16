@@ -1,23 +1,33 @@
-import Head from 'next/head'
-import Layout from '../components/Layout'
-import { useState, useEffect } from 'react'
-import { rfpApi, RFP, Proposal } from '../lib/api'
-import Link from 'next/link'
-import Modal from '../components/ui/Modal'
-import RfpProposalsSection from '../components/rfps/RfpProposalsSection'
-import { 
-  DocumentTextIcon, 
-  PlusIcon, 
+import {
   BuildingOfficeIcon,
-  CurrencyDollarIcon,
   CalendarDaysIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  TrashIcon,
-  PencilIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
+import Head from 'next/head'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import Layout from '../components/Layout'
+import RfpProposalsSection from '../components/rfps/RfpProposalsSection'
+import Modal from '../components/ui/Modal'
+import { Proposal, RFP, extractList, rfpApi } from '../lib/api'
+
+const getFitBadge = (score: number | undefined) => {
+  if (score === undefined || score === null) {
+    return { label: 'Fit —', cls: 'bg-gray-100 text-gray-700' }
+  }
+  if (score >= 80)
+    return { label: `Fit ${score}`, cls: 'bg-green-100 text-green-800' }
+  if (score >= 60)
+    return { label: `Fit ${score}`, cls: 'bg-yellow-100 text-yellow-800' }
+  return { label: `Fit ${score}`, cls: 'bg-red-100 text-red-800' }
+}
 
 export default function RFPs() {
   const [rfps, setRfps] = useState<RFP[]>([])
@@ -28,8 +38,12 @@ export default function RFPs() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [rfpToDelete, setRfpToDelete] = useState<RFP | null>(null)
   const [expandedRfp, setExpandedRfp] = useState<string | null>(null)
-  const [rfpProposals, setRfpProposals] = useState<Record<string, Proposal[]>>({})
-  const [loadingProposals, setLoadingProposals] = useState<Record<string, boolean>>({})
+  const [rfpProposals, setRfpProposals] = useState<Record<string, Proposal[]>>(
+    {},
+  )
+  const [loadingProposals, setLoadingProposals] = useState<
+    Record<string, boolean>
+  >({})
 
   useEffect(() => {
     loadRFPs()
@@ -38,11 +52,7 @@ export default function RFPs() {
   const loadRFPs = async () => {
     try {
       const response = await rfpApi.list()
-      const rfpData = Array.isArray((response as any).data?.data)
-        ? (response as any).data.data
-        : Array.isArray(response.data)
-        ? response.data
-        : []
+      const rfpData = extractList<RFP>(response)
       setRfps(rfpData)
       setFilteredRfps(rfpData)
     } catch (error) {
@@ -57,21 +67,24 @@ export default function RFPs() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(rfp =>
-        rfp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        rfp.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (rfp) =>
+          rfp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          rfp.clientName.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
     // Filter by project type
     if (selectedProjectType !== 'all') {
-      filtered = filtered.filter(rfp => rfp.projectType === selectedProjectType)
+      filtered = filtered.filter(
+        (rfp) => rfp.projectType === selectedProjectType,
+      )
     }
 
     setFilteredRfps(filtered)
   }, [rfps, searchTerm, selectedProjectType])
 
-  const projectTypes = Array.from(new Set(rfps.map(rfp => rfp.projectType)))
+  const projectTypes = Array.from(new Set(rfps.map((rfp) => rfp.projectType)))
 
   const handleDeleteRFP = (rfp: RFP) => {
     setRfpToDelete(rfp)
@@ -82,7 +95,7 @@ export default function RFPs() {
     if (!rfpToDelete) return
     try {
       await rfpApi.delete(rfpToDelete._id)
-      const updatedRfps = rfps.filter(r => r._id !== rfpToDelete._id)
+      const updatedRfps = rfps.filter((r) => r._id !== rfpToDelete._id)
       setRfps(updatedRfps)
       setFilteredRfps(updatedRfps)
       // Clear proposals cache for deleted RFP
@@ -104,22 +117,20 @@ export default function RFPs() {
       setExpandedRfp(rfpId)
       // Load proposals if not already loaded
       if (!rfpProposals[rfpId] && !loadingProposals[rfpId]) {
-        setLoadingProposals(prev => ({ ...prev, [rfpId]: true }))
+        setLoadingProposals((prev) => ({ ...prev, [rfpId]: true }))
         try {
           const response = await rfpApi.getProposals(rfpId)
-          const proposalsData = Array.isArray(response.data?.data) ? response.data.data : []
-          setRfpProposals(prev => ({ ...prev, [rfpId]: proposalsData }))
+          const proposalsData = extractList<Proposal>(response)
+          setRfpProposals((prev) => ({ ...prev, [rfpId]: proposalsData }))
         } catch (error) {
           console.error('Error loading proposals:', error)
-          setRfpProposals(prev => ({ ...prev, [rfpId]: [] }))
+          setRfpProposals((prev) => ({ ...prev, [rfpId]: [] }))
         } finally {
-          setLoadingProposals(prev => ({ ...prev, [rfpId]: false }))
+          setLoadingProposals((prev) => ({ ...prev, [rfpId]: false }))
         }
       }
     }
   }
-
-
 
   if (loading) {
     return (
@@ -182,7 +193,7 @@ export default function RFPs() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 appearance-none bg-grey-100 "
                 >
                   <option value="all">All Project Types</option>
-                  {projectTypes.map(type => (
+                  {projectTypes.map((type) => (
                     <option key={type} value={type}>
                       {type.replace('_', ' ')}
                     </option>
@@ -213,7 +224,10 @@ export default function RFPs() {
           {filteredRfps.length > 0 ? (
             <ul className="divide-y divide-gray-200">
               {filteredRfps.map((rfp) => (
-                <li key={rfp._id} className="hover:bg-gray-50 transition-colors">
+                <li
+                  key={rfp._id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center flex-1 min-w-0">
@@ -221,8 +235,12 @@ export default function RFPs() {
                           onClick={() => toggleRfpExpansion(rfp._id)}
                           className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors shadow-sm hover:shadow-md"
                           style={{ backgroundColor: '#3b82f6' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = '#2563eb')
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = '#3b82f6')
+                          }
                         >
                           {expandedRfp === rfp._id ? (
                             <ChevronDownIcon className="h-5 w-5 text-white" />
@@ -231,7 +249,7 @@ export default function RFPs() {
                           )}
                         </button>
                         <div className="flex flex-col min-w-0 flex-1">
-                          <Link 
+                          <Link
                             href={`/rfps/${rfp._id}`}
                             className="text-sm font-medium text-primary-600 truncate hover:text-primary-800"
                           >
@@ -239,7 +257,8 @@ export default function RFPs() {
                           </Link>
                           {rfpProposals[rfp._id] && (
                             <span className="text-xs text-gray-500 mt-1">
-                              {rfpProposals[rfp._id].length} proposal{rfpProposals[rfp._id].length !== 1 ? 's' : ''}
+                              {rfpProposals[rfp._id].length} proposal
+                              {rfpProposals[rfp._id].length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -250,6 +269,19 @@ export default function RFPs() {
                             Disqualified
                           </span>
                         )}
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            getFitBadge((rfp as any)?.fitScore).cls
+                          }`}
+                          title={
+                            Array.isArray((rfp as any)?.fitReasons) &&
+                            (rfp as any).fitReasons.length > 0
+                              ? (rfp as any).fitReasons.join('\n')
+                              : 'Fit score'
+                          }
+                        >
+                          {getFitBadge((rfp as any)?.fitScore).label}
+                        </span>
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                           {rfp.projectType.replace('_', ' ')}
                         </span>
@@ -285,12 +317,16 @@ export default function RFPs() {
                         {rfp.submissionDeadline && (
                           <p className="flex items-center text-sm text-gray-500 sm:mt-0">
                             <CalendarDaysIcon className="h-4 w-4 mr-1" />
-                            Due {new Date(rfp.submissionDeadline).toLocaleDateString('en-US')}
+                            Due{' '}
+                            {new Date(
+                              rfp.submissionDeadline,
+                            ).toLocaleDateString('en-US')}
                           </p>
                         )}
                       </div>
                       <div className="mt-2 flex items-center text-xs text-gray-400 sm:mt-0">
-                        Uploaded {new Date(rfp.createdAt).toLocaleDateString('en-US')}
+                        Uploaded{' '}
+                        {new Date(rfp.createdAt).toLocaleDateString('en-US')}
                       </div>
                     </div>
 
@@ -309,8 +345,12 @@ export default function RFPs() {
           ) : (
             <div className="text-center py-12">
               <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No RFPs</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by uploading your first RFP.</p>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No RFPs
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by uploading your first RFP.
+              </p>
               <div className="mt-6">
                 <Link
                   href="/rfps/upload"
@@ -325,14 +365,20 @@ export default function RFPs() {
         </div>
         <Modal
           isOpen={showDeleteModal}
-          onClose={() => { setShowDeleteModal(false); setRfpToDelete(null) }}
+          onClose={() => {
+            setShowDeleteModal(false)
+            setRfpToDelete(null)
+          }}
           title={rfpToDelete ? `Delete "${rfpToDelete.title}"?` : 'Delete RFP'}
           size="sm"
           footer={
             <div className="flex items-center space-x-3">
               <button
                 className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
-                onClick={() => { setShowDeleteModal(false); setRfpToDelete(null) }}
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setRfpToDelete(null)
+                }}
               >
                 Cancel
               </button>

@@ -1,187 +1,255 @@
-import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
-import Head from "next/head";
-import Layout from "../../components/Layout";
-import { rfpApi, proposalApi, templateApi, RFP, Template } from "../../lib/api";
 import {
-  DocumentTextIcon,
-  CalendarDaysIcon,
-  CurrencyDollarIcon,
   BuildingOfficeIcon,
+  CalendarDaysIcon,
   ClockIcon,
-  PlusIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
   PaperClipIcon,
-  ArrowDownTrayIcon,
+  PlusIcon,
   XMarkIcon,
-} from "@heroicons/react/24/outline";
-import AIPreviewModal from "../../components/AIPreviewModal";
-import AttachmentUploadModal from "../../components/AttachmentUploadModal";
-import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
-import { useToast } from "../../components/ui/Toast";
+} from '@heroicons/react/24/outline'
+import Head from 'next/head'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+import { useEffect, useState } from 'react'
+import AIPreviewModal from '../../components/AIPreviewModal'
+import AttachmentUploadModal from '../../components/AttachmentUploadModal'
+import ConfirmDeleteModal from '../../components/ConfirmDeleteModal'
+import Layout from '../../components/Layout'
+import { useToast } from '../../components/ui/Toast'
+import {
+  contentApi,
+  extractList,
+  proposalApi,
+  RFP,
+  rfpApi,
+  Template,
+  templateApi,
+} from '../../lib/api'
 
 // Utility function to trim title properly
 const trimTitle = (title: string, maxLength: number = 60): string => {
-  if (title.length <= maxLength) return title;
+  if (title.length <= maxLength) return title
 
   // Find the last space before the max length to avoid cutting words
-  const trimmed = title.substring(0, maxLength);
-  const lastSpaceIndex = trimmed.lastIndexOf(" ");
+  const trimmed = title.substring(0, maxLength)
+  const lastSpaceIndex = trimmed.lastIndexOf(' ')
 
   if (lastSpaceIndex > maxLength * 0.7) {
-    return trimmed.substring(0, lastSpaceIndex) + "...";
+    return trimmed.substring(0, lastSpaceIndex) + '...'
   }
 
-  return trimmed + "...";
-};
+  return trimmed + '...'
+}
 
 // Utility function to check if a date has passed
 const isDatePassed = (dateString?: string): boolean => {
-  if (!dateString) return false;
-  const date = new Date(dateString);
-  return !isNaN(date.getTime()) && date < new Date();
-};
+  if (!dateString) return false
+  const date = new Date(dateString)
+  return !isNaN(date.getTime()) && date < new Date()
+}
 
 export default function RFPDetail() {
-  const router = useRouter();
-  const { id } = router.query;
-  const [rfp, setRfp] = useState<RFP | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const router = useRouter()
+  const { id } = router.query
+  const [rfp, setRfp] = useState<RFP | null>(null)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [rfpProposals, setRfpProposals] = useState<any[]>([])
+  const [proposalsLoading, setProposalsLoading] = useState(false)
+  const [updatingDecisionId, setUpdatingDecisionId] = useState<string | null>(
+    null,
+  )
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  )
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [generatingTemplate, setGeneratingTemplate] = useState<string | null>(
-    null
-  );
-  const [showAIPreviewModal, setShowAIPreviewModal] = useState(false);
-  const [generatingAI, setGeneratingAI] = useState(false);
-  const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
-  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const toast = useToast();
+    null,
+  )
+  const [showAIPreviewModal, setShowAIPreviewModal] = useState(false)
+  const [generatingAI, setGeneratingAI] = useState(false)
+  const [expandedQuestions, setExpandedQuestions] = useState<number[]>([])
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
-    if (id && typeof id === "string") {
-      loadRFP(id);
+    if (id && typeof id === 'string') {
+      loadRFP(id)
     }
-  }, [id]);
+  }, [id])
 
   const loadRFP = async (rfpId: string) => {
     try {
-      const [rfpResponse, templatesResponse] = await Promise.all([
-        rfpApi.get(rfpId),
-        templateApi.list(),
-      ]);
-      setRfp(rfpResponse.data);
-      console;
-      const templatesData =
-        templatesResponse.data?.data || templatesResponse.data || [];
-      setTemplates(Array.isArray(templatesData) ? templatesData : []);
+      const [rfpResponse, templatesResponse, companiesResponse] =
+        await Promise.all([
+          rfpApi.get(rfpId),
+          templateApi.list(),
+          contentApi.getCompanies(),
+        ])
+      setRfp(rfpResponse.data)
+      const templatesData = extractList<Template>(templatesResponse)
+      setTemplates(templatesData)
+
+      const companiesData = extractList<any>(companiesResponse)
+      setCompanies(companiesData)
+      if (!selectedCompanyId) {
+        const polaris = companiesData.find((c) =>
+          String(c?.name || '')
+            .toLowerCase()
+            .includes('polaris'),
+        )
+        const defaultCompany = polaris || companiesData[0]
+        setSelectedCompanyId(defaultCompany?.companyId || null)
+      }
+
+      setProposalsLoading(true)
+      try {
+        const p = await rfpApi.getProposals(rfpId)
+        setRfpProposals(extractList<any>(p))
+      } finally {
+        setProposalsLoading(false)
+      }
     } catch (error) {
-      console.error("Error loading RFP:", error);
-      setError("Failed to load RFP details");
+      console.error('Error loading RFP:', error)
+      setError('Failed to load RFP details')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleAttachmentUpload = async (files: FileList | null) => {
-    if (!rfp || !files) return;
+    if (!rfp || !files) return
 
-    const formData = new FormData();
+    const formData = new FormData()
     Array.from(files).forEach((file) => {
-      formData.append("files", file);
-    });
+      formData.append('files', file)
+    })
 
     try {
-      await rfpApi.uploadAttachments(rfp._id, formData);
-      toast.success("Attachments uploaded successfully");
+      await rfpApi.uploadAttachments(rfp._id, formData)
+      toast.success('Attachments uploaded successfully')
       // Reload RFP data to show newly uploaded attachments
-      await loadRFP(rfp._id);
+      await loadRFP(rfp._id)
     } catch (error) {
-      console.error("Error uploading attachments:", error);
-      const message = (error && (error as any).message) || "Failed to upload attachments. Please try again.";
-      toast.error(message);
+      console.error('Error uploading attachments:', error)
+      const message =
+        (error && (error as any).message) ||
+        'Failed to upload attachments. Please try again.'
+      toast.error(message)
     }
-  };
+  }
 
-  const handleDeleteAttachment = async (attachmentId: string, fileName: string) => {
-    setAttachmentToDelete({ id: attachmentId, name: fileName });
-    setDeleteModalOpen(true);
-  };
+  const handleDeleteAttachment = async (
+    attachmentId: string,
+    fileName: string,
+  ) => {
+    setAttachmentToDelete({ id: attachmentId, name: fileName })
+    setDeleteModalOpen(true)
+  }
 
   const confirmDeleteAttachment = async () => {
-    if (!rfp || !attachmentToDelete) return;
+    if (!rfp || !attachmentToDelete) return
 
-    setIsDeleting(true);
+    setIsDeleting(true)
     try {
-      await rfpApi.deleteAttachment(rfp._id, attachmentToDelete.id);
-      toast.success("Attachment deleted successfully");
+      await rfpApi.deleteAttachment(rfp._id, attachmentToDelete.id)
+      toast.success('Attachment deleted successfully')
       // Reload RFP data to update attachments list
-      await loadRFP(rfp._id);
-      setDeleteModalOpen(false);
-      setAttachmentToDelete(null);
+      await loadRFP(rfp._id)
+      setDeleteModalOpen(false)
+      setAttachmentToDelete(null)
     } catch (error) {
-      console.error("Error deleting attachment:", error);
-      const message = (error && (error as any).message) || "Failed to delete attachment. Please try again.";
-      toast.error(message);
+      console.error('Error deleting attachment:', error)
+      const message =
+        (error && (error as any).message) ||
+        'Failed to delete attachment. Please try again.'
+      toast.error(message)
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   const generateProposal = async (templateId: string) => {
-    if (!rfp) return;
+    if (!rfp) return
 
-    setGeneratingTemplate(templateId);
+    setGeneratingTemplate(templateId)
     try {
       const response = await proposalApi.generate({
         rfpId: rfp._id,
         templateId,
         title: `Proposal for ${trimTitle(rfp.title, 40)}`,
+        companyId: selectedCompanyId || undefined,
         customContent: {},
-      });
+      })
 
       // Navigate to the generated proposal
-      router.push(`/proposals/${response.data._id}`);
+      router.push(`/proposals/${response.data._id}`)
     } catch (error) {
-      console.error("Error generating proposal:", error);
-      alert("Failed to generate proposal. Please try again.");
+      console.error('Error generating proposal:', error)
+      alert('Failed to generate proposal. Please try again.')
     } finally {
-      setGeneratingTemplate(null);
+      setGeneratingTemplate(null)
     }
-  };
+  }
 
   const handleAIGenerate = async () => {
-    if (!rfp) return;
+    if (!rfp) return
 
-    setGeneratingAI(true);
+    setGeneratingAI(true)
     try {
       const response = await proposalApi.generate({
         rfpId: rfp._id,
-        templateId: "ai-template", // Use a special identifier for AI generation
+        templateId: 'ai-template', // Use a special identifier for AI generation
         title: `AI Proposal for ${trimTitle(rfp.title, 35)}`,
+        companyId: selectedCompanyId || undefined,
         customContent: {},
-      });
+      })
 
       // Navigate to the generated proposal
-      router.push(`/proposals/${response.data._id}`);
+      router.push(`/proposals/${response.data._id}`)
     } catch (error) {
-      console.error("Error generating AI proposal:", error);
-      alert("Failed to generate AI proposal. Please try again.");
+      console.error('Error generating AI proposal:', error)
+      alert('Failed to generate AI proposal. Please try again.')
     } finally {
-      setGeneratingAI(false);
-      setShowAIPreviewModal(false);
+      setGeneratingAI(false)
+      setShowAIPreviewModal(false)
     }
-  };
+  }
+
+  const setProposalDecision = async (
+    proposalId: string,
+    next: '' | 'shortlist' | 'reject',
+  ) => {
+    setUpdatingDecisionId(proposalId)
+    try {
+      const resp = await proposalApi.updateReview(proposalId, {
+        decision: next || null,
+      })
+      const updated = resp.data
+      setRfpProposals((prev) =>
+        prev.map((p) => (p._id === proposalId ? updated : p)),
+      )
+    } catch (e) {
+      console.error('Failed to update proposal decision:', e)
+      alert('Failed to update decision. Please try again.')
+    } finally {
+      setUpdatingDecisionId(null)
+    }
+  }
 
   const toggleQuestion = (index: number) => {
     setExpandedQuestions((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
-  };
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index],
+    )
+  }
 
   if (loading) {
     return (
@@ -190,7 +258,7 @@ export default function RFPDetail() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
-    );
+    )
   }
 
   if (error || !rfp) {
@@ -202,7 +270,7 @@ export default function RFPDetail() {
             RFP not found
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            {error || "The RFP you are looking for does not exist."}
+            {error || 'The RFP you are looking for does not exist.'}
           </p>
           <div className="mt-6">
             <button
@@ -214,7 +282,7 @@ export default function RFPDetail() {
           </div>
         </div>
       </Layout>
-    );
+    )
   }
 
   return (
@@ -271,7 +339,7 @@ export default function RFPDetail() {
                       {rfp.clientName}
                       <span className="mx-2">•</span>
                       <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {rfp.projectType.replace("_", " ")}
+                        {rfp.projectType.replace('_', ' ')}
                       </span>
                     </div>
                   </div>
@@ -284,6 +352,42 @@ export default function RFPDetail() {
         {/* Content */}
         <div className="mt-8">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {Array.isArray(rfp.dateWarnings) && rfp.dateWarnings.length > 0 && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="text-sm font-semibold text-amber-900">
+                  Timing / sanity warnings
+                </div>
+                <ul className="mt-2 text-sm text-amber-800 list-disc pl-5 space-y-1">
+                  {rfp.dateWarnings.slice(0, 8).map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {typeof (rfp as any)?.fitScore === 'number' && (
+              <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Finder fit score
+                  </div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {(rfp as any).fitScore}
+                  </div>
+                </div>
+                {Array.isArray((rfp as any)?.fitReasons) &&
+                  (rfp as any).fitReasons.length > 0 && (
+                    <ul className="mt-2 text-sm text-slate-700 list-disc pl-5 space-y-1">
+                      {(rfp as any).fitReasons
+                        .slice(0, 8)
+                        .map((w: any, idx: any) => (
+                          <li key={idx}>{w}</li>
+                        ))}
+                    </ul>
+                  )}
+              </div>
+            )}
+
             {/* Overview Cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -298,7 +402,7 @@ export default function RFPDetail() {
                           Budget Range
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {rfp.budgetRange || "Not specified"}
+                          {rfp.budgetRange || 'Not specified'}
                         </dd>
                       </dl>
                     </div>
@@ -320,9 +424,9 @@ export default function RFPDetail() {
                         <dd className="text-lg font-medium text-gray-900">
                           {rfp.submissionDeadline
                             ? new Date(
-                                rfp.submissionDeadline
-                              ).toLocaleDateString("en-US")
-                            : "Not specified"}
+                                rfp.submissionDeadline,
+                              ).toLocaleDateString('en-US')
+                            : 'Not specified'}
                         </dd>
                         {rfp.submissionDeadline &&
                           isDatePassed(rfp.submissionDeadline) && (
@@ -348,7 +452,7 @@ export default function RFPDetail() {
                           Timeline
                         </dt>
                         <dd className="text-sm font-medium text-gray-900">
-                          {rfp.timeline || "To be determined"}
+                          {rfp.timeline || 'To be determined'}
                         </dd>
                       </dl>
                     </div>
@@ -370,9 +474,9 @@ export default function RFPDetail() {
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.bidMeetingDate
                             ? new Date(rfp.bidMeetingDate).toLocaleDateString(
-                                "en-US"
+                                'en-US',
                               )
-                            : "Not specified"}
+                            : 'Not specified'}
                         </dd>
                         {rfp.bidMeetingDate &&
                           isDatePassed(rfp.bidMeetingDate) && (
@@ -399,9 +503,9 @@ export default function RFPDetail() {
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.bidRegistrationDate
                             ? new Date(
-                                rfp.bidRegistrationDate
-                              ).toLocaleDateString("en-US")
-                            : "Not specified"}
+                                rfp.bidRegistrationDate,
+                              ).toLocaleDateString('en-US')
+                            : 'Not specified'}
                         </dd>
                         {rfp.bidRegistrationDate &&
                           isDatePassed(rfp.bidRegistrationDate) && (
@@ -428,9 +532,9 @@ export default function RFPDetail() {
                         <dd className="text-sm font-medium text-gray-900">
                           {rfp.questionsDeadline
                             ? new Date(
-                                rfp.questionsDeadline
-                              ).toLocaleDateString("en-US")
-                            : "Not specified"}
+                                rfp.questionsDeadline,
+                              ).toLocaleDateString('en-US')
+                            : 'Not specified'}
                         </dd>
                         {rfp.questionsDeadline &&
                           isDatePassed(rfp.questionsDeadline) && (
@@ -464,39 +568,50 @@ export default function RFPDetail() {
                   </button>
                 </div>
               </div>
-              
-             <div className="px-6 py-4">
-        {rfp?.attachments?.length ? (
-          <ul role="list" className="divide-y divide-gray-200">
-            {rfp.attachments.map((file) => (
-              <li key={file.fileName} className="py-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <PaperClipIcon className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {file.originalName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {(file.fileSize / 1024).toFixed(1)} KB • {file.fileType.toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleDeleteAttachment(file._id, file.originalName)}
-                    className="inline-flex items-center p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                    title="Delete attachment"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-500">No attachments uploaded yet</p>
-        )}
-      </div>
+
+              <div className="px-6 py-4">
+                {rfp?.attachments?.length ? (
+                  <ul role="list" className="divide-y divide-gray-200">
+                    {rfp.attachments.map((file) => (
+                      <li
+                        key={file.fileName}
+                        className="py-4 flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <PaperClipIcon className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {file.originalName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {(file.fileSize / 1024).toFixed(1)} KB •{' '}
+                              {file.fileType.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() =>
+                              handleDeleteAttachment(
+                                file._id,
+                                file.originalName,
+                              )
+                            }
+                            className="inline-flex items-center p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                            title="Delete attachment"
+                          >
+                            <XMarkIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No attachments uploaded yet
+                  </p>
+                )}
+              </div>
             </div>
             {/* Main Content Grid */}
             <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -590,9 +705,9 @@ export default function RFPDetail() {
                               <div className="w-2 h-2 bg-yellow-600 rounded-full mt-2"></div>
                             </div>
                             <p className="text-sm text-gray-700">
-                              {typeof criteria === "string"
+                              {typeof criteria === 'string'
                                 ? criteria
-                                : criteria.criteria || "Evaluation criterion"}
+                                : criteria.criteria || 'Evaluation criterion'}
                             </p>
                           </li>
                         ))}
@@ -646,7 +761,8 @@ export default function RFPDetail() {
                   Clarification Questions
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Questions to ask the RFP issuer for clarification on ambiguous or missing information
+                  Questions to ask the RFP issuer for clarification on ambiguous
+                  or missing information
                 </p>
               </div>
               <div className="px-6 py-4">
@@ -756,6 +872,30 @@ export default function RFPDetail() {
                 </p>
               </div>
               <div className="px-6 py-4">
+                {companies.length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Proposal Company / Branding
+                    </label>
+                    <select
+                      value={selectedCompanyId || ''}
+                      onChange={(e) =>
+                        setSelectedCompanyId(e.target.value || null)
+                      }
+                      className="w-full sm:w-96 border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-900"
+                    >
+                      {companies.map((c) => (
+                        <option key={c.companyId} value={c.companyId}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      This controls Title/Cover Letter/Experience content and
+                      exports.
+                    </p>
+                  </div>
+                )}
                 {templates.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {templates.map((template) => (
@@ -770,7 +910,7 @@ export default function RFPDetail() {
                           {template.sectionCount} sections
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
-                          {template.projectType.replace("_", " ")}
+                          {template.projectType.replace('_', ' ')}
                         </p>
                         <button
                           onClick={() => generateProposal(template.id)}
@@ -791,6 +931,134 @@ export default function RFPDetail() {
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">Loading templates...</p>
+                )}
+              </div>
+            </div>
+
+            {/* Compare Proposals (Reviewer) */}
+            <div className="mt-8 bg-white shadow rounded-lg">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Proposals (Compare)
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Compare proposals for this RFP by reviewer score and status.
+                </p>
+              </div>
+              <div className="px-6 py-4">
+                {proposalsLoading ? (
+                  <p className="text-sm text-gray-500">Loading proposals...</p>
+                ) : rfpProposals.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No proposals yet for this RFP.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Proposal
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Score
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Updated
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Decision
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {[...rfpProposals]
+                          .sort((a, b) => {
+                            const as = a?.review?.score
+                            const bs = b?.review?.score
+                            const an = typeof as === 'number' ? as : -1
+                            const bn = typeof bs === 'number' ? bs : -1
+                            if (bn !== an) return bn - an
+                            return (
+                              new Date(b.updatedAt).getTime() -
+                              new Date(a.updatedAt).getTime()
+                            )
+                          })
+                          .map((p) => (
+                            <tr key={p._id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                <Link
+                                  href={`/proposals/${p._id}`}
+                                  className="text-primary-600 hover:text-primary-800 font-medium"
+                                >
+                                  {p.title}
+                                </Link>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {typeof p?.review?.score === 'number'
+                                  ? p.review.score
+                                  : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {p.status}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {p.updatedAt
+                                  ? new Date(p.updatedAt).toLocaleDateString(
+                                      'en-US',
+                                    )
+                                  : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={() =>
+                                      setProposalDecision(
+                                        p._id,
+                                        p?.review?.decision === 'shortlist'
+                                          ? ''
+                                          : 'shortlist',
+                                      )
+                                    }
+                                    disabled={updatingDecisionId === p._id}
+                                    className={`px-2 py-1 text-xs font-medium rounded ${
+                                      p?.review?.decision === 'shortlist'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    } disabled:opacity-50`}
+                                    title="Toggle shortlist"
+                                  >
+                                    Shortlist
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setProposalDecision(
+                                        p._id,
+                                        p?.review?.decision === 'reject'
+                                          ? ''
+                                          : 'reject',
+                                      )
+                                    }
+                                    disabled={updatingDecisionId === p._id}
+                                    className={`px-2 py-1 text-xs font-medium rounded ${
+                                      p?.review?.decision === 'reject'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    } disabled:opacity-50`}
+                                    title="Toggle reject"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -819,8 +1087,8 @@ export default function RFPDetail() {
       <ConfirmDeleteModal
         isOpen={deleteModalOpen}
         onClose={() => {
-          setDeleteModalOpen(false);
-          setAttachmentToDelete(null);
+          setDeleteModalOpen(false)
+          setAttachmentToDelete(null)
         }}
         onConfirm={confirmDeleteAttachment}
         title="Delete Attachment"
@@ -828,5 +1096,5 @@ export default function RFPDetail() {
         isDeleting={isDeleting}
       />
     </Layout>
-  );
+  )
 }

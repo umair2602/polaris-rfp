@@ -1,107 +1,95 @@
 import {
-  AcademicCapIcon,
-  BriefcaseIcon,
   BuildingOfficeIcon,
-  CheckIcon,
   ClipboardDocumentListIcon,
-  DocumentTextIcon,
-  EnvelopeIcon,
-  EyeIcon,
   FolderIcon,
-  LinkIcon,
-  PencilIcon,
-  PhoneIcon,
-  PlusIcon,
-  StarIcon,
-  TagIcon,
-  TrashIcon,
   UserGroupIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
-import Head from "next/head";
-import { useEffect, useState } from "react";
-import Layout from "../components/Layout";
-import { useToast } from "../components/ui/Toast";
-import { contentApi } from "../lib/api";
-import CompanySection from "../components/content/CompanySection";
-import TeamSection from "../components/content/TeamSection";
-import ProjectsSection from "../components/content/ProjectsSection";
-import ReferencesSection from "../components/content/ReferencesSection";
-import AddMemberModal from "../components/content/modals/AddMemberModal";
-import EditMemberModal from "../components/content/modals/EditMemberModal";
-import AddProjectModal from "../components/content/modals/AddProjectModal";
-import EditProjectModal from "../components/content/modals/EditProjectModal";
-import AddReferenceModal from "../components/content/modals/AddReferenceModal";
-import EditReferenceModal from "../components/content/modals/EditReferenceModal";
-import DeleteConfirmationModal from "../components/ui/DeleteConfirmationModal";
+} from '@heroicons/react/24/outline'
+import Head from 'next/head'
+import { useEffect, useState } from 'react'
+import CompanySection from '../components/content/CompanySection'
+import AddMemberModal from '../components/content/modals/AddMemberModal'
+import AddProjectModal from '../components/content/modals/AddProjectModal'
+import AddReferenceModal from '../components/content/modals/AddReferenceModal'
+import EditMemberModal from '../components/content/modals/EditMemberModal'
+import EditProjectModal from '../components/content/modals/EditProjectModal'
+import EditReferenceModal from '../components/content/modals/EditReferenceModal'
+import ProjectsSection from '../components/content/ProjectsSection'
+import ReferencesSection from '../components/content/ReferencesSection'
+import TeamSection from '../components/content/TeamSection'
+import Layout from '../components/Layout'
+import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal'
+import Modal from '../components/ui/Modal'
+import { useToast } from '../components/ui/Toast'
+import { contentApi } from '../lib/api'
 
 export default function ContentLibrary() {
-  const toast = useToast();
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<any>(null);
-  const [team, setTeam] = useState<any[]>([]);
-  const [selectedMember, setSelectedMember] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const toast = useToast()
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompany, setSelectedCompany] = useState<any>(null)
+  const [team, setTeam] = useState<any[]>([])
+  const [selectedMember, setSelectedMember] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<
-    "company" | "team" | "projects" | "references"
-  >("company");
-  const [editingCompany, setEditingCompany] = useState(false);
-  const [editingMember, setEditingMember] = useState<any>(null);
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [showAddCompany, setShowAddCompany] = useState(false);
-  const [companyForm, setCompanyForm] = useState<any>({});
+    'company' | 'team' | 'projects' | 'references'
+  >('company')
+  const [editingCompany, setEditingCompany] = useState(false)
+  const [editingMember, setEditingMember] = useState<any>(null)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [showAddCompany, setShowAddCompany] = useState(false)
+  const [companyForm, setCompanyForm] = useState<any>({})
   const [memberForm, setMemberForm] = useState<any>({
-    nameWithCredentials: "",
-    position: "",
-    email: "",
+    nameWithCredentials: '',
+    position: '',
+    email: '',
     companyId: null,
-    biography: "",
-  });
-  const [projects, setProjects] = useState<any[]>([]);
-  const [references, setReferences] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [selectedReference, setSelectedReference] = useState<any>(null);
-  const [showAddProject, setShowAddProject] = useState(false);
-  const [showAddReference, setShowAddReference] = useState(false);
-  const [editingProject, setEditingProject] = useState<any>(null);
-  const [editingReference, setEditingReference] = useState<any>(null);
+    biography: '',
+  })
+  const [projects, setProjects] = useState<any[]>([])
+  const [references, setReferences] = useState<any[]>([])
+  const [selectedProject, setSelectedProject] = useState<any>(null)
+  const [selectedReference, setSelectedReference] = useState<any>(null)
+  const [showViewReference, setShowViewReference] = useState(false)
+  const [showAddProject, setShowAddProject] = useState(false)
+  const [showAddReference, setShowAddReference] = useState(false)
+  const [editingProject, setEditingProject] = useState<any>(null)
+  const [editingReference, setEditingReference] = useState<any>(null)
   const [projectForm, setProjectForm] = useState<any>({
-    title: "",
-    clientName: "",
-    description: "",
-    industry: "",
-    projectType: "",
-    duration: "",
-    budget: "",
-    keyOutcomes: [""],
-    technologies: [""],
-    challenges: [""],
-    solutions: [""],
+    title: '',
+    clientName: '',
+    description: '',
+    industry: '',
+    projectType: '',
+    duration: '',
+    budget: '',
+    keyOutcomes: [''],
+    technologies: [''],
+    challenges: [''],
+    solutions: [''],
     files: [],
-  });
+  })
   const [referenceForm, setReferenceForm] = useState<any>({
-    organizationName: "",
-    timePeriod: "",
-    contactName: "",
-    contactTitle: "",
-    additionalTitle: "",
-    contactEmail: "",
-    contactPhone: "",
-    scopeOfWork: "",
+    organizationName: '',
+    timePeriod: '',
+    contactName: '',
+    contactTitle: '',
+    additionalTitle: '',
+    contactEmail: '',
+    contactPhone: '',
+    scopeOfWork: '',
     isPublic: true,
-  });
+  })
 
   // Delete confirmation modal state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: "company" | "member" | "project" | "reference";
-    item: any;
-  } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+    type: 'company' | 'member' | 'project' | 'reference'
+    item: any
+  } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
-    loadContent();
-  }, []);
+    loadContent()
+  }, [])
 
   const loadContent = async () => {
     try {
@@ -115,35 +103,35 @@ export default function ContentLibrary() {
         contentApi.getTeam(),
         contentApi.getProjects?.() || Promise.resolve({ data: [] }),
         contentApi.getReferences(),
-      ]);
+      ])
       const companiesData = Array.isArray(companiesResponse.data)
         ? companiesResponse.data
-        : [];
-      setCompanies(companiesData);
+        : []
+      setCompanies(companiesData)
       if (companiesData.length > 0) {
-        setSelectedCompany(companiesData[0]);
+        setSelectedCompany(companiesData[0])
       }
-      setTeam(Array.isArray(teamResponse.data) ? teamResponse.data : []);
+      setTeam(Array.isArray(teamResponse.data) ? teamResponse.data : [])
       setProjects(
-        Array.isArray(projectsResponse.data) ? projectsResponse.data : []
-      );
+        Array.isArray(projectsResponse.data) ? projectsResponse.data : [],
+      )
       setReferences(
-        Array.isArray(referencesResponse.data) ? referencesResponse.data : []
-      );
+        Array.isArray(referencesResponse.data) ? referencesResponse.data : [],
+      )
     } catch (error) {
-      console.error("Error loading content:", error);
+      console.error('Error loading content:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEditCompany = () => {
     setCompanyForm({
       ...selectedCompany,
-      companyName: selectedCompany?.name || selectedCompany?.companyName || "",
-    });
-    setEditingCompany(true);
-  };
+      companyName: selectedCompany?.name || selectedCompany?.companyName || '',
+    })
+    setEditingCompany(true)
+  }
 
   const handleSaveCompany = async () => {
     try {
@@ -169,308 +157,315 @@ export default function ContentLibrary() {
         values: companyForm.values ?? selectedCompany?.values,
         statistics: companyForm.statistics ?? selectedCompany?.statistics,
         socialMedia: companyForm.socialMedia ?? selectedCompany?.socialMedia,
-      };
+      }
       const { data } = await contentApi.updateCompanyById(
         selectedCompany.companyId,
-        payload
-      );
+        payload,
+      )
 
       // Handle response - could be just a company object or an object with affectedCompanies
-      const updatedCompany = data.company || data;
-      const affectedCompanies = data.affectedCompanies || [updatedCompany];
+      const updatedCompany = data.company || data
+      const affectedCompanies = data.affectedCompanies || [updatedCompany]
 
       // Update all affected companies in the state
       setCompanies(
         companies.map((c) => {
           const updated = affectedCompanies.find(
-            (ac: any) => ac.companyId === c.companyId
-          );
-          return updated || c;
-        })
-      );
+            (ac: any) => ac.companyId === c.companyId,
+          )
+          return updated || c
+        }),
+      )
 
-      setSelectedCompany(updatedCompany);
-      setEditingCompany(false);
-      toast.success("Company information updated successfully!");
+      setSelectedCompany(updatedCompany)
+      setEditingCompany(false)
+      toast.success('Company information updated successfully!')
     } catch (error) {
-      console.error("Error updating company:", error);
-      toast.error("Failed to update company information");
+      console.error('Error updating company:', error)
+      toast.error('Failed to update company information')
     }
-  };
+  }
 
   const handleCancelCompanyEdit = () => {
-    setCompanyForm({});
-    setEditingCompany(false);
-  };
+    setCompanyForm({})
+    setEditingCompany(false)
+  }
 
   const handleAddCompany = async () => {
     try {
-      const { data } = await contentApi.createCompany(companyForm);
-      setCompanies([...companies, data]);
-      setSelectedCompany(data);
-      setCompanyForm({});
-      setShowAddCompany(false);
-      toast.success("Company added successfully!");
+      const { data } = await contentApi.createCompany(companyForm)
+      setCompanies([...companies, data])
+      setSelectedCompany(data)
+      setCompanyForm({})
+      setShowAddCompany(false)
+      toast.success('Company added successfully!')
     } catch (error) {
-      console.error("Error adding company:", error);
-      toast.error("Failed to add company");
+      console.error('Error adding company:', error)
+      toast.error('Failed to add company')
     }
-  };
+  }
 
   const handleDeleteCompany = (companyToDelete: any) => {
-    setDeleteTarget({ type: "company", item: companyToDelete });
-    setShowDeleteModal(true);
-  };
+    setDeleteTarget({ type: 'company', item: companyToDelete })
+    setShowDeleteModal(true)
+  }
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget) return
 
-    setIsDeleting(true);
+    setIsDeleting(true)
     try {
       switch (deleteTarget.type) {
-        case "company":
-          await contentApi.deleteCompany(deleteTarget.item.companyId);
+        case 'company':
+          await contentApi.deleteCompany(deleteTarget.item.companyId)
           setCompanies(
-            companies.filter((c) => c.companyId !== deleteTarget.item.companyId)
-          );
+            companies.filter(
+              (c) => c.companyId !== deleteTarget.item.companyId,
+            ),
+          )
           if (selectedCompany?.companyId === deleteTarget.item.companyId) {
             setSelectedCompany(
               companies.length > 1
                 ? companies.find(
-                    (c) => c.companyId !== deleteTarget.item.companyId
+                    (c) => c.companyId !== deleteTarget.item.companyId,
                   )
-                : null
-            );
+                : null,
+            )
           }
-          toast.success("Company deleted successfully!");
-          break;
-        case "reference":
-          await contentApi.deleteReference(deleteTarget.item._id);
+          toast.success('Company deleted successfully!')
+          break
+        case 'reference':
+          await contentApi.deleteReference(deleteTarget.item._id)
           setReferences(
-            references.filter((r) => r._id !== deleteTarget.item._id)
-          );
-          toast.success("Reference deleted successfully!");
-          break;
-        case "member":
-          await contentApi.deleteTeamMember(deleteTarget.item.memberId);
+            references.filter((r) => r._id !== deleteTarget.item._id),
+          )
+          toast.success('Reference deleted successfully!')
+          break
+        case 'member':
+          await contentApi.deleteTeamMember(deleteTarget.item.memberId)
           setTeam(
-            team.filter((m: any) => m.memberId !== deleteTarget.item.memberId)
-          );
-          toast.success("Team member deleted successfully!");
-          break;
+            team.filter((m: any) => m.memberId !== deleteTarget.item.memberId),
+          )
+          toast.success('Team member deleted successfully!')
+          break
         // Add other cases for project deletion here
       }
 
-      setShowDeleteModal(false);
-      setDeleteTarget(null);
+      setShowDeleteModal(false)
+      setDeleteTarget(null)
     } catch (error) {
-      console.error("Error deleting:", error);
-      toast.error(`Failed to delete ${deleteTarget.type}`);
+      console.error('Error deleting:', error)
+      toast.error(`Failed to delete ${deleteTarget.type}`)
     } finally {
-      setIsDeleting(false);
+      setIsDeleting(false)
     }
-  };
+  }
 
   const cancelDelete = () => {
-    setShowDeleteModal(false);
-    setDeleteTarget(null);
-    setIsDeleting(false);
-  };
+    setShowDeleteModal(false)
+    setDeleteTarget(null)
+    setIsDeleting(false)
+  }
 
   const handleEditMember = (member: any) => {
-    setMemberForm({ ...member });
-    setEditingMember(member);
-    setSelectedMember(member);
-  };
+    setMemberForm({ ...member })
+    setEditingMember(member)
+    setSelectedMember(member)
+  }
 
   const handleSaveMember = async () => {
     try {
-      const memberId = editingMember?.memberId || memberForm.memberId;
-      if (!memberId) throw new Error("Missing memberId");
-      const { data } = await contentApi.updateTeamMember(memberId, memberForm);
-      setTeam(team.map((m) => (m.memberId === memberId ? data : m)));
-      setSelectedMember(data);
-      setEditingMember(null);
-      toast.success("Team member updated successfully!");
+      const memberId = editingMember?.memberId || memberForm.memberId
+      if (!memberId) throw new Error('Missing memberId')
+      const { data } = await contentApi.updateTeamMember(memberId, memberForm)
+      setTeam(team.map((m) => (m.memberId === memberId ? data : m)))
+      setSelectedMember(data)
+      setEditingMember(null)
+      toast.success('Team member updated successfully!')
     } catch (error) {
-      console.error("Error updating member:", error);
-      toast.error("Failed to update team member");
+      console.error('Error updating member:', error)
+      toast.error('Failed to update team member')
     }
-  };
+  }
 
   const openAddMemberModal = () => {
     // Reset the form to empty state
     setMemberForm({
-      nameWithCredentials: "",
-      position: "",
-      email: "",
+      nameWithCredentials: '',
+      position: '',
+      email: '',
       companyId: null,
-      biography: "",
-    });
-    setShowAddMember(true);
-  };
+      biography: '',
+    })
+    setShowAddMember(true)
+  }
 
   const handleAddMember = async () => {
     try {
-      const { data } = await contentApi.createTeamMember(memberForm);
-      setTeam([...team, data]);
+      const { data } = await contentApi.createTeamMember(memberForm)
+      setTeam([...team, data])
       setMemberForm({
-        nameWithCredentials: "",
-        position: "",
-        email: "",
+        nameWithCredentials: '',
+        position: '',
+        email: '',
         companyId: null,
-        biography: "",
-      });
-      setShowAddMember(false);
-      toast.success("Team member added successfully!");
+        biography: '',
+      })
+      setShowAddMember(false)
+      toast.success('Team member added successfully!')
     } catch (error) {
-      console.error("Error adding member:", error);
-      toast.error("Failed to add team member");
+      console.error('Error adding member:', error)
+      toast.error('Failed to add team member')
     }
-  };
+  }
 
   const handleDeleteMember = (memberToDelete: any) => {
-    setDeleteTarget({ type: "member", item: memberToDelete });
-    setShowDeleteModal(true);
-  };
+    setDeleteTarget({ type: 'member', item: memberToDelete })
+    setShowDeleteModal(true)
+  }
 
   const addArrayItem = (field: string, setState: any, state: any) => {
     setState({
       ...state,
-      [field]: [...state[field], ""],
-    });
-  };
+      [field]: [...state[field], ''],
+    })
+  }
 
   const updateArrayItem = (
     field: string,
     index: number,
     value: string,
     setState: any,
-    state: any
+    state: any,
   ) => {
-    const updated = [...state[field]];
-    updated[index] = value;
+    const updated = [...state[field]]
+    updated[index] = value
     setState({
       ...state,
       [field]: updated,
-    });
-  };
+    })
+  }
 
   const removeArrayItem = (
     field: string,
     index: number,
     setState: any,
-    state: any
+    state: any,
   ) => {
     setState({
       ...state,
       [field]: state[field].filter((_: any, i: number) => i !== index),
-    });
-  };
+    })
+  }
 
   // Project handlers
   const handleAddProject = async () => {
     try {
-      const { data } = await contentApi.createProject(projectForm);
-      setProjects([...projects, data]);
+      const { data } = await contentApi.createProject(projectForm)
+      setProjects([...projects, data])
       setProjectForm({
-        title: "",
-        clientName: "",
-        description: "",
-        industry: "",
-        projectType: "",
-        duration: "",
-        budget: "",
-        keyOutcomes: [""],
-        technologies: [""],
-        challenges: [""],
-        solutions: [""],
+        title: '',
+        clientName: '',
+        description: '',
+        industry: '',
+        projectType: '',
+        duration: '',
+        budget: '',
+        keyOutcomes: [''],
+        technologies: [''],
+        challenges: [''],
+        solutions: [''],
         files: [],
-      });
-      setShowAddProject(false);
-      toast.success("Project added successfully!");
+      })
+      setShowAddProject(false)
+      toast.success('Project added successfully!')
     } catch (error) {
-      console.error("Error adding project:", error);
-      toast.error("Failed to add project");
+      console.error('Error adding project:', error)
+      toast.error('Failed to add project')
     }
-  };
+  }
 
   const handleEditProject = (project: any) => {
-    setProjectForm({ ...project });
-    setEditingProject(project);
-    setSelectedProject(project);
-  };
+    setProjectForm({ ...project })
+    setEditingProject(project)
+    setSelectedProject(project)
+  }
 
   const handleSaveProject = async () => {
     try {
-      const id = editingProject?._id || projectForm?._id || editingProject?.id;
-      if (!id) throw new Error("Missing project id");
-      const { data } = await contentApi.updateProject(id, projectForm);
-      setProjects(projects.map((p) => (p._id === id ? data : p)));
-      setSelectedProject(data);
-      setEditingProject(null);
-      toast.success("Project updated successfully!");
+      const id = editingProject?._id || projectForm?._id || editingProject?.id
+      if (!id) throw new Error('Missing project id')
+      const { data } = await contentApi.updateProject(id, projectForm)
+      setProjects(projects.map((p) => (p._id === id ? data : p)))
+      setSelectedProject(data)
+      setEditingProject(null)
+      toast.success('Project updated successfully!')
     } catch (error) {
-      console.error("Error updating project:", error);
-      toast.error("Failed to update project");
+      console.error('Error updating project:', error)
+      toast.error('Failed to update project')
     }
-  };
+  }
 
   const handleDeleteProject = (projectToDelete: any) => {
-    setDeleteTarget({ type: "project", item: projectToDelete });
-    setShowDeleteModal(true);
-  };
+    setDeleteTarget({ type: 'project', item: projectToDelete })
+    setShowDeleteModal(true)
+  }
 
   // Reference handlers
   const handleAddReference = async () => {
     try {
-      const { data } = await contentApi.createReference(referenceForm);
-      setReferences([...references, data]);
+      const { data } = await contentApi.createReference(referenceForm)
+      setReferences([...references, data])
       setReferenceForm({
-        organizationName: "",
-        timePeriod: "",
-        contactName: "",
-        contactTitle: "",
-        additionalTitle: "",
-        contactEmail: "",
-        contactPhone: "",
-        scopeOfWork: "",
+        organizationName: '',
+        timePeriod: '',
+        contactName: '',
+        contactTitle: '',
+        additionalTitle: '',
+        contactEmail: '',
+        contactPhone: '',
+        scopeOfWork: '',
         isPublic: true,
-      });
-      setShowAddReference(false);
-      toast.success("Reference added successfully!");
+      })
+      setShowAddReference(false)
+      toast.success('Reference added successfully!')
     } catch (error) {
-      console.error("Error adding reference:", error);
-      toast.error("Failed to add reference");
+      console.error('Error adding reference:', error)
+      toast.error('Failed to add reference')
     }
-  };
+  }
 
   const handleEditReference = (reference: any) => {
-    setReferenceForm({ ...reference });
-    setEditingReference(reference);
-    setSelectedReference(reference);
-  };
+    setReferenceForm({ ...reference })
+    setEditingReference(reference)
+    setSelectedReference(reference)
+  }
+
+  const handleViewReference = (reference: any) => {
+    setSelectedReference(reference)
+    setShowViewReference(true)
+  }
 
   const handleSaveReference = async () => {
     try {
       const id =
-        editingReference?._id || referenceForm?._id || editingReference?.id;
-      if (!id) throw new Error("Missing reference id");
-      const { data } = await contentApi.updateReference(id, referenceForm);
-      setReferences(references.map((r) => (r._id === id ? data : r)));
-      setSelectedReference(data);
-      setEditingReference(null);
-      toast.success("Reference updated successfully!");
+        editingReference?._id || referenceForm?._id || editingReference?.id
+      if (!id) throw new Error('Missing reference id')
+      const { data } = await contentApi.updateReference(id, referenceForm)
+      setReferences(references.map((r) => (r._id === id ? data : r)))
+      setSelectedReference(data)
+      setEditingReference(null)
+      toast.success('Reference updated successfully!')
     } catch (error) {
-      console.error("Error updating reference:", error);
-      toast.error("Failed to update reference");
+      console.error('Error updating reference:', error)
+      toast.error('Failed to update reference')
     }
-  };
+  }
 
   const handleDeleteReference = (referenceToDelete: any) => {
-    setDeleteTarget({ type: "reference", item: referenceToDelete });
-    setShowDeleteModal(true);
-  };
+    setDeleteTarget({ type: 'reference', item: referenceToDelete })
+    setShowDeleteModal(true)
+  }
 
   if (loading) {
     return (
@@ -479,7 +474,7 @@ export default function ContentLibrary() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
-    );
+    )
   }
 
   return (
@@ -505,44 +500,44 @@ export default function ContentLibrary() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
-                onClick={() => setActiveTab("company")}
+                onClick={() => setActiveTab('company')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "company"
-                    ? "border-primary-500 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  activeTab === 'company'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <BuildingOfficeIcon className="h-4 w-4 mr-2 inline" />
                 Company Information
               </button>
               <button
-                onClick={() => setActiveTab("team")}
+                onClick={() => setActiveTab('team')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "team"
-                    ? "border-primary-500 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  activeTab === 'team'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <UserGroupIcon className="h-4 w-4 mr-2 inline" />
                 Team Members ({team.length})
               </button>
               <button
-                onClick={() => setActiveTab("projects")}
+                onClick={() => setActiveTab('projects')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "projects"
-                    ? "border-primary-500 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  activeTab === 'projects'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <FolderIcon className="h-4 w-4 mr-2 inline" />
                 Past Projects ({projects.length})
               </button>
               <button
-                onClick={() => setActiveTab("references")}
+                onClick={() => setActiveTab('references')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "references"
-                    ? "border-primary-500 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  activeTab === 'references'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <ClipboardDocumentListIcon className="h-4 w-4 mr-2 inline" />
@@ -553,7 +548,7 @@ export default function ContentLibrary() {
         </div>
 
         <div className="mt-8">
-          {activeTab === "company" && (
+          {activeTab === 'company' && (
             <CompanySection
               ctx={{
                 companies,
@@ -573,7 +568,7 @@ export default function ContentLibrary() {
             />
           )}
 
-          {activeTab === "team" && (
+          {activeTab === 'team' && (
             <TeamSection
               ctx={{
                 team,
@@ -597,7 +592,7 @@ export default function ContentLibrary() {
             />
           )}
 
-          {activeTab === "projects" && (
+          {activeTab === 'projects' && (
             <ProjectsSection
               ctx={{
                 projects,
@@ -620,12 +615,13 @@ export default function ContentLibrary() {
             />
           )}
 
-          {activeTab === "references" && (
+          {activeTab === 'references' && (
             <ReferencesSection
               ctx={{
                 references,
                 selectedReference,
                 setSelectedReference,
+                handleViewReference,
                 showAddReference,
                 setShowAddReference,
                 referenceForm,
@@ -644,6 +640,78 @@ export default function ContentLibrary() {
           )}
         </div>
 
+        <Modal
+          isOpen={showViewReference}
+          onClose={() => setShowViewReference(false)}
+          title="Reference Details"
+          size="md"
+          footer={
+            <button
+              className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
+              onClick={() => setShowViewReference(false)}
+            >
+              Close
+            </button>
+          }
+        >
+          {selectedReference ? (
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {selectedReference.organizationName}
+                </div>
+                {selectedReference.timePeriod ? (
+                  <div className="text-xs text-gray-500">
+                    {selectedReference.timePeriod}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-gray-700">
+                  Contact
+                </div>
+                <div className="text-sm text-gray-800">
+                  {selectedReference.contactName}
+                </div>
+                {selectedReference.contactTitle ? (
+                  <div className="text-xs text-gray-600">
+                    {selectedReference.contactTitle}
+                  </div>
+                ) : null}
+                {selectedReference.additionalTitle ? (
+                  <div className="text-xs text-gray-500 italic">
+                    {selectedReference.additionalTitle}
+                  </div>
+                ) : null}
+                {selectedReference.contactEmail ? (
+                  <div className="text-xs text-gray-600">
+                    {selectedReference.contactEmail}
+                  </div>
+                ) : null}
+                {selectedReference.contactPhone ? (
+                  <div className="text-xs text-gray-600">
+                    {selectedReference.contactPhone}
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedReference.scopeOfWork ? (
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold text-gray-700">
+                    Scope of Work
+                  </div>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {selectedReference.scopeOfWork}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-600">No reference selected.</div>
+          )}
+        </Modal>
+
         <AddMemberModal
           open={showAddMember}
           memberForm={memberForm}
@@ -653,12 +721,12 @@ export default function ContentLibrary() {
           removeArrayItem={removeArrayItem}
           onAdd={handleAddMember}
           onClose={() => {
-            setShowAddMember(false);
+            setShowAddMember(false)
             setMemberForm({
-              nameWithCredentials: "",
-              position: "",
-              biography: "",
-            });
+              nameWithCredentials: '',
+              position: '',
+              biography: '',
+            })
           }}
         />
 
@@ -715,20 +783,20 @@ export default function ContentLibrary() {
           title={
             deleteTarget
               ? `Delete ${
-                  deleteTarget.type === "company"
-                    ? "Company"
-                    : deleteTarget.type === "member"
-                    ? "Team Member"
-                    : deleteTarget.type === "project"
-                    ? "Project"
-                    : "Reference"
+                  deleteTarget.type === 'company'
+                    ? 'Company'
+                    : deleteTarget.type === 'member'
+                    ? 'Team Member'
+                    : deleteTarget.type === 'project'
+                    ? 'Project'
+                    : 'Reference'
                 }`
-              : "Delete Item"
+              : 'Delete Item'
           }
           message={
             deleteTarget
               ? `Are you sure you want to delete this ${deleteTarget.type}?`
-              : "Are you sure you want to delete this item?"
+              : 'Are you sure you want to delete this item?'
           }
           itemName={
             deleteTarget?.item?.name ||
@@ -739,5 +807,5 @@ export default function ContentLibrary() {
         />
       </div>
     </Layout>
-  );
+  )
 }

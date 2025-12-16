@@ -10,7 +10,8 @@ Extract the following information from the RFP text:
 {
   "title": "string - The main title of the proposal/RFP",
   "clientName": "string - Name of the client/organization requesting the proposal",
-  "projectDeadline": "string - Project completion deadline, project end date, or when the work must be finished in USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "submissionDeadline": "string - Proposal submission deadline / proposal due date (NOT project completion). USA format MM/DD/YYYY (or 'Not available' if not found)",
+  "projectDeadline": "string - Project completion deadline / performance end date / when the work must be finished. USA format MM/DD/YYYY (or 'Not available' if not found)",
   "questionsDeadline": "string - Deadline for submitting questions about the RFP in USA format MM/DD/YYYY (or 'Not available' if not found)",
   "bidMeetingDate": "string - Date of the bid meeting or pre-proposal conference in USA format MM/DD/YYYY (or 'Not available' if not found)",
   "bidRegistrationDate": "string - Deadline for bid registration or vendor registration in USA format MM/DD/YYYY (or 'Not available' if not found)",
@@ -20,6 +21,7 @@ Extract the following information from the RFP text:
   "evaluationCriteria": ["array of strings - Evaluation criteria and scoring methods"],
   "deliverables": ["array of strings - Expected deliverables and outcomes"],
   "timeline": "string - Project duration as 'MM/DD/YYYY to MM/DD/YYYY' or '12 months' or 'Not available' if not found",
+  "timelineMilestones": ["array of objects - Key milestones with dates if available. Each item: { \"date\": \"MM/DD/YYYY or Not available\", \"milestone\": \"string\" }"],
   "projectScope": "string - Detailed project scope and objectives",
   "contactInformation": "string - Contact details (emails, phones, names)",
   "location": "string - Project location or client location",
@@ -257,7 +259,8 @@ FOCUS ON BUSINESS & PROJECT CLARITY - NOT PROPOSAL MECHANICS
 Rules:
 - Extract information exactly as written in the document
 - If information is not found, use "Not available" for strings, false for booleans, or empty arrays for arrays
-- For projectDeadline, look specifically for project completion dates, project end dates, delivery deadlines, or when the actual work must be finished - NOT proposal submission deadlines. Format all dates in USA format MM/DD/YYYY
+- For submissionDeadline, look for proposal due date / submission deadline / "proposals due" / "responses due" / "closing date" / "submission deadline". Format in USA format MM/DD/YYYY.
+- For projectDeadline, look specifically for project completion dates, performance period end date, "work must be completed by", or when the actual work must be finished - NOT proposal submission deadlines. Format all dates in USA format MM/DD/YYYY
 - For questionsDeadline, look for deadlines to submit questions, clarifications, or inquiries about the RFP
 - For bidMeetingDate, look for pre-proposal meetings, bid conferences, site visits, or mandatory meetings
 - For bidRegistrationDate, look for vendor registration deadlines, qualification deadlines, or pre-registration requirements
@@ -265,9 +268,9 @@ Rules:
 - For arrays, extract all relevant items as separate strings
 - Be comprehensive but accurate - don't invent information
 - Only use "Not available" if the information is truly not present anywhere in the document
-`;
+`
   }
 }
 
 // Export a single instance
-module.exports = new PromptGuidelinesRfpAnalyzer();
+module.exports = new PromptGuidelinesRfpAnalyzer()

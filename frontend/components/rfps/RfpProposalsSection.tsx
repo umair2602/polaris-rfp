@@ -1,33 +1,43 @@
-import Link from "next/link";
-import { Proposal } from "../../lib/api";
 import {
+  ClipboardDocumentListIcon,
   DocumentTextIcon,
   PlusIcon,
-  ClipboardDocumentListIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline'
+import Link from 'next/link'
+import { Proposal } from '../../lib/api'
 
 interface RfpProposalsSectionProps {
-  rfpId: string;
-  proposals: Proposal[];
-  isLoading: boolean;
+  rfpId: string
+  proposals: Proposal[]
+  isLoading: boolean
 }
 
 const getStatusBadgeColor = (status: string) => {
   switch (status) {
-    case "draft":
-      return "bg-gray-100 text-gray-800";
-    case "in_review":
-      return "bg-yellow-100 text-yellow-800";
-    case "submitted":
-      return "bg-blue-100 text-blue-800";
-    case "won":
-      return "bg-green-100 text-green-800";
-    case "lost":
-      return "bg-red-100 text-red-800";
+    case 'draft':
+      return 'bg-gray-100 text-gray-800'
+    case 'in_review':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'submitted':
+      return 'bg-blue-100 text-blue-800'
+    case 'won':
+      return 'bg-green-100 text-green-800'
+    case 'lost':
+      return 'bg-red-100 text-red-800'
     default:
-      return "bg-gray-100 text-gray-800";
+      return 'bg-gray-100 text-gray-800'
   }
-};
+}
+
+const getReviewBadge = (score: number | null | undefined) => {
+  if (score === null || score === undefined)
+    return { label: 'Unscored', cls: 'bg-gray-100 text-gray-700' }
+  if (score >= 85)
+    return { label: `Score ${score}`, cls: 'bg-green-100 text-green-800' }
+  if (score >= 70)
+    return { label: `Score ${score}`, cls: 'bg-yellow-100 text-yellow-800' }
+  return { label: `Score ${score}`, cls: 'bg-red-100 text-red-800' }
+}
 
 export default function RfpProposalsSection({
   rfpId,
@@ -91,16 +101,24 @@ export default function RfpProposalsSection({
                     </div>
                     <div className="flex items-center space-x-2 mt-1">
                       <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          getReviewBadge((proposal as any)?.review?.score).cls
+                        }`}
+                        title="Reviewer score"
+                      >
+                        {getReviewBadge((proposal as any)?.review?.score).label}
+                      </span>
+                      <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(
-                          proposal.status
+                          proposal.status,
                         )}`}
                       >
-                        {proposal.status.replace("_", " ")}
+                        {proposal.status.replace('_', ' ')}
                       </span>
                       <span className="text-xs text-gray-500">
-                        Updated{" "}
+                        Updated{' '}
                         {new Date(proposal.updatedAt).toLocaleDateString(
-                          "en-US"
+                          'en-US',
                         )}
                       </span>
                     </div>
@@ -134,5 +152,5 @@ export default function RfpProposalsSection({
         </div>
       )}
     </div>
-  );
+  )
 }

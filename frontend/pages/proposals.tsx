@@ -1,202 +1,195 @@
-import Head from "next/head";
-import Layout from "../components/Layout";
-import Card, { CardHeader, CardBody } from "../components/ui/Card";
-import Button from "../components/ui/Button";
-import Badge from "../components/ui/Badge";
-import { LoadingScreen } from "../components/ui/LoadingSpinner";
-import { useState, useEffect } from "react";
-import { proposalApi, proposalApiPdf, Proposal } from "../lib/api";
-import api from "../lib/api";
-import Link from "next/link";
-import Modal from "../components/ui/Modal";
-import PdfPreviewModal from "../components/PdfPreviewModal";
-import DownloadMenu from "../components/ui/DownloadMenu";
 import {
-  DocumentTextIcon,
   CalendarDaysIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  CheckIcon,
-  XMarkIcon,
   CloudArrowUpIcon,
-  PlusIcon,
-  MagnifyingGlassIcon,
+  DocumentTextIcon,
+  EyeIcon,
   FunnelIcon,
-  Squares2X2Icon,
   ListBulletIcon,
-} from "@heroicons/react/24/outline";
+  MagnifyingGlassIcon,
+  PencilIcon,
+  PlusIcon,
+  Squares2X2Icon,
+  TrashIcon,
+} from '@heroicons/react/24/outline'
+import Head from 'next/head'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import Layout from '../components/Layout'
+import PdfPreviewModal from '../components/PdfPreviewModal'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Card, { CardBody } from '../components/ui/Card'
+import DownloadMenu from '../components/ui/DownloadMenu'
+import { LoadingScreen } from '../components/ui/LoadingSpinner'
+import Modal from '../components/ui/Modal'
+import { Proposal, extractList, proposalApi, proposalApiPdf } from '../lib/api'
 
 export default function Proposals() {
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
-  const [proposalForm, setProposalForm] = useState({ title: "", status: "" });
-  const [loading, setLoading] = useState(true);
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null)
+  const [proposalForm, setProposalForm] = useState({ title: '', status: '' })
+  const [loading, setLoading] = useState(true)
   const [uploadingProposalId, setUploadingProposalId] = useState<string | null>(
-    null
-  );
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+    null,
+  )
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(
-    null
-  );
+    null,
+  )
   const [downloadMenuForId, setDownloadMenuForId] = useState<string | null>(
-    null
-  );
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+    null,
+  )
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadProposals();
-  }, []);
+    loadProposals()
+  }, [])
 
   const loadProposals = async () => {
     try {
-      const response = await proposalApi.list();
-      const proposalsData = (response as any)?.data?.data
-        ? (response as any).data.data
-        : Array.isArray(response.data)
-        ? response.data
-        : [];
-      setProposals(proposalsData as unknown as Proposal[]);
+      const response = await proposalApi.list()
+      const proposalsData = extractList<Proposal>(response)
+      setProposals(proposalsData as unknown as Proposal[])
     } catch (error) {
-      console.error("Error loading proposals:", error);
+      console.error('Error loading proposals:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEditProposal = (proposal: Proposal) => {
-    setProposalForm({ title: proposal.title, status: proposal.status });
-    setEditingProposal(proposal);
-  };
+    setProposalForm({ title: proposal.title, status: proposal.status })
+    setEditingProposal(proposal)
+  }
 
   const handleSaveProposal = async () => {
-    if (!editingProposal) return;
+    if (!editingProposal) return
     try {
       // In a real app, this would make an API call
       const updatedProposals = proposals.map((p) =>
-        p._id === editingProposal._id ? { ...p, ...proposalForm } : p
-      );
-      setProposals(updatedProposals);
-      setEditingProposal(null);
-      alert("Proposal updated successfully!");
+        p._id === editingProposal._id ? { ...p, ...proposalForm } : p,
+      )
+      setProposals(updatedProposals)
+      setEditingProposal(null)
+      alert('Proposal updated successfully!')
     } catch (error) {
-      console.error("Error updating proposal:", error);
-      alert("Failed to update proposal");
+      console.error('Error updating proposal:', error)
+      alert('Failed to update proposal')
     }
-  };
+  }
 
   const handleDeleteProposal = (proposal: Proposal) => {
-    setProposalToDelete(proposal);
-    setShowDeleteModal(true);
-  };
+    setProposalToDelete(proposal)
+    setShowDeleteModal(true)
+  }
 
   const confirmDeleteProposal = async () => {
-    if (!proposalToDelete) return;
+    if (!proposalToDelete) return
     try {
-      await proposalApi.delete(proposalToDelete._id);
-      setProposals(proposals.filter((p) => p._id !== proposalToDelete._id));
+      await proposalApi.delete(proposalToDelete._id)
+      setProposals(proposals.filter((p) => p._id !== proposalToDelete._id))
     } catch (error) {
-      console.error("Error deleting proposal:", error);
+      console.error('Error deleting proposal:', error)
     } finally {
-      setShowDeleteModal(false);
-      setProposalToDelete(null);
+      setShowDeleteModal(false)
+      setProposalToDelete(null)
     }
-  };
+  }
 
   const openPreview = async (proposal: Proposal) => {
     try {
-      setPreviewError(null);
-      setPreviewOpen(true);
-      setPreviewLoading(true);
-      const resp = await proposalApiPdf.exportPdf(proposal._id);
-      const blob = new Blob([resp.data], { type: "application/pdf" });
+      setPreviewError(null)
+      setPreviewOpen(true)
+      setPreviewLoading(true)
+      const resp = await proposalApiPdf.exportPdf(proposal._id)
+      const blob = new Blob([resp.data], { type: 'application/pdf' })
       const url =
         window.URL.createObjectURL(blob) +
-        "#toolbar=0&navpanes=0&zoom=page-width";
-      setPreviewUrl(url);
+        '#toolbar=0&navpanes=0&zoom=page-width'
+      setPreviewUrl(url)
     } catch (error) {
-      console.error("Error generating preview PDF:", error);
-      setPreviewError("Failed to load PDF preview.");
+      console.error('Error generating preview PDF:', error)
+      setPreviewError('Failed to load PDF preview.')
     } finally {
-      setPreviewLoading(false);
+      setPreviewLoading(false)
     }
-  };
+  }
 
   const closePreview = () => {
     if (previewUrl) {
-      window.URL.revokeObjectURL(previewUrl);
+      window.URL.revokeObjectURL(previewUrl)
     }
-    setPreviewUrl(null);
-    setPreviewOpen(false);
-  };
+    setPreviewUrl(null)
+    setPreviewOpen(false)
+  }
 
   const downloadProposalFile = async (
     proposal: Proposal,
-    format: "pdf" | "docx"
+    format: 'pdf' | 'docx',
   ) => {
     try {
-      setUploadingProposalId(proposal._id);
+      setUploadingProposalId(proposal._id)
       const resp =
-        format === "pdf"
+        format === 'pdf'
           ? await proposalApiPdf.exportPdf(proposal._id)
-          : await proposalApiPdf.exportDocx(proposal._id);
+          : await proposalApiPdf.exportDocx(proposal._id)
       const blob = new Blob([resp.data], {
         type:
-          format === "pdf"
-            ? "application/pdf"
-            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const safeTitle = proposal.title.replace(/[^a-z0-9]/gi, "_");
-      link.download = `${safeTitle}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+          format === 'pdf'
+            ? 'application/pdf'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const safeTitle = proposal.title.replace(/[^a-z0-9]/gi, '_')
+      link.download = `${safeTitle}.${format}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error("Error downloading proposal:", error);
+      console.error('Error downloading proposal:', error)
     } finally {
-      setUploadingProposalId(null);
-      setDownloadMenuForId(null);
+      setUploadingProposalId(null)
+      setDownloadMenuForId(null)
     }
-  };
+  }
 
   const filteredProposals = proposals.filter((proposal) => {
     const matchesSearch = proposal.title
       .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+      .includes(searchQuery.toLowerCase())
     const matchesStatus =
-      statusFilter === "all" || proposal.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      statusFilter === 'all' || proposal.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "draft":
-        return "warning";
-      case "submitted":
-        return "success";
-      case "in_review":
-        return "info";
+      case 'draft':
+        return 'warning'
+      case 'submitted':
+        return 'success'
+      case 'in_review':
+        return 'info'
       default:
-        return "secondary";
+        return 'secondary'
     }
-  };
+  }
 
   if (loading) {
     return (
       <Layout>
         <LoadingScreen message="Loading proposals..." />
       </Layout>
-    );
+    )
   }
 
   return (
@@ -267,21 +260,21 @@ export default function Proposals() {
               {/* View Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode("grid")}
+                  onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-white text-purple-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
+                    viewMode === 'grid'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <Squares2X2Icon className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode("list")}
+                  onClick={() => setViewMode('list')}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === "list"
-                      ? "bg-white text-purple-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
+                    viewMode === 'list'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <ListBulletIcon className="h-4 w-4" />
@@ -303,16 +296,16 @@ export default function Proposals() {
                   </div>
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-gray-900">
-                  {searchQuery || statusFilter !== "all"
-                    ? "No matching proposals"
-                    : "No proposals yet"}
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'No matching proposals'
+                    : 'No proposals yet'}
                 </h3>
                 <p className="mt-2 text-gray-600">
-                  {searchQuery || statusFilter !== "all"
-                    ? "Try adjusting your search or filters"
-                    : "Upload an RFP first, then generate proposals based on the requirements."}
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Upload an RFP first, then generate proposals based on the requirements.'}
                 </p>
-                {!searchQuery && statusFilter === "all" && (
+                {!searchQuery && statusFilter === 'all' && (
                   <Button
                     className="mt-4"
                     variant="primary"
@@ -325,7 +318,7 @@ export default function Proposals() {
               </div>
             </CardBody>
           </Card>
-        ) : viewMode === "grid" ? (
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProposals.map((proposal) => (
               <Card key={proposal._id} hover className="group">
@@ -360,7 +353,7 @@ export default function Proposals() {
                               setDownloadMenuForId(
                                 downloadMenuForId === proposal._id
                                   ? null
-                                  : proposal._id
+                                  : proposal._id,
                               )
                             }
                             loading={uploadingProposalId === proposal._id}
@@ -388,8 +381,8 @@ export default function Proposals() {
                       </h3>
                       {(proposal as any).rfp && (
                         <p className="text-sm text-gray-600 mt-1">
-                          For:{" "}
-                          {(proposal as any).rfp.clientName || "Unknown Client"}
+                          For:{' '}
+                          {(proposal as any).rfp.clientName || 'Unknown Client'}
                         </p>
                       )}
                     </div>
@@ -451,9 +444,9 @@ export default function Proposals() {
                               </p>
                               {(proposal as any).rfp && (
                                 <p className="text-sm text-gray-600">
-                                  For:{" "}
+                                  For:{' '}
                                   {(proposal as any).rfp.clientName ||
-                                    "Unknown Client"}
+                                    'Unknown Client'}
                                 </p>
                               )}
                             </div>
@@ -494,7 +487,7 @@ export default function Proposals() {
                                   setDownloadMenuForId(
                                     downloadMenuForId === proposal._id
                                       ? null
-                                      : proposal._id
+                                      : proposal._id,
                                   )
                                 }
                                 loading={uploadingProposalId === proposal._id}
@@ -529,26 +522,24 @@ export default function Proposals() {
             </CardBody>
           </Card>
         )}
-          <PdfPreviewModal
-            isOpen={previewOpen}
-            onClose={closePreview}
-            url={previewUrl}
-            loading={previewLoading}
-            error={previewError}
-            title={
-              previewError ? "Preview Unavailable" : "Proposal PDF Preview"
-            }
-          />
+        <PdfPreviewModal
+          isOpen={previewOpen}
+          onClose={closePreview}
+          url={previewUrl}
+          loading={previewLoading}
+          error={previewError}
+          title={previewError ? 'Preview Unavailable' : 'Proposal PDF Preview'}
+        />
         <Modal
           isOpen={showDeleteModal}
           onClose={() => {
-            setShowDeleteModal(false);
-            setProposalToDelete(null);
+            setShowDeleteModal(false)
+            setProposalToDelete(null)
           }}
           title={
             proposalToDelete
               ? `Delete "${proposalToDelete.title}"?`
-              : "Delete proposal"
+              : 'Delete proposal'
           }
           size="sm"
           footer={
@@ -556,8 +547,8 @@ export default function Proposals() {
               <button
                 className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200"
                 onClick={() => {
-                  setShowDeleteModal(false);
-                  setProposalToDelete(null);
+                  setShowDeleteModal(false)
+                  setProposalToDelete(null)
                 }}
               >
                 Cancel
@@ -575,5 +566,5 @@ export default function Proposals() {
         </Modal>
       </div>
     </Layout>
-  );
+  )
 }

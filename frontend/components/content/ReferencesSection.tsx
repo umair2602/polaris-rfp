@@ -1,19 +1,19 @@
 import {
   ClipboardDocumentListIcon,
+  EnvelopeIcon,
   EyeIcon,
   PencilIcon,
-  TrashIcon,
-  TagIcon,
-  UserGroupIcon,
-  EnvelopeIcon,
   PhoneIcon,
-} from "@heroicons/react/24/outline";
+  TrashIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline'
 
 export default function ReferencesSection({ ctx }: { ctx: any }) {
   const {
     references,
     selectedReference,
     setSelectedReference,
+    handleViewReference,
     showAddReference,
     setShowAddReference,
     referenceForm,
@@ -26,7 +26,7 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
     editingReference,
     handleSaveReference,
     handleDeleteReference,
-  } = ctx;
+  } = ctx
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -53,8 +53,8 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                   key={index}
                   className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${
                     selectedReference === reference
-                      ? "bg-primary-50 border-r-2 border-primary-500"
-                      : ""
+                      ? 'bg-primary-50 border-r-2 border-primary-500'
+                      : ''
                   }`}
                   onClick={() => setSelectedReference(reference)}
                 >
@@ -78,8 +78,12 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                     <div className="flex space-x-1">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedReference(reference);
+                          e.stopPropagation()
+                          if (typeof handleViewReference === 'function') {
+                            handleViewReference(reference)
+                          } else {
+                            setSelectedReference(reference)
+                          }
                         }}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-primary-600 bg-primary-100 rounded hover:bg-primary-200"
                       >
@@ -88,8 +92,8 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                       </button>
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditReference(reference);
+                          e.stopPropagation()
+                          handleEditReference(reference)
                         }}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200"
                       >
@@ -98,8 +102,8 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
                       </button>
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteReference(reference);
+                          e.stopPropagation()
+                          handleDeleteReference(reference)
                         }}
                         className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200"
                       >
@@ -206,5 +210,5 @@ export default function ReferencesSection({ ctx }: { ctx: any }) {
 
       {/* Modals moved to page level */}
     </div>
-  );
+  )
 }

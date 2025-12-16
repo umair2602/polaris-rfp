@@ -1,130 +1,228 @@
-import { useRouter } from "next/router";
-import { useState, useEffect, useRef } from "react";
-import Head from "next/head";
-import Layout from "../../components/Layout";
-import TextEditor from "../../components/TextEditor";
-import AIModal from "../../components/AIModal";
-import Modal from "../../components/ui/Modal";
-import { proposalApi, proposalApiPdf, Proposal, aiApi } from "../../lib/api";
-import api from "../../lib/api";
 import {
-  DocumentTextIcon,
-  CalendarDaysIcon,
-  BuildingOfficeIcon,
-  CheckCircleIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  PlusIcon,
-  CheckIcon,
-  XMarkIcon,
-  CloudArrowUpIcon,
   ArrowDownTrayIcon,
-  SparklesIcon,
-  ChevronDownIcon,
   BookOpenIcon,
-} from "@heroicons/react/24/outline";
-import { formatTitleObjectToText, parseTitleTextToObject, renderSectionContent, isContentLibrarySection, getContentLibraryType, getSelectedIds } from "../../utils/proposalHelpers";
-import ContentLibraryModal from "../../components/ContentLibraryModal";
+  BuildingOfficeIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  DocumentTextIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  SparklesIcon,
+  TrashIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline'
+import Head from 'next/head'
+import { useRouter } from 'next/router'
+import { useEffect, useRef, useState } from 'react'
+import AIModal from '../../components/AIModal'
+import ContentLibraryModal from '../../components/ContentLibraryModal'
+import Layout from '../../components/Layout'
+import TextEditor from '../../components/TextEditor'
+import Modal from '../../components/ui/Modal'
+import api, {
+  Proposal,
+  aiApi,
+  contentApi,
+  extractList,
+  proposalApi,
+  proposalApiPdf,
+} from '../../lib/api'
+import {
+  formatTitleObjectToText,
+  getContentLibraryType,
+  getSelectedIds,
+  isContentLibrarySection,
+  isTitleSectionName,
+  parseTitleTextToObject,
+  renderSectionContent,
+} from '../../utils/proposalHelpers'
 
 export default function ProposalDetail() {
-  const router = useRouter();
-  const { id } = router.query;
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState("");
-  const [isAddingSection, setIsAddingSection] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [showAIModal, setShowAIModal] = useState(false);
-  const [aiEditingSection, setAiEditingSection] = useState<string | null>(null);
-  const [isAILoading, setIsAILoading] = useState(false);
-  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
-  const [downloadFormat, setDownloadFormat] = useState<'pdf' | 'docx'>('pdf');
-  const downloadMenuRef = useRef<HTMLDivElement>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string>("");
-  const [infoModalOpen, setInfoModalOpen] = useState(false);
-  const [infoModalTitle, setInfoModalTitle] = useState("");
-  const [infoModalMessage, setInfoModalMessage] = useState("");
-  const [infoModalVariant, setInfoModalVariant] = useState<'info' | 'success' | 'error'>("info");
-  const [showContentLibraryModal, setShowContentLibraryModal] = useState(false);
-  const [contentLibrarySection, setContentLibrarySection] = useState<string | null>(null);
-  const [contentLibraryType, setContentLibraryType] = useState<'team' | 'references' | 'company'>('team');
-  const [isContentLibraryLoading, setIsContentLibraryLoading] = useState(false);
+  const router = useRouter()
+  const { id } = router.query
+  const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [editingSection, setEditingSection] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [isAddingSection, setIsAddingSection] = useState(false)
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [showAIModal, setShowAIModal] = useState(false)
+  const [aiEditingSection, setAiEditingSection] = useState<string | null>(null)
+  const [isAILoading, setIsAILoading] = useState(false)
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false)
+  const [downloadFormat, setDownloadFormat] = useState<'pdf' | 'docx'>('pdf')
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [sectionToDelete, setSectionToDelete] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string>('')
+  const [infoModalOpen, setInfoModalOpen] = useState(false)
+  const [infoModalTitle, setInfoModalTitle] = useState('')
+  const [infoModalMessage, setInfoModalMessage] = useState('')
+  const [infoModalVariant, setInfoModalVariant] = useState<
+    'info' | 'success' | 'error'
+  >('info')
+  const [showContentLibraryModal, setShowContentLibraryModal] = useState(false)
+  const [contentLibrarySection, setContentLibrarySection] = useState<
+    string | null
+  >(null)
+  const [contentLibraryType, setContentLibraryType] = useState<
+    'team' | 'references' | 'company'
+  >('team')
+  const [isContentLibraryLoading, setIsContentLibraryLoading] = useState(false)
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    null,
+  )
+  const [switchingCompany, setSwitchingCompany] = useState(false)
+  const [reviewScore, setReviewScore] = useState<string>('')
+  const [reviewNotes, setReviewNotes] = useState<string>('')
+  const [savingReview, setSavingReview] = useState(false)
 
-  const openInfo = (title: string, message: string, variant: 'info' | 'success' | 'error' = 'info') => {
-    setInfoModalTitle(title);
-    setInfoModalMessage(message);
-    setInfoModalVariant(variant);
-    setInfoModalOpen(true);
-  };
+  const openInfo = (
+    title: string,
+    message: string,
+    variant: 'info' | 'success' | 'error' = 'info',
+  ) => {
+    setInfoModalTitle(title)
+    setInfoModalMessage(message)
+    setInfoModalVariant(variant)
+    setInfoModalOpen(true)
+  }
 
   useEffect(() => {
-    if (id && typeof id === "string") {
-      loadProposal(id);
+    if (id && typeof id === 'string') {
+      loadProposal(id)
     }
-  }, [id]);
+  }, [id])
+
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const resp = await contentApi.getCompanies()
+        setCompanies(extractList<any>(resp))
+      } catch (_e) {
+        setCompanies([])
+      }
+    }
+    loadCompanies()
+  }, [])
 
   // Close download menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
-        setShowDownloadMenu(false);
+      if (
+        downloadMenuRef.current &&
+        !downloadMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowDownloadMenu(false)
       }
-    };
+    }
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const loadProposal = async (proposalId: string) => {
     try {
-      const response = await proposalApi.get(proposalId);
+      const response = await proposalApi.get(proposalId)
       const proposalData = (response as any)?.data?.data
         ? (response as any).data.data
-        : response.data;
-      setProposal(proposalData as Proposal);
+        : response.data
+      setProposal(proposalData as Proposal)
+      setSelectedCompanyId((proposalData as any)?.companyId || null)
+      const existingScore = (proposalData as any)?.review?.score
+      setReviewScore(
+        existingScore === null || existingScore === undefined
+          ? ''
+          : String(existingScore),
+      )
+      setReviewNotes(String((proposalData as any)?.review?.notes || ''))
     } catch (error) {
-      console.error("Error loading proposal:", error);
-      setError("Failed to load proposal details");
+      console.error('Error loading proposal:', error)
+      setError('Failed to load proposal details')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  const switchCompany = async (companyId: string) => {
+    if (!proposal) return
+    setSwitchingCompany(true)
+    try {
+      const resp = await proposalApi.setCompany(proposal._id, companyId)
+      setProposal(resp.data as any)
+      setSelectedCompanyId(companyId)
+      openInfo(
+        'Company updated',
+        'Proposal company/branding updated.',
+        'success',
+      )
+    } catch (error) {
+      console.error('Error switching company:', error)
+      openInfo('Update failed', 'Failed to switch proposal company.', 'error')
+    } finally {
+      setSwitchingCompany(false)
+    }
+  }
+
+  const saveReview = async () => {
+    if (!proposal) return
+    setSavingReview(true)
+    try {
+      const scoreVal =
+        reviewScore.trim() === ''
+          ? null
+          : Math.max(0, Math.min(100, Number(reviewScore)))
+      const resp = await proposalApi.updateReview(proposal._id, {
+        score: Number.isFinite(Number(scoreVal)) ? (scoreVal as any) : null,
+        notes: reviewNotes,
+      })
+      setProposal(resp.data as any)
+      openInfo('Review saved', 'Review score/notes updated.', 'success')
+    } catch (error) {
+      console.error('Error saving review:', error)
+      openInfo('Save failed', 'Failed to save review.', 'error')
+    } finally {
+      setSavingReview(false)
+    }
+  }
 
   // Helpers moved to utils/proposalHelpers
 
   const startEdit = (sectionName: string, content: any) => {
-    setEditingSection(sectionName);
+    setEditingSection(sectionName)
     if (sectionName === 'Title' && content && typeof content === 'object') {
-      setEditContent(formatTitleObjectToText(content));
+      setEditContent(formatTitleObjectToText(content))
     } else {
-      setEditContent(typeof content === 'string' ? content : String(content ?? ''));
+      setEditContent(
+        typeof content === 'string' ? content : String(content ?? ''),
+      )
     }
-  };
+  }
 
   const cancelEdit = () => {
-    setEditingSection(null);
-    setEditContent("");
-  };
+    setEditingSection(null)
+    setEditContent('')
+  }
 
   const saveSection = async () => {
-    if (!proposal || !editingSection) return;
+    if (!proposal || !editingSection) return
 
-    setSaving(true);
+    setSaving(true)
     try {
-      const isTitle = editingSection === 'Title';
+      const isTitle = editingSection === 'Title'
       const newContent = isTitle
         ? parseTitleTextToObject(editContent)
-        : editContent;
+        : editContent
 
       const updatedSections = {
         ...proposal.sections,
@@ -133,205 +231,241 @@ export default function ProposalDetail() {
           content: newContent,
           lastModified: new Date().toISOString(),
         },
-      };
+      }
 
       const response = await proposalApi.update(proposal._id, {
         sections: updatedSections,
-      });
-      setProposal(response.data);
-      setEditingSection(null);
-      setEditContent("");
+      })
+      setProposal(response.data)
+      setEditingSection(null)
+      setEditContent('')
     } catch (error) {
-      console.error("Error saving section:", error);
-      openInfo("Save failed", "Failed to save section. Please try again.", "error");
+      console.error('Error saving section:', error)
+      openInfo(
+        'Save failed',
+        'Failed to save section. Please try again.',
+        'error',
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const deleteSection = (sectionName: string) => {
-    setSectionToDelete(sectionName);
-    setDeleteError("");
-    setShowDeleteModal(true);
-  };
+    setSectionToDelete(sectionName)
+    setDeleteError('')
+    setShowDeleteModal(true)
+  }
 
   const performDeleteSection = async () => {
-    if (!proposal || !sectionToDelete) return;
-    setSaving(true);
+    if (!proposal || !sectionToDelete) return
+    setSaving(true)
     try {
-      const updatedSections = { ...proposal.sections };
-      delete updatedSections[sectionToDelete];
+      const updatedSections = { ...proposal.sections }
+      delete updatedSections[sectionToDelete]
 
       const response = await proposalApi.update(proposal._id, {
         sections: updatedSections,
-      });
-      setProposal(response.data);
-      setShowDeleteModal(false);
-      setSectionToDelete(null);
-      setDeleteError("");
+      })
+      setProposal(response.data)
+      setShowDeleteModal(false)
+      setSectionToDelete(null)
+      setDeleteError('')
     } catch (error) {
-      console.error("Error deleting section:", error);
-      setDeleteError("Failed to delete section. Please try again.");
+      console.error('Error deleting section:', error)
+      setDeleteError('Failed to delete section. Please try again.')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const addSection = async () => {
-    if (!proposal || !newSectionTitle.trim()) return;
+    if (!proposal || !newSectionTitle.trim()) return
 
-    setSaving(true);
+    setSaving(true)
     try {
       const updatedSections = {
         ...proposal.sections,
         [newSectionTitle]: {
-          content: "",
-          type: "custom",
+          content: '',
+          type: 'custom',
           lastModified: new Date().toISOString(),
         },
-      };
+      }
 
       const response = await proposalApi.update(proposal._id, {
         sections: updatedSections,
-      });
-      setProposal(response.data);
-      setIsAddingSection(false);
-      setNewSectionTitle("");
-      setEditingSection(newSectionTitle);
-      setEditContent("");
+      })
+      setProposal(response.data)
+      setIsAddingSection(false)
+      setNewSectionTitle('')
+      setEditingSection(newSectionTitle)
+      setEditContent('')
     } catch (error) {
-      console.error("Error adding section:", error);
-      openInfo("Add section failed", "Failed to add section. Please try again.", "error");
+      console.error('Error adding section:', error)
+      openInfo(
+        'Add section failed',
+        'Failed to add section. Please try again.',
+        'error',
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const uploadToGoogleDrive = async () => {
-    if (!proposal) return;
+    if (!proposal) return
 
-    setUploading(true);
+    setUploading(true)
     try {
       const fileName = `${proposal.title.replace(
         /[^a-z0-9]/gi,
-        "_"
-      )}_Proposal.json`;
+        '_',
+      )}_Proposal.json`
 
       const response = await api.post(
         `/googledrive/upload-proposal/${proposal._id}`,
         {
           fileName,
-        }
-      );
+        },
+      )
 
-      openInfo("Upload successful", `Proposal uploaded to Google Drive. File: ${response.data.file.name}`, "success");
+      openInfo(
+        'Upload successful',
+        `Proposal uploaded to Google Drive. File: ${response.data.file.name}`,
+        'success',
+      )
     } catch (error) {
-      console.error("Error uploading to Google Drive:", error);
-      openInfo("Upload failed", "Failed to upload to Google Drive. Please ensure Google Drive is configured and try again.", "error");
+      console.error('Error uploading to Google Drive:', error)
+      openInfo(
+        'Upload failed',
+        'Failed to upload to Google Drive. Please ensure Google Drive is configured and try again.',
+        'error',
+      )
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const downloadProposal = async (format: 'pdf' | 'docx' = downloadFormat) => {
     if (!proposal) {
-      alert("Proposal not loaded.");
-      return;
+      alert('Proposal not loaded.')
+      return
     }
-    
-    setDownloading(true);
-    setShowDownloadMenu(false);
-    
+
+    setDownloading(true)
+    setShowDownloadMenu(false)
+
     // Show timeout warning after 10 seconds
     const timeoutWarning = setTimeout(() => {
       if (downloading) {
-        console.log(`${format.toUpperCase()} generation is taking longer than expected...`);
+        console.log(
+          `${format.toUpperCase()} generation is taking longer than expected...`,
+        )
       }
-    }, 10000);
-    
+    }, 10000)
+
     try {
-      console.log(`Starting ${format.toUpperCase()} generation for proposal:`, proposal._id);
-      
-      let response;
-      let mimeType;
-      let fileExtension;
-      
+      console.log(
+        `Starting ${format.toUpperCase()} generation for proposal:`,
+        proposal._id,
+      )
+
+      let response
+      let mimeType
+      let fileExtension
+
       if (format === 'pdf') {
-        response = await proposalApiPdf.exportPdf(proposal._id);
-        mimeType = "application/pdf";
-        fileExtension = "pdf";
+        response = await proposalApiPdf.exportPdf(proposal._id)
+        mimeType = 'application/pdf'
+        fileExtension = 'pdf'
       } else {
-        response = await proposalApiPdf.exportDocx(proposal._id);
-        mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        fileExtension = "docx";
+        response = await proposalApiPdf.exportDocx(proposal._id)
+        mimeType =
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        fileExtension = 'docx'
       }
-      
-      console.log(`${format.toUpperCase()} generation completed, creating download link`);
-      
-      const blob = new Blob([response.data], { type: mimeType });
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `${proposal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${fileExtension}`;
-      link.click();
-      
+
+      console.log(
+        `${format.toUpperCase()} generation completed, creating download link`,
+      )
+
+      const blob = new Blob([response.data], { type: mimeType })
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.download = `${proposal.title
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase()}.${fileExtension}`
+      link.click()
+
       // Clean up the object URL after a short delay
       setTimeout(() => {
-        window.URL.revokeObjectURL(link.href);
-      }, 1000);
-      
-      console.log(`${format.toUpperCase()} download initiated successfully`);
+        window.URL.revokeObjectURL(link.href)
+      }, 1000)
+
+      console.log(`${format.toUpperCase()} download initiated successfully`)
     } catch (err: any) {
-      console.error("Download failed:", err);
-      let message = "Unknown error";
+      console.error('Download failed:', err)
+      let message = 'Unknown error'
       if (err instanceof Error) {
-        message = err.message;
-      } else if (typeof err === "string") {
-        message = err;
+        message = err.message
+      } else if (typeof err === 'string') {
+        message = err
       } else if (err?.response?.data?.error) {
-        message = err.response.data.error;
+        message = err.response.data.error
       }
-      openInfo("Download failed", `Failed to download proposal ${format.toUpperCase()}: ${message}`, "error");
+      openInfo(
+        'Download failed',
+        `Failed to download proposal ${format.toUpperCase()}: ${message}`,
+        'error',
+      )
     } finally {
-      clearTimeout(timeoutWarning);
-      setDownloading(false);
+      clearTimeout(timeoutWarning)
+      setDownloading(false)
     }
-  };
+  }
 
   const generateAISections = async () => {
-    if (!proposal) return;
+    if (!proposal) return
 
-    setGenerating(true);
+    setGenerating(true)
     try {
-      const response = await api.post(`/api/proposals/${proposal._id}/generate-sections`);
-      
+      const response = await api.post(
+        `/api/proposals/${proposal._id}/generate-sections`,
+      )
+
       // Update the proposal with new sections
-      setProposal(response.data.proposal);
-      
-      openInfo("AI sections", "AI sections generated successfully!", "success");
+      setProposal(response.data.proposal)
+
+      openInfo('AI sections', 'AI sections generated successfully!', 'success')
     } catch (error) {
-      console.error("Error generating AI sections:", error);
-      openInfo("AI generation failed", "Failed to generate AI sections. Please try again.", "error");
+      console.error('Error generating AI sections:', error)
+      openInfo(
+        'AI generation failed',
+        'Failed to generate AI sections. Please try again.',
+        'error',
+      )
     } finally {
-      setGenerating(false);
+      setGenerating(false)
     }
-  };
+  }
 
   const startAIEdit = (sectionName: string) => {
-    setAiEditingSection(sectionName);
-    setShowAIModal(true);
-  };
+    setAiEditingSection(sectionName)
+    setShowAIModal(true)
+  }
 
   const handleAIEdit = async (prompt: string) => {
-    if (!proposal || !aiEditingSection) return;
+    if (!proposal || !aiEditingSection) return
 
-    setIsAILoading(true);
+    setIsAILoading(true)
     try {
-      const currentContent = proposal.sections[aiEditingSection]?.content || "";
-      
+      const currentContent = proposal.sections[aiEditingSection]?.content || ''
+
       const response = await aiApi.editText({
         text: currentContent,
         prompt,
-      });
+      })
 
       if (response.data.success) {
         const updatedSections = {
@@ -341,74 +475,80 @@ export default function ProposalDetail() {
             content: response.data.editedText,
             lastModified: new Date().toISOString(),
           },
-        };
+        }
 
         const updateResponse = await proposalApi.update(proposal._id, {
           sections: updatedSections,
-        });
-        setProposal(updateResponse.data);
-        setShowAIModal(false);
-        setAiEditingSection(null);
+        })
+        setProposal(updateResponse.data)
+        setShowAIModal(false)
+        setAiEditingSection(null)
       } else {
-        throw new Error(response.data.error || "AI edit failed");
+        throw new Error(response.data.error || 'AI edit failed')
       }
     } catch (error: any) {
-      console.error("AI edit failed:", error);
+      console.error('AI edit failed:', error)
       const errorMessage =
         error.response?.data?.error ||
         error.message ||
-        "AI edit failed. Please try again.";
-      openInfo("AI edit failed", errorMessage, "error");
+        'AI edit failed. Please try again.'
+      openInfo('AI edit failed', errorMessage, 'error')
     } finally {
-      setIsAILoading(false);
+      setIsAILoading(false)
     }
-  };
+  }
 
   const cancelAIEdit = () => {
-    setShowAIModal(false);
-    setAiEditingSection(null);
-  };
+    setShowAIModal(false)
+    setAiEditingSection(null)
+  }
 
   const openContentLibrary = (sectionName: string) => {
-    const type = getContentLibraryType(sectionName);
-    if (!type) return;
-    
-    setContentLibrarySection(sectionName);
-    setContentLibraryType(type);
-    setShowContentLibraryModal(true);
-  };
+    const type = getContentLibraryType(sectionName)
+    if (!type) return
+
+    setContentLibrarySection(sectionName)
+    setContentLibraryType(type)
+    setShowContentLibraryModal(true)
+  }
 
   const handleContentLibrarySelection = async (selectedIds: string[]) => {
-    if (!proposal || !contentLibrarySection) return;
+    if (!proposal || !contentLibrarySection) return
 
-    setIsContentLibraryLoading(true);
+    setIsContentLibraryLoading(true)
     try {
       const response = await api.put(
         `/api/proposals/${proposal._id}/content-library/${contentLibrarySection}`,
         {
           selectedIds,
-          type: contentLibraryType
-        }
-      );
+          type: contentLibraryType,
+        },
+      )
 
-      setProposal(response.data);
-      setShowContentLibraryModal(false);
-      setContentLibrarySection(null);
-      
-      openInfo("Content updated", "Content library selection updated successfully!", "success");
+      setProposal(response.data)
+      setShowContentLibraryModal(false)
+      setContentLibrarySection(null)
+
+      openInfo(
+        'Content updated',
+        'Content library selection updated successfully!',
+        'success',
+      )
     } catch (error: any) {
-      console.error("Error updating content library selection:", error);
-      const errorMessage = error.response?.data?.error || "Failed to update content library selection";
-      openInfo("Update failed", errorMessage, "error");
+      console.error('Error updating content library selection:', error)
+      const errorMessage =
+        error.response?.data?.error ||
+        'Failed to update content library selection'
+      openInfo('Update failed', errorMessage, 'error')
     } finally {
-      setIsContentLibraryLoading(false);
+      setIsContentLibraryLoading(false)
     }
-  };
+  }
 
   const cancelContentLibrary = () => {
-    setShowContentLibraryModal(false);
-    setContentLibrarySection(null);
-  };
+    setShowContentLibraryModal(false)
+    setContentLibrarySection(null)
+  }
 
   // Rendering helpers moved to utils/proposalHelpers
 
@@ -419,7 +559,7 @@ export default function ProposalDetail() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </Layout>
-    );
+    )
   }
 
   if (error || !proposal) {
@@ -431,7 +571,7 @@ export default function ProposalDetail() {
             Proposal not found
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            {error || "The proposal you are looking for does not exist."}
+            {error || 'The proposal you are looking for does not exist.'}
           </p>
           <div className="mt-6">
             <button
@@ -443,10 +583,50 @@ export default function ProposalDetail() {
           </div>
         </div>
       </Layout>
-    );
+    )
   }
 
-  const sectionEntries = Object.entries(proposal.sections || {});
+  const sectionEntries = Object.entries(proposal.sections || {})
+  const contentLibraryIssues = sectionEntries
+    .filter(([_, sectionData]) => isContentLibrarySection(sectionData))
+    .map(([sectionName, sectionData]: [string, any]) => {
+      const t = getContentLibraryType(sectionName)
+      const selected = getSelectedIds(sectionData)
+      const content = sectionData?.content
+      const contentStr = typeof content === 'string' ? content : ''
+
+      const problems: string[] = []
+
+      if (t === 'team' && selected.length === 0) {
+        problems.push(`No team members selected for "${sectionName}".`)
+      }
+      if (t === 'references' && selected.length === 0) {
+        problems.push(`No references selected for "${sectionName}".`)
+      }
+      if (
+        t === 'company' &&
+        selected.length === 0 &&
+        !isTitleSectionName(sectionName)
+      ) {
+        problems.push(`No company profile selected for "${sectionName}".`)
+      }
+
+      if (
+        contentStr.includes('No team members available') ||
+        contentStr.includes('No suitable team members') ||
+        contentStr.includes('No project references available') ||
+        contentStr.includes('No suitable project references') ||
+        contentStr.includes('No company information available') ||
+        contentStr.includes('Selected company not found')
+      ) {
+        problems.push(
+          `"${sectionName}" is missing required content library data.`,
+        )
+      }
+
+      return problems
+    })
+    .flat()
 
   return (
     <Layout>
@@ -468,7 +648,7 @@ export default function ProposalDetail() {
                     </h1>
                     <div className="mt-1 flex items-center text-sm text-gray-500">
                       <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-                      {(proposal as any).rfp?.clientName || "Unknown Client"}
+                      {(proposal as any).rfp?.clientName || 'Unknown Client'}
                       <span className="mx-2">•</span>
                       <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                         {proposal.status}
@@ -478,6 +658,33 @@ export default function ProposalDetail() {
                 </div>
               </div>
               <div className="mt-6 flex space-x-3 md:mt-0 md:ml-4">
+                {companies.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={selectedCompanyId || ''}
+                      onChange={(e) => {
+                        const next = e.target.value
+                        setSelectedCompanyId(next || null)
+                        if (next) switchCompany(next)
+                      }}
+                      disabled={switchingCompany}
+                      className="border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-900 text-sm"
+                      title="Switch proposal company/branding"
+                    >
+                      <option value="" disabled>
+                        Select company
+                      </option>
+                      {companies.map((c) => (
+                        <option key={c.companyId} value={c.companyId}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    {switchingCompany && (
+                      <div className="text-sm text-gray-500">Updating…</div>
+                    )}
+                  </div>
+                )}
                 <div className="relative" ref={downloadMenuRef}>
                   <button
                     onClick={() => setShowDownloadMenu(!showDownloadMenu)}
@@ -503,13 +710,13 @@ export default function ProposalDetail() {
                       </>
                     )}
                   </button>
-                  
+
                   {showDownloadMenu && !downloading && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
                       <button
                         onClick={() => {
-                          setDownloadFormat('pdf');
-                          downloadProposal('pdf');
+                          setDownloadFormat('pdf')
+                          downloadProposal('pdf')
                         }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -518,8 +725,8 @@ export default function ProposalDetail() {
                       </button>
                       <button
                         onClick={() => {
-                          setDownloadFormat('docx');
-                          downloadProposal('docx');
+                          setDownloadFormat('docx')
+                          downloadProposal('docx')
                         }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -591,7 +798,9 @@ export default function ProposalDetail() {
                           Created
                         </dt>
                         <dd className="text-lg font-medium text-gray-900">
-                          {new Date(proposal.createdAt).toLocaleDateString('en-US')}
+                          {new Date(proposal.createdAt).toLocaleDateString(
+                            'en-US',
+                          )}
                         </dd>
                       </dl>
                     </div>
@@ -620,6 +829,73 @@ export default function ProposalDetail() {
               </div>
             </div>
 
+            {/* Reviewer */}
+            <div className="mb-6 bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Reviewer
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Score and notes for comparing proposals under this RFP.
+                </p>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Score (0–100)
+                    </label>
+                    <input
+                      value={reviewScore}
+                      onChange={(e) => setReviewScore(e.target.value)}
+                      inputMode="numeric"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-900"
+                      placeholder="e.g., 82"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Notes
+                    </label>
+                    <textarea
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      rows={3}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-900"
+                      placeholder="Key strengths, risks, compliance issues, interview questions…"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={saveReview}
+                    disabled={savingReview}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
+                  >
+                    {savingReview ? 'Saving…' : 'Save review'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {contentLibraryIssues.length > 0 && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="text-sm font-semibold text-amber-900">
+                  Content Library items missing (this can cause generic or
+                  inaccurate sections)
+                </div>
+                <ul className="mt-2 text-sm text-amber-800 list-disc pl-5 space-y-1">
+                  {contentLibraryIssues.slice(0, 6).map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+                <div className="mt-3 text-xs text-amber-700">
+                  Tip: use “Select from Library” on Team/References sections to
+                  fix this.
+                </div>
+              </div>
+            )}
+
             {/* Add Section Button */}
             <div className="mb-6">
               {isAddingSection ? (
@@ -631,7 +907,7 @@ export default function ProposalDetail() {
                       value={newSectionTitle}
                       onChange={(e) => setNewSectionTitle(e.target.value)}
                       className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 bg-gray-100 focus:border-primary-500"
-                      onKeyPress={(e) => e.key === "Enter" && addSection()}
+                      onKeyPress={(e) => e.key === 'Enter' && addSection()}
                     />
                     <button
                       onClick={addSection}
@@ -643,8 +919,8 @@ export default function ProposalDetail() {
                     </button>
                     <button
                       onClick={() => {
-                        setIsAddingSection(false);
-                        setNewSectionTitle("");
+                        setIsAddingSection(false)
+                        setNewSectionTitle('')
                       }}
                       className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                     >
@@ -675,32 +951,37 @@ export default function ProposalDetail() {
                           {sectionName}
                         </h3>
                         <div className="flex items-center space-x-2">
-                          {/* Content Library Button - only show for content library sections, excluding Title */}
-                          {isContentLibrarySection(sectionData) && getContentLibraryType(sectionName) && sectionName !== 'Title' && (
+                          {/* Content Library Button - only show for content library sections, excluding Title/Title Page */}
+                          {isContentLibrarySection(sectionData) &&
+                            getContentLibraryType(sectionName) &&
+                            !isTitleSectionName(sectionName) && (
+                              <button
+                                onClick={() => openContentLibrary(sectionName)}
+                                className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                                title="Select from Library"
+                              >
+                                <BookOpenIcon className="h-3 w-3" />
+                                <span>Select from Library</span>
+                              </button>
+                            )}
+                          {/* Ask AI - disable for content library sections to prevent hallucinations */}
+                          {!isContentLibrarySection(sectionData) && (
                             <button
-                              onClick={() => openContentLibrary(sectionName)}
-                              className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
-                              title="Select from Library"
+                              onClick={() => startAIEdit(sectionName)}
+                              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
+                              title="Ask with AI"
                             >
-                              <BookOpenIcon className="h-3 w-3" />
-                              <span>Select from Library</span>
+                              <SparklesIcon className="h-3 w-3" />
+                              <span>Ask with AI</span>
                             </button>
                           )}
-                          <button
-                            onClick={() => startAIEdit(sectionName)}
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center space-x-1"
-                            title="Ask with AI"
-                          >
-                            <SparklesIcon className="h-3 w-3" />
-                            <span>Ask with AI</span>
-                          </button>
                           {editingSection !== sectionName && (
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() =>
                                   startEdit(
                                     sectionName,
-                                    sectionData.content || ""
+                                    sectionData.content || '',
                                   )
                                 }
                                 className="p-1 text-gray-400 hover:text-gray-600"
@@ -758,17 +1039,17 @@ export default function ProposalDetail() {
                             <div
                               dangerouslySetInnerHTML={{
                                 __html: renderSectionContent(
-                                  sectionData.content || "",
-                                  sectionName
+                                  sectionData.content || '',
+                                  sectionName,
                                 ),
                               }}
                             />
                           </div>
                           {sectionData.lastModified && (
                             <div className="mt-4 text-xs text-gray-400">
-                              Last modified:{" "}
+                              Last modified:{' '}
                               {new Date(
-                                sectionData.lastModified
+                                sectionData.lastModified,
                               ).toLocaleString('en-US')}
                             </div>
                           )}
@@ -776,7 +1057,7 @@ export default function ProposalDetail() {
                       )}
                     </div>
                   </div>
-                )
+                ),
               )}
             </div>
 
@@ -839,11 +1120,12 @@ export default function ProposalDetail() {
         }
       >
         <div className="space-y-2">
-          <p className="text-sm text-gray-700">Are you sure you want to delete{sectionToDelete ? ` "${sectionToDelete}"` : ''}?</p>
+          <p className="text-sm text-gray-700">
+            Are you sure you want to delete
+            {sectionToDelete ? ` "${sectionToDelete}"` : ''}?
+          </p>
           <p className="text-xs text-gray-500">This action cannot be undone.</p>
-          {deleteError && (
-            <p className="text-sm text-red-600">{deleteError}</p>
-          )}
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
         </div>
       </Modal>
 
@@ -861,7 +1143,17 @@ export default function ProposalDetail() {
           </button>
         }
       >
-        <p className={`text-sm ${infoModalVariant === 'error' ? 'text-red-700' : infoModalVariant === 'success' ? 'text-green-700' : 'text-gray-700'}`}>{infoModalMessage}</p>
+        <p
+          className={`text-sm ${
+            infoModalVariant === 'error'
+              ? 'text-red-700'
+              : infoModalVariant === 'success'
+              ? 'text-green-700'
+              : 'text-gray-700'
+          }`}
+        >
+          {infoModalMessage}
+        </p>
       </Modal>
 
       {/* Content Library Modal */}
@@ -870,9 +1162,13 @@ export default function ProposalDetail() {
         onClose={cancelContentLibrary}
         onApply={handleContentLibrarySelection}
         type={contentLibraryType}
-        currentSelectedIds={contentLibrarySection ? getSelectedIds(proposal?.sections[contentLibrarySection]) : []}
+        currentSelectedIds={
+          contentLibrarySection
+            ? getSelectedIds(proposal?.sections[contentLibrarySection])
+            : []
+        }
         isLoading={isContentLibraryLoading}
       />
     </Layout>
-  );
+  )
 }

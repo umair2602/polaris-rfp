@@ -1,7 +1,7 @@
-const OpenAI = require('openai');
-const TeamMember = require("../models/TeamMember");
-const ProjectReference = require("../models/ProjectReference");
-const Company = require("../models/Company");
+const OpenAI = require('openai')
+const TeamMember = require('../models/TeamMember')
+const ProjectReference = require('../models/ProjectReference')
+const Company = require('../models/Company')
 
 class SharedSectionFormatters {
   // Lazy OpenAI initialization
@@ -9,77 +9,91 @@ class SharedSectionFormatters {
     if (!this._openaiInitialized) {
       this._openai = process.env.OPENAI_API_KEY
         ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-        : null;
-      this._openaiInitialized = true;
+        : null
+      this._openaiInitialized = true
     }
-    return this._openai;
+    return this._openai
   }
 
   /**
    * Replace company names in text to match the current company
    */
   static replaceCompanyName(text, targetCompanyName) {
-    if (!text || typeof text !== "string" || !targetCompanyName) return text;
+    if (!text || typeof text !== 'string' || !targetCompanyName) return text
 
-    const companyNames = ["Eighth Generation Consulting", "Polaris EcoSystems"];
+    const companyNames = ['Eighth Generation Consulting', 'Polaris EcoSystems']
 
     // Replace any occurrence of other company names with the target company's name
-    let result = text;
+    let result = text
     companyNames.forEach((name) => {
       if (name !== targetCompanyName) {
-        const regex = new RegExp(name, "gi");
-        result = result.replace(regex, targetCompanyName);
+        const regex = new RegExp(name, 'gi')
+        result = result.replace(regex, targetCompanyName)
       }
-    });
+    })
 
-    return result;
+    return result
   }
 
   /**
    * Replace website URLs in text to match the current company
    */
   static replaceWebsite(text, targetCompanyName) {
-    if (!text || typeof text !== "string" || !targetCompanyName) return text;
+    if (!text || typeof text !== 'string' || !targetCompanyName) return text
 
     // Map company names to their respective websites
     const websiteMap = {
-      "Eighth Generation Consulting": "https://eighthgen.com",
-      "Polaris EcoSystems": "https://polariseco.com"
-    };
+      'Eighth Generation Consulting': 'https://eighthgen.com',
+      'Polaris EcoSystems': 'https://polariseco.com',
+    }
 
     // Get all websites
-    const websites = Object.values(websiteMap);
-    const targetWebsite = websiteMap[targetCompanyName];
-    
-    if (!targetWebsite) return text;
+    const websites = Object.values(websiteMap)
+    const targetWebsite = websiteMap[targetCompanyName]
 
-    let result = text;
-    
+    if (!targetWebsite) return text
+
+    let result = text
+
     // Replace all other websites with the target company's website
-    websites.forEach(website => {
+    websites.forEach((website) => {
       if (website !== targetWebsite) {
         // Replace with and without protocol
-        const withProtocol = new RegExp(website.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        const withoutProtocol = new RegExp(website.replace('https://', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        
-        result = result.replace(withProtocol, targetWebsite);
-        result = result.replace(withoutProtocol, targetWebsite.replace('https://', ''));
-      }
-    });
+        const withProtocol = new RegExp(
+          website.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          'gi',
+        )
+        const withoutProtocol = new RegExp(
+          website
+            .replace('https://', '')
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          'gi',
+        )
 
-    return result;
+        result = result.replace(withProtocol, targetWebsite)
+        result = result.replace(
+          withoutProtocol,
+          targetWebsite.replace('https://', ''),
+        )
+      }
+    })
+
+    return result
   }
 
   /**
    * Fetch company information from the content library
    */
-  static async fetchCompanyInfo() {
+  static async fetchCompanyInfo(companyId = null) {
     try {
-      const company = await Company.findOne().sort({ createdAt: -1 }).lean();
-      return company;
+      const query = companyId ? { companyId } : {}
+      const company = await Company.findOne(query)
+        .sort({ createdAt: -1 })
+        .lean()
+      return company
     } catch (error) {
-      console.error("Error fetching company info:", error);
-      return null;
+      console.error('Error fetching company info:', error)
+      return null
     }
   }
 
@@ -88,11 +102,11 @@ class SharedSectionFormatters {
    */
   static async fetchTeamMembers() {
     try {
-      const teamMembers = await TeamMember.find({ isActive: true }).lean();
-      return teamMembers;
+      const teamMembers = await TeamMember.find({ isActive: true }).lean()
+      return teamMembers
     } catch (error) {
-      console.error("Error fetching team members:", error);
-      return [];
+      console.error('Error fetching team members:', error)
+      return []
     }
   }
 
@@ -104,11 +118,11 @@ class SharedSectionFormatters {
       const references = await ProjectReference.find({
         isActive: true,
         isPublic: true,
-      }).lean();
-      return references;
+      }).lean()
+      return references
     } catch (error) {
-      console.error("Error fetching project references:", error);
-      return [];
+      console.error('Error fetching project references:', error)
+      return []
     }
   }
 
@@ -118,28 +132,30 @@ class SharedSectionFormatters {
   static formatTitleSection(companyInfo, rfp) {
     if (!companyInfo) {
       return {
-        submittedBy: "Not specified",
-        name: "Not specified",
-        email: "Not specified",
-        number: "Not specified",
-      };
+        submittedBy: 'Not specified',
+        name: 'Not specified',
+        email: 'Not specified',
+        number: 'Not specified',
+      }
     }
 
-    const submittedBy = companyInfo.name || "Not specified";
+    const submittedBy = companyInfo.name || 'Not specified'
     const contactName =
       companyInfo.primaryContact?.name ||
       (companyInfo.name
-        ? `${companyInfo.name.split(" ")[0]} Representative`
-        : "Not specified");
-    const contactEmail = companyInfo.primaryContact?.email || companyInfo.email || "Not specified";
-    const contactPhone = companyInfo.primaryContact?.phone || companyInfo.phone || "Not specified";
+        ? `${companyInfo.name.split(' ')[0]} Representative`
+        : 'Not specified')
+    const contactEmail =
+      companyInfo.primaryContact?.email || companyInfo.email || 'Not specified'
+    const contactPhone =
+      companyInfo.primaryContact?.phone || companyInfo.phone || 'Not specified'
 
     return {
       submittedBy,
       name: contactName,
       email: contactEmail,
       number: contactPhone,
-    };
+    }
   }
 
   /**
@@ -147,28 +163,35 @@ class SharedSectionFormatters {
    */
   static formatCoverLetterSection(companyInfo, rfp) {
     if (!companyInfo) {
-      return "No company information available in the content library.";
+      return 'No company information available in the content library.'
     }
 
-    const currentDate = new Date().toLocaleDateString("en-US");
-    const clientName = rfp.clientName || rfp.title || "Valued Client";
-    const salutation = rfp.clientName ? `Dear ${rfp.clientName} Team` : "Dear Hiring Manager";
-    
+    const currentDate = new Date().toLocaleDateString('en-US')
+    const clientName = rfp.clientName || rfp.title || 'Valued Client'
+    const salutation = rfp.clientName
+      ? `Dear ${rfp.clientName} Team`
+      : 'Dear Hiring Manager'
+
     // Apply company name and website replacement to cover letter content
     let coverLetterContent = this.replaceCompanyName(
       companyInfo.coverLetter ||
         `We are pleased to submit our proposal for your consideration. Our team brings extensive experience and expertise to deliver exceptional results for your project.`,
-      companyInfo.name
-    );
-    coverLetterContent = this.replaceWebsite(coverLetterContent, companyInfo.name);
+      companyInfo.name,
+    )
+    coverLetterContent = this.replaceWebsite(
+      coverLetterContent,
+      companyInfo.name,
+    )
 
-    const contactName = companyInfo.name ? `${companyInfo.name.split(" ")[0]} Representative` : "Project Manager";
-    const contactTitle = "Project Director";
-    const contactEmail = companyInfo.email || "contact@company.com";
-    const contactPhone = companyInfo.phone || "(555) 123-4567";
+    const contactName = companyInfo.name
+      ? `${companyInfo.name.split(' ')[0]} Representative`
+      : 'Project Manager'
+    const contactTitle = 'Project Director'
+    const contactEmail = companyInfo.email || 'contact@company.com'
+    const contactPhone = companyInfo.phone || '(555) 123-4567'
 
     const formattedCoverLetter = `**Submitted to:** ${clientName}
-**Submitted by:** ${companyInfo.name || "Our Company"}
+**Submitted by:** ${companyInfo.name || 'Our Company'}
 **Date:** ${currentDate}
 
 ${salutation},
@@ -179,9 +202,9 @@ Sincerely,
 
 ${contactName}, ${contactTitle}
 ${contactEmail}
-${contactPhone}`;
+${contactPhone}`
 
-    return formattedCoverLetter;
+    return formattedCoverLetter
   }
 
   /**
@@ -189,26 +212,26 @@ ${contactPhone}`;
    */
   static formatTeamMembersSection(teamMembers, selectedIds = null) {
     if (!teamMembers || teamMembers.length === 0) {
-      return "No team members available in the content library.";
+      return 'No team members available in the content library.'
     }
 
     const membersToUse = selectedIds
       ? teamMembers.filter((member) => selectedIds.includes(member.memberId))
-      : teamMembers;
+      : teamMembers
 
     if (membersToUse.length === 0) {
-      return "No suitable team members found for this project.";
+      return 'No suitable team members found for this project.'
     }
 
     let content =
-      "Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n";
+      'Our experienced team brings together diverse expertise and proven track record to deliver exceptional results.\n\n'
 
     membersToUse.forEach((member) => {
-      content += `**${member.nameWithCredentials}** - ${member.position}\n\n`;
-      content += `${member.biography}\n\n`;
-    });
+      content += `**${member.nameWithCredentials}** - ${member.position}\n\n`
+      content += `${member.biography}\n\n`
+    })
 
-    return content.trim();
+    return content.trim()
   }
 
   /**
@@ -216,48 +239,50 @@ ${contactPhone}`;
    */
   static formatReferencesSection(references, selectedIds = null) {
     if (!references || references.length === 0) {
-      return "No project references available in the content library.";
+      return 'No project references available in the content library.'
     }
 
     const referencesToUse = selectedIds
-      ? references.filter((reference) => selectedIds.includes(reference._id.toString()))
-      : references;
+      ? references.filter((reference) =>
+          selectedIds.includes(reference._id.toString()),
+        )
+      : references
 
     if (referencesToUse.length === 0) {
-      return "No suitable project references found for this project.";
+      return 'No suitable project references found for this project.'
     }
 
     let content =
-      "Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n";
+      'Below are some of our recent project references that demonstrate our capabilities and client satisfaction:\n\n'
 
     referencesToUse.forEach((reference) => {
-      content += `**${reference.organizationName}**`;
+      content += `**${reference.organizationName}**`
       if (reference.timePeriod) {
-        content += ` (${reference.timePeriod})`;
+        content += ` (${reference.timePeriod})`
       }
-      content += "\n\n";
+      content += '\n\n'
 
-      content += `**Contact:** ${reference.contactName}`;
+      content += `**Contact:** ${reference.contactName}`
       if (reference.contactTitle) {
-        content += `, ${reference.contactTitle}`;
+        content += `, ${reference.contactTitle}`
       }
       if (reference.additionalTitle) {
-        content += ` - ${reference.additionalTitle}`;
+        content += ` - ${reference.additionalTitle}`
       }
-      content += ` of ${reference.organizationName}\n\n`;
+      content += ` of ${reference.organizationName}\n\n`
 
       if (reference.contactEmail) {
-        content += `**Email:** ${reference.contactEmail}\n\n`;
+        content += `**Email:** ${reference.contactEmail}\n\n`
       }
 
       if (reference.contactPhone) {
-        content += `**Phone:** ${reference.contactPhone}\n\n`;
+        content += `**Phone:** ${reference.contactPhone}\n\n`
       }
 
-      content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`;
-    });
+      content += `**Scope of Work:** ${reference.scopeOfWork}\n\n`
+    })
 
-    return content.trim();
+    return content.trim()
   }
 
   /**
@@ -265,18 +290,18 @@ ${contactPhone}`;
    */
   static async formatExperienceSection(companyInfo, rfp) {
     if (!companyInfo) {
-      return "No company information available in the content library.";
+      return 'No company information available in the content library.'
     }
 
-    const openai = this.openai;
+    const openai = this.openai
     if (openai && companyInfo.firmQualificationsAndExperience) {
       try {
         // Apply company name and website replacement before sending to AI
         let replacedContent = this.replaceCompanyName(
           companyInfo.firmQualificationsAndExperience,
-          companyInfo.name
-        );
-        replacedContent = this.replaceWebsite(replacedContent, companyInfo.name);
+          companyInfo.name,
+        )
+        replacedContent = this.replaceWebsite(replacedContent, companyInfo.name)
 
         const prompt = `Take the following company qualifications and experience content and format it professionally for an RFP proposal. Keep the formatting simple and clean.
 
@@ -298,19 +323,19 @@ Format this content following these rules:
 6. Do not add multiple sections or subheadings
 7. Keep the same tone and style as the original content
 
-Return only the clean, simply formatted content without markdown headings or excessive structure.`;
+Return only the clean, simply formatted content without markdown headings or excessive structure.`
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: 'gpt-4o-mini',
           temperature: 0.3,
           max_tokens: 2000,
-          messages: [{ role: "user", content: prompt }],
-        });
+          messages: [{ role: 'user', content: prompt }],
+        })
 
-        const formattedContent = completion.choices[0].message.content.trim();
-        return formattedContent;
+        const formattedContent = completion.choices[0].message.content.trim()
+        return formattedContent
       } catch (error) {
-        console.error("AI formatting failed for experience section:", error);
+        console.error('AI formatting failed for experience section:', error)
         // Fallback to basic formatting
       }
     }
@@ -318,35 +343,47 @@ Return only the clean, simply formatted content without markdown headings or exc
     // Apply company name and website replacement to base content as well
     let baseContent = this.replaceCompanyName(
       companyInfo.firmQualificationsAndExperience ||
-        `${companyInfo.name || "Our company"} brings extensive experience and proven qualifications to deliver exceptional results for your project.`,
-      companyInfo.name
-    );
-    baseContent = this.replaceWebsite(baseContent, companyInfo.name);
+        `${
+          companyInfo.name || 'Our company'
+        } brings extensive experience and proven qualifications to deliver exceptional results for your project.`,
+      companyInfo.name,
+    )
+    baseContent = this.replaceWebsite(baseContent, companyInfo.name)
 
-    let formattedContent = baseContent;
+    let formattedContent = baseContent
 
     if (
       companyInfo.statistics &&
-      (companyInfo.statistics.yearsInBusiness || companyInfo.statistics.projectsCompleted)
+      (companyInfo.statistics.yearsInBusiness ||
+        companyInfo.statistics.projectsCompleted)
     ) {
-      formattedContent += `\n\n`;
+      formattedContent += `\n\n`
       if (companyInfo.statistics.yearsInBusiness) {
-        formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`;
+        formattedContent += `Our company has been in business for ${companyInfo.statistics.yearsInBusiness}+ years`
       }
       if (companyInfo.statistics.projectsCompleted) {
-        formattedContent += `${companyInfo.statistics.yearsInBusiness ? ", completing" : "We have completed"} ${companyInfo.statistics.projectsCompleted}+ projects`;
+        formattedContent += `${
+          companyInfo.statistics.yearsInBusiness
+            ? ', completing'
+            : 'We have completed'
+        } ${companyInfo.statistics.projectsCompleted}+ projects`
       }
       if (companyInfo.statistics.clientsSatisfied) {
-        formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`;
+        formattedContent += ` for ${companyInfo.statistics.clientsSatisfied}+ satisfied clients`
       }
-      formattedContent += `.`;
+      formattedContent += `.`
     }
 
-    if (companyInfo.coreCapabilities && companyInfo.coreCapabilities.length > 0) {
-      formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(", ")}.`;
+    if (
+      companyInfo.coreCapabilities &&
+      companyInfo.coreCapabilities.length > 0
+    ) {
+      formattedContent += `\n\nOur core services include: ${companyInfo.coreCapabilities.join(
+        ', ',
+      )}.`
     }
 
-    return formattedContent.trim();
+    return formattedContent.trim()
   }
 
   /**
@@ -354,13 +391,64 @@ Return only the clean, simply formatted content without markdown headings or exc
    * Uses OpenAI to intelligently classify section types
    */
   static async shouldUseContentLibrary(sectionTitle) {
-    const title = sectionTitle.toLowerCase().trim();
-    if (title === "title") return "title";
-    if (title === "cover letter") return "cover-letter";
+    const title = sectionTitle.toLowerCase().trim()
+    // Hard rules first (avoid misclassification like "Key Personnel and Experience")
+    // Title / cover-page variants
+    if (
+      title === 'title' ||
+      title === 'title page' ||
+      title.includes('title page') ||
+      title.includes('cover page') ||
+      title.includes('cover sheet') ||
+      title.includes('title sheet')
+    ) {
+      return 'title'
+    }
 
-    const openai = this.openai;
+    // Cover letter variants
+    if (
+      title === 'cover letter' ||
+      title.includes('cover letter') ||
+      title.includes('introduction letter') ||
+      title.includes('transmittal letter')
+    ) {
+      return 'cover-letter'
+    }
+
+    // TEAM/PERSONNEL: must win even if "experience" is also present
+    if (
+      title.includes('personnel') ||
+      title.includes('team') ||
+      title.includes('staff') ||
+      title.includes('key personnel') ||
+      title.includes('project team') ||
+      title.includes('team member') ||
+      title.includes('human resource') ||
+      title.includes('resume') ||
+      title.includes('resumes') ||
+      title.includes('curriculum vitae') ||
+      title.includes('cv') ||
+      title.includes('bios') ||
+      title.includes('biographies') ||
+      title.includes('staffing')
+    ) {
+      return 'team'
+    }
+
+    // References / past performance
+    if (
+      title.includes('reference') ||
+      title.includes('past project') ||
+      title.includes('past performance') ||
+      title.includes('client reference') ||
+      title.includes('project portfolio')
+    ) {
+      return 'references'
+    }
+
+    const openai = this.openai
     if (!openai) {
-      return this.shouldUseContentLibraryFallback(sectionTitle);
+      return this.shouldUseContentLibraryFallback(sectionTitle)
     }
 
     try {
@@ -374,29 +462,40 @@ Return only the clean, simply formatted content without markdown headings or exc
 
 Section title: "${sectionTitle}"
 
-Respond with ONLY one of these values: "title", "cover-letter", "experience", "team", "references", or null`;
+IMPORTANT: If the title contains BOTH personnel/team words AND "experience", you MUST return "team".
+
+Respond with ONLY one of these values: "title", "cover-letter", "experience", "team", "references", or null`
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: 'gpt-4o-mini',
         temperature: 0.1,
         max_tokens: 20,
-        messages: [{ role: "user", content: prompt }],
-      });
+        messages: [{ role: 'user', content: prompt }],
+      })
 
-      const response = completion.choices[0].message.content.trim().toLowerCase();
+      const response = completion.choices[0].message.content
+        .trim()
+        .toLowerCase()
 
-      if (response.includes("title") && !response.includes("cover")) return "title";
-      if (response.includes("cover-letter") || response.includes("cover letter")) return "cover-letter";
-      if (response.includes("experience")) return "experience";
-      if (response.includes("team")) return "team";
-      if (response.includes("reference")) return "references";
-      if (response.includes("null") || response === "null") return null;
+      if (response.includes('title') && !response.includes('cover'))
+        return 'title'
+      if (
+        response.includes('cover-letter') ||
+        response.includes('cover letter')
+      )
+        return 'cover-letter'
+      if (response.includes('experience')) return 'experience'
+      if (response.includes('team')) return 'team'
+      if (response.includes('reference')) return 'references'
+      if (response.includes('null') || response === 'null') return null
 
-      console.warn(`Unexpected AI response for section "${sectionTitle}": ${response}. Using fallback.`);
-      return this.shouldUseContentLibraryFallback(sectionTitle);
+      console.warn(
+        `Unexpected AI response for section "${sectionTitle}": ${response}. Using fallback.`,
+      )
+      return this.shouldUseContentLibraryFallback(sectionTitle)
     } catch (error) {
-      console.error("AI section classification failed:", error);
-      return this.shouldUseContentLibraryFallback(sectionTitle);
+      console.error('AI section classification failed:', error)
+      return this.shouldUseContentLibraryFallback(sectionTitle)
     }
   }
 
@@ -404,62 +503,79 @@ Respond with ONLY one of these values: "title", "cover-letter", "experience", "t
    * Fallback keyword-based section classification when AI is unavailable
    */
   static shouldUseContentLibraryFallback(sectionTitle) {
-    const title = sectionTitle.toLowerCase();
+    const title = sectionTitle.toLowerCase()
 
-    if (title === "title") {
-      return "title";
+    // Title / cover-page variants
+    if (
+      title === 'title' ||
+      title === 'title page' ||
+      title.includes('title page') ||
+      title.includes('cover page') ||
+      title.includes('cover sheet') ||
+      title.includes('title sheet')
+    ) {
+      return 'title'
     }
 
     if (
-      title.includes("cover letter") ||
-      title.includes("introduction letter") ||
-      title.includes("transmittal letter")
+      title.includes('cover letter') ||
+      title.includes('introduction letter') ||
+      title.includes('transmittal letter')
     ) {
-      return "cover-letter";
+      return 'cover-letter'
+    }
+
+    // TEAM/PERSONNEL: must win even if "experience" is also present
+    if (
+      title.includes('personnel') ||
+      title.includes('team') ||
+      title.includes('staff') ||
+      title.includes('key personnel') ||
+      title.includes('project team') ||
+      title.includes('team member') ||
+      title.includes('human resource') ||
+      title.includes('key personnel and experience') ||
+      title.includes('resume') ||
+      title.includes('resumes') ||
+      title.includes('curriculum vitae') ||
+      title.includes('cv') ||
+      title.includes('bios') ||
+      title.includes('biographies') ||
+      title.includes('staffing')
+    ) {
+      return 'team'
     }
 
     if (
-      title.includes("experience") ||
-      title.includes("qualification") ||
-      title.includes("firm qualification") ||
-      title.includes("company qualification") ||
-      title.includes("firm experience") ||
-      title.includes("company experience") ||
-      title.includes("background") ||
-      title.includes("capabilities") ||
-      title.includes("expertise") ||
-      title.includes("credentials") ||
-      title.includes("track record") ||
-      title.includes("company profile") ||
-      title.includes("technical approach and methodology")
+      title.includes('reference') ||
+      title.includes('past project') ||
+      title.includes('past performance') ||
+      title.includes('client reference') ||
+      title.includes('project portfolio')
     ) {
-      return "experience";
+      return 'references'
     }
 
     if (
-      title.includes("personnel") ||
-      title.includes("team") ||
-      title.includes("staff") ||
-      title.includes("key personnel") ||
-      title.includes("project team") ||
-      title.includes("team member") ||
-      title.includes("human resource") ||
-      title.includes("key personnel and experience")
+      title.includes('experience') ||
+      title.includes('qualification') ||
+      title.includes('firm qualification') ||
+      title.includes('company qualification') ||
+      title.includes('firm experience') ||
+      title.includes('company experience') ||
+      title.includes('background') ||
+      title.includes('capabilities') ||
+      title.includes('expertise') ||
+      title.includes('credentials') ||
+      title.includes('track record') ||
+      title.includes('company profile') ||
+      title.includes('technical approach and methodology')
     ) {
-      return "team";
+      return 'experience'
     }
 
-    if (
-      title.includes("reference") ||
-      title.includes("past project") ||
-      title.includes("client reference") ||
-      title.includes("project portfolio")
-    ) {
-      return "references";
-    }
-
-    return null;
+    return null
   }
 }
 
-module.exports = SharedSectionFormatters;
+module.exports = SharedSectionFormatters

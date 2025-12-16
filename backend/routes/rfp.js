@@ -1,10 +1,10 @@
-const express = require("express");
-const multer = require("multer");
-const RFP = require("../models/RFP");
-const rfpAnalyzer = require("../services/rfpAnalyzer");
-const SectionTitlesGenerator = require("../services/aiSectionsTitleGenerator");
+const express = require('express')
+const multer = require('multer')
+const RFP = require('../models/RFP')
+const rfpAnalyzer = require('../services/rfpAnalyzer')
+const SectionTitlesGenerator = require('../services/aiSectionsTitleGenerator')
 
-const router = express.Router();
+const router = express.Router()
 
 // Configure multer for RFP file uploads (PDF only)
 const upload = multer({
@@ -13,108 +13,180 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "application/pdf") {
-      cb(null, true);
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true)
     } else {
-      cb(new Error("Only PDF files are allowed"));
+      cb(new Error('Only PDF files are allowed'))
     }
   },
-});
+})
 
 // Analyze RFP from URL
-router.post("/analyze-url", async (req, res) => {
+router.post('/analyze-url', async (req, res) => {
   try {
-    const { url } = req.body;
+    const { url } = req.body
 
     if (!url) {
-      return res.status(400).json({ error: "URL is required" });
+      return res.status(400).json({ error: 'URL is required' })
     }
 
-    console.log("Analyzing RFP from URL:", url);
+    console.log('Analyzing RFP from URL:', url)
 
     // Analyze the RFP from URL
-    const analysis = await rfpAnalyzer.analyzeRFP(url, url);
+    const analysis = await rfpAnalyzer.analyzeRFP(url, url)
 
     // Create RFP document
     const rfp = new RFP({
       ...analysis,
       fileName: `URL_${Date.now()}`,
       fileSize: 0, // URLs don't have file size
-      clientName: analysis.clientName || "Unknown Client",
-    });
+      clientName: analysis.clientName || 'Unknown Client',
+    })
 
-    await rfp.save();
+    await rfp.save()
 
-    console.log("RFP from URL saved successfully:", rfp._id);
-    res.status(201).json(rfp);
+    console.log('RFP from URL saved successfully:', rfp._id)
+    // Attach computed metadata for immediate UI use
+    const obj = rfp.toObject ? rfp.toObject() : rfp
+    if (typeof rfp.computeDateSanity === 'function') {
+      const { warnings, meta } = rfp.computeDateSanity()
+      obj.dateWarnings = warnings
+      obj.dateMeta = meta
+    }
+    if (typeof rfp.computeFitScore === 'function') {
+      const fit = rfp.computeFitScore()
+      obj.fitScore = fit.score
+      obj.fitReasons = fit.reasons
+    }
+    res.status(201).json(obj)
   } catch (error) {
-    console.error("RFP URL analysis error:", error);
+    console.error('RFP URL analysis error:', error)
     res.status(500).json({
-      error: "Failed to analyze RFP from URL",
+      error: 'Failed to analyze RFP from URL',
       message: error.message,
-    });
+    })
   }
-});
+})
 
-// Upload and analyze RFP
-router.post("/upload", upload.single("file"), async (req, res) => {
+// Analyze multiple RFP URLs (Finder MVP)
+router.post('/analyze-urls', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    const urls = Array.isArray(req.body?.urls)
+      ? req.body.urls.map((u) => String(u || '').trim()).filter(Boolean)
+      : []
+    if (urls.length === 0) {
+      return res.status(400).json({ error: 'urls[] is required' })
     }
 
-    console.log("Analyzing RFP:", req.file.originalname);
+    const results = []
+    for (const url of urls) {
+      try {
+        const analysis = await rfpAnalyzer.analyzeRFP(url, url)
+        const rfp = new RFP({
+          ...analysis,
+          fileName: `URL_${Date.now()}`,
+          fileSize: 0,
+          clientName: analysis.clientName || 'Unknown Client',
+        })
+        await rfp.save()
+        const obj = rfp.toObject ? rfp.toObject() : rfp
+        if (typeof rfp.computeDateSanity === 'function') {
+          const { warnings, meta } = rfp.computeDateSanity()
+          obj.dateWarnings = warnings
+          obj.dateMeta = meta
+        }
+        if (typeof rfp.computeFitScore === 'function') {
+          const fit = rfp.computeFitScore()
+          obj.fitScore = fit.score
+          obj.fitReasons = fit.reasons
+        }
+        results.push({ url, ok: true, rfp: obj })
+      } catch (e) {
+        results.push({
+          url,
+          ok: false,
+          error: e?.message || 'Failed to analyze URL',
+        })
+      }
+    }
+
+    return res.status(201).json({ results })
+  } catch (error) {
+    console.error('RFP batch URL analysis error:', error)
+    return res.status(500).json({
+      error: 'Failed to analyze RFP URLs',
+      message: error.message,
+    })
+  }
+})
+
+// Upload and analyze RFP
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' })
+    }
+
+    console.log('Analyzing RFP:', req.file.originalname)
 
     // Analyze the RFP
     const analysis = await rfpAnalyzer.analyzeRFP(
       req.file.buffer,
-      req.file.originalname
-    );
-    console.log(analysis);
+      req.file.originalname,
+    )
+    console.log(analysis)
     // Create RFP document
     const rfp = new RFP({
       ...analysis,
       fileName: req.file.originalname,
       fileSize: req.file.size,
-      clientName: analysis.clientName || "Unknown Client",
-    });
+      clientName: analysis.clientName || 'Unknown Client',
+    })
 
-    await rfp.save();
+    await rfp.save()
 
-    console.log("RFP saved successfully:", rfp._id);
-    res.status(201).json(rfp);
+    console.log('RFP saved successfully:', rfp._id)
+    res.status(201).json(rfp)
   } catch (error) {
-    console.error("RFP upload error:", error);
+    console.error('RFP upload error:', error)
     res.status(500).json({
-      error: "Failed to process RFP",
+      error: 'Failed to process RFP',
       message: error.message,
-    });
+    })
   }
-});
+})
 
 // Get all RFPs
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 20
+    const skip = (page - 1) * limit
 
     const rfps = await RFP.find()
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select("-rawText -parsedSections");
+      .select('-rawText -parsedSections')
 
-    // Check disqualification status for each RFP
-    const rfpsWithStatus = rfps.map(rfp => {
-      rfp.checkDisqualification();
-      return rfp;
-    });
+    const total = await RFP.countDocuments()
 
-    // Save updated disqualification status (batch update)
-    await Promise.all(rfpsWithStatus.map(rfp => rfp.save()));
-
-    const total = await RFP.countDocuments();
+    // Compute disqualification + date sanity + fit score without persisting on read
+    const rfpsWithStatus = rfps.map((rfp) => {
+      rfp.checkDisqualification()
+      const obj = rfp.toObject ? rfp.toObject() : rfp
+      if (typeof rfp.computeDateSanity === 'function') {
+        const { warnings, meta } = rfp.computeDateSanity()
+        obj.dateWarnings = warnings
+        obj.dateMeta = meta
+      }
+      if (typeof rfp.computeFitScore === 'function') {
+        const fit = rfp.computeFitScore()
+        obj.fitScore = fit.score
+        obj.fitReasons = fit.reasons
+      }
+      return obj
+    })
 
     res.json({
       data: rfpsWithStatus,
@@ -124,137 +196,149 @@ router.get("/", async (req, res) => {
         total,
         pages: Math.ceil(total / limit),
       },
-    });
+    })
   } catch (error) {
-    console.error("Error fetching RFPs:", error);
-    res.status(500).json({ error: "Failed to fetch RFPs" });
+    console.error('Error fetching RFPs:', error)
+    res.status(500).json({ error: 'Failed to fetch RFPs' })
   }
-});
+})
 
 // Get single RFP
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const rfp = await RFP.findById(req.params.id);
+    const rfp = await RFP.findById(req.params.id)
 
     if (!rfp) {
-      return res.status(404).json({ error: "RFP not found" });
+      return res.status(404).json({ error: 'RFP not found' })
     }
 
-    // Check and update disqualification status
-    rfp.checkDisqualification();
-    await rfp.save();
+    rfp.checkDisqualification()
+    const obj = rfp.toObject ? rfp.toObject() : rfp
+    if (typeof rfp.computeDateSanity === 'function') {
+      const { warnings, meta } = rfp.computeDateSanity()
+      obj.dateWarnings = warnings
+      obj.dateMeta = meta
+    }
+    if (typeof rfp.computeFitScore === 'function') {
+      const fit = rfp.computeFitScore()
+      obj.fitScore = fit.score
+      obj.fitReasons = fit.reasons
+    }
 
-    res.json(rfp);
+    res.json(obj)
   } catch (error) {
-    console.error("Error fetching RFP:", error);
-    res.status(500).json({ error: "Failed to fetch RFP" });
+    console.error('Error fetching RFP:', error)
+    res.status(500).json({ error: 'Failed to fetch RFP' })
   }
-});
+})
 
 // Generate AI-driven proposal section titles (titles only)
-router.post("/:id/ai-section-titles", async (req, res) => {
+router.post('/:id/ai-section-titles', async (req, res) => {
   try {
-    const rfp = await RFP.findById(req.params.id);
+    const rfp = await RFP.findById(req.params.id)
     if (!rfp) {
-      return res.status(404).json({ error: "RFP not found" });
+      return res.status(404).json({ error: 'RFP not found' })
     }
 
     // Return existing if present
     if (Array.isArray(rfp.sectionTitles) && rfp.sectionTitles.length > 0) {
-      return res.json({ titles: rfp.sectionTitles });
+      return res.json({ titles: rfp.sectionTitles })
     }
 
     // Otherwise, generate and persist
-  const titles = await SectionTitlesGenerator.generateSectionTitles(rfp);
-    rfp.sectionTitles = titles;
-    await rfp.save();
-    return res.json({ titles });
+    const titles = await SectionTitlesGenerator.generateSectionTitles(rfp)
+    rfp.sectionTitles = titles
+    await rfp.save()
+    return res.json({ titles })
   } catch (error) {
-    console.error("AI section titles error:", error);
-    return res.status(500).json({ error: "Failed to generate section titles", message: error.message });
+    console.error('AI section titles error:', error)
+    return res.status(500).json({
+      error: 'Failed to generate section titles',
+      message: error.message,
+    })
   }
-});
+})
 
 // Update RFP
-router.put("/:id", async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const allowedUpdates = [
-      "title",
-      "clientName",
-      "submissionDeadline",
-      "questionsDeadline",
-      "bidMeetingDate",
-      "bidRegistrationDate",
-      "budgetRange",
-      "keyRequirements",
-      "deliverables",
-      "criticalInformation",
-      "timeline",
-    ];
+      'title',
+      'clientName',
+      'submissionDeadline',
+      'questionsDeadline',
+      'bidMeetingDate',
+      'bidRegistrationDate',
+      'budgetRange',
+      'keyRequirements',
+      'deliverables',
+      'criticalInformation',
+      'timeline',
+    ]
 
-    const rfp = await RFP.findById(req.params.id);
+    const rfp = await RFP.findById(req.params.id)
 
     if (!rfp) {
-      return res.status(404).json({ error: "RFP not found" });
+      return res.status(404).json({ error: 'RFP not found' })
     }
 
     // Apply updates
     Object.keys(req.body).forEach((key) => {
       if (allowedUpdates.includes(key)) {
-        rfp[key] = req.body[key];
+        rfp[key] = req.body[key]
       }
-    });
+    })
 
     // Save (this will trigger pre-save hook to check disqualification)
-    await rfp.save();
+    await rfp.save()
 
-    res.json(rfp);
+    res.json(rfp)
   } catch (error) {
-    console.error("Error updating RFP:", error);
-    res.status(500).json({ error: "Failed to update RFP" });
+    console.error('Error updating RFP:', error)
+    res.status(500).json({ error: 'Failed to update RFP' })
   }
-});
+})
 
 // Get proposals for a specific RFP
-router.get("/:id/proposals", async (req, res) => {
+router.get('/:id/proposals', async (req, res) => {
   try {
-    const rfpId = req.params.id;
-    const Proposal = require("../models/Proposal");
+    const rfpId = req.params.id
+    const Proposal = require('../models/Proposal')
 
     const proposals = await Proposal.find({ rfpId })
       .sort({ createdAt: -1 })
-      .select("-sections"); // Exclude large sections data for list view
+      .select('-sections') // Exclude large sections data for list view
 
     res.json({
-      data: proposals
-    });
+      data: proposals,
+    })
   } catch (error) {
-    console.error("Error fetching RFP proposals:", error);
-    res.status(500).json({ error: "Failed to fetch RFP proposals" });
+    console.error('Error fetching RFP proposals:', error)
+    res.status(500).json({ error: 'Failed to fetch RFP proposals' })
   }
-});
+})
 
 // Delete RFP
-router.delete("/:id", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const rfp = await RFP.findByIdAndDelete(req.params.id);
+    const rfp = await RFP.findByIdAndDelete(req.params.id)
 
     if (!rfp) {
-      return res.status(404).json({ error: "RFP not found" });
+      return res.status(404).json({ error: 'RFP not found' })
     }
 
-    res.json({ message: "RFP deleted successfully" });
+    res.json({ message: 'RFP deleted successfully' })
   } catch (error) {
-    console.error("Error deleting RFP:", error);
-    res.status(500).json({ error: "Failed to delete RFP" });
+    console.error('Error deleting RFP:', error)
+    res.status(500).json({ error: 'Failed to delete RFP' })
   }
-});
+})
 
 // Search RFPs
-router.get("/search/:query", async (req, res) => {
+router.get('/search/:query', async (req, res) => {
   try {
-    const query = req.params.query;
-    const searchRegex = new RegExp(query, "i");
+    const query = req.params.query
+    const searchRegex = new RegExp(query, 'i')
 
     const rfps = await RFP.find({
       $or: [
@@ -266,13 +350,13 @@ router.get("/search/:query", async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(20)
-      .select("-rawText -parsedSections");
+      .select('-rawText -parsedSections')
 
-    res.json(rfps);
+    res.json(rfps)
   } catch (error) {
-    console.error("Error searching RFPs:", error);
-    res.status(500).json({ error: "Search failed" });
+    console.error('Error searching RFPs:', error)
+    res.status(500).json({ error: 'Search failed' })
   }
-});
+})
 
-module.exports = router;
+module.exports = router
