@@ -35,6 +35,26 @@ jobs:
         run: |
           echo "CFN_ARTIFACT_BUCKET=${{ env.CFN_ARTIFACT_BUCKET_PREFIX }}-${{ env.AWS_REGION }}" >> $GITHUB_ENV
 
+      - name: Preflight: validate GitHub token (Amplify)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ GH_PERSONAL_TOKEN is not set."
+            exit 1
+          fi
+
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user || true)
+
+          if [ "$CODE" != "200" ]; then
+            echo "❌ GH_PERSONAL_TOKEN is not valid for GitHub API (status $CODE)."
+            echo "Amplify will fail with 'Bad credentials' until this token is rotated/fixed."
+            exit 1
+          fi
+
       - name: Ensure CloudFormation artifacts bucket exists
         run: |
           aws s3api head-bucket --bucket "${{ env.CFN_ARTIFACT_BUCKET }}" 2>/dev/null && exit 0
