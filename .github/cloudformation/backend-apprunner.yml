@@ -50,22 +50,11 @@ Parameters:
     NoEcho: true
     Default: ''
 
-Resources:
-  # IAM Role for App Runner
-  AppRunnerInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: tasks.apprunner.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+  AppRunnerInstanceRoleArn:
+    Type: String
+    Description: IAM role ARN used by App Runner instances (created by root stack)
 
+Resources:
   # CloudWatch Log Group for App Runner
   AppRunnerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -115,7 +104,7 @@ Resources:
       InstanceConfiguration:
         Cpu: '1024'
         Memory: '2048'
-        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+        InstanceRoleArn: !Ref AppRunnerInstanceRoleArn
       HealthCheckConfiguration:
         Protocol: HTTP
         Path: /

@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Polaris unified deployment (root stack) using nested stacks: Frontend (Amplify) + Backend (App Runner)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: ['development', 'staging', 'production']
+
+  RepositoryUrl:
+    Type: String
+    Default: 'https://github.com/umair2602/polaris-rfp.git'
+
+  BranchName:
+    Type: String
+    Default: main
+
+  # Frontend (Amplify)
+  GitHubToken:
+    Type: String
+    NoEcho: true
+
+  EnableCustomDomain:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+
+  CustomDomainName:
+    Type: String
+    Default: 'polariseco.com'
+
+  CustomDomainPrefix:
+    Type: String
+    Default: 'rfp'
+
+  # Backend (App Runner)
+  CodeStarConnectionArn:
+    Type: String
+    Default: 'arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016'
+
+  FrontendBaseUrl:
+    Type: String
+    Description: Frontend base URL for backend CORS + OAuth (use custom domain URL when available)
+    Default: 'https://rfp.polariseco.com'
+
+  CanvaClientId:
+    Type: String
+    Default: ''
+
+  CanvaClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+
+  CanvaRedirectUri:
+    Type: String
+    Default: ''
+
+  CanvaTokenEncKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+
+Conditions:
+  UseCustomDomain: !Equals [!Ref EnableCustomDomain, 'true']
+
+Resources:
+  # Shared App Runner instance role (requested: full DynamoDB + S3 perms)
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'polaris-apprunner-instance-${Environment}-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  BackendStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: .github/cloudformation/backend-apprunner.yml
+      Parameters:
+        RepositoryUrl: !Ref RepositoryUrl
+        BranchName: !Ref BranchName
+        Environment: !Ref Environment
+        CodeStarConnectionArn: !Ref CodeStarConnectionArn
+        FrontendBaseUrl: !Ref FrontendBaseUrl
+        CanvaClientId: !Ref CanvaClientId
+        CanvaClientSecret: !Ref CanvaClientSecret
+        CanvaRedirectUri: !Ref CanvaRedirectUri
+        CanvaTokenEncKey: !Ref CanvaTokenEncKey
+        AppRunnerInstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+
+  FrontendStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: .github/cloudformation/frontend-amplify.yml
+      Parameters:
+        RepositoryUrl: !Ref RepositoryUrl
+        BranchName: !Ref BranchName
+        Environment: !Ref Environment
+        GitHubToken: !Ref GitHubToken
+        BackendUrl: !GetAtt BackendStack.Outputs.AppRunnerServiceUrl
+        EnableCustomDomain: !Ref EnableCustomDomain
+        CustomDomainName: !Ref CustomDomainName
+        CustomDomainPrefix: !Ref CustomDomainPrefix
+
+Outputs:
+  BackendUrl:
+    Description: App Runner backend URL
+    Value: !GetAtt BackendStack.Outputs.AppRunnerServiceUrl
+
+  BackendArn:
+    Description: App Runner backend ARN
+    Value: !GetAtt BackendStack.Outputs.AppRunnerServiceArn
+
+  AmplifyAppId:
+    Description: Amplify App ID
+    Value: !GetAtt FrontendStack.Outputs.AmplifyAppId
+
+  AmplifyDefaultUrl:
+    Description: Amplify default URL for this branch
+    Value: !GetAtt FrontendStack.Outputs.AmplifyAppUrl
+
+  FrontendCustomDomainUrl:
+    Description: Custom domain URL (if enabled)
+    Value: !GetAtt FrontendStack.Outputs.CustomDomainUrl
+
+  AppRunnerInstanceRoleArn:
+    Description: IAM role ARN used by App Runner instances
+    Value: !GetAtt AppRunnerInstanceRole.Arn

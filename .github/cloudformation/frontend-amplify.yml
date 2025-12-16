@@ -28,6 +28,25 @@ Parameters:
     Description: Backend API URL
     Default: 'https://cvsmuhhazj.us-east-1.awsapprunner.com'
 
+  EnableCustomDomain:
+    Type: String
+    Description: Whether to create Amplify custom domain mapping
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+
+  CustomDomainName:
+    Type: String
+    Description: Root domain for Amplify custom domain mapping (e.g. polariseco.com)
+    Default: 'polariseco.com'
+
+  CustomDomainPrefix:
+    Type: String
+    Description: Subdomain prefix (e.g. rfp)
+    Default: 'rfp'
+
+Conditions:
+  UseCustomDomain: !Equals [!Ref EnableCustomDomain, 'true']
+
 Resources:
   # IAM Role for Amplify
   AmplifyServiceRole:
@@ -99,48 +118,16 @@ Resources:
         - Name: NEXT_PUBLIC_API_BASE_URL
           Value: !Ref BackendUrl
 
-  # Amplify Domain (Optional - for custom domain)
+  # Amplify Domain (optional)
   AmplifyDomain:
+    Condition: UseCustomDomain
     Type: AWS::Amplify::Domain
     Properties:
       AppId: !GetAtt AmplifyApp.AppId
-      DomainName: 'polariseco.com'
+      DomainName: !Ref CustomDomainName
       SubDomainSettings:
         - BranchName: !Ref BranchName
-          Prefix: 'rfp'
-
-  # CloudFront Distribution for custom domain
-  CloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-          - DomainName: !GetAtt AmplifyApp.DefaultDomain
-            Id: AmplifyOrigin
-            CustomOriginConfig:
-              HTTPPort: 443
-              HTTPSPort: 443
-              OriginProtocolPolicy: https-only
-        Enabled: true
-        DefaultRootObject: index.html
-        DefaultCacheBehavior:
-          TargetOriginId: AmplifyOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-          CachedMethods: [GET, HEAD, OPTIONS]
-          Compress: true
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
-        CustomErrorResponses:
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-        PriceClass: PriceClass_100
+          Prefix: !Ref CustomDomainPrefix
 
 Outputs:
   AmplifyAppId:
@@ -155,11 +142,14 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-AmplifyAppUrl'
 
-  CloudFrontUrl:
-    Description: 'CloudFront Distribution URL'
-    Value: !GetAtt CloudFrontDistribution.DomainName
+  CustomDomainUrl:
+    Description: 'Custom domain URL (if enabled)'
+    Value: !If
+      - UseCustomDomain
+      - !Sub 'https://${CustomDomainPrefix}.${CustomDomainName}'
+      - ''
     Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontUrl'
+      Name: !Sub '${AWS::StackName}-CustomDomainUrl'
 
   AmplifyServiceRoleArn:
     Description: 'Amplify Service Role ARN'
