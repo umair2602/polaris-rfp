@@ -85,7 +85,7 @@ Resources:
   BackendStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: .github/cloudformation/backend-apprunner.yml
+      TemplateURL: backend-apprunner.yml
       Parameters:
         RepositoryUrl: !Ref RepositoryUrl
         BranchName: !Ref BranchName
@@ -101,7 +101,7 @@ Resources:
   FrontendStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: .github/cloudformation/frontend-amplify.yml
+      TemplateURL: frontend-amplify.yml
       Parameters:
         RepositoryUrl: !Ref RepositoryUrl
         BranchName: !Ref BranchName
