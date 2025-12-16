@@ -165,6 +165,54 @@ export const proposalApi = {
     api.get(`/api/proposals/${id}/export-docx`, { responseType: 'blob' }),
 }
 
+// Canva integration API calls
+export const canvaApi = {
+  status: () => api.get(`/api/integrations/canva/status`),
+  connectUrl: (returnTo: string = '/integrations/canva') =>
+    api.get(`/api/integrations/canva/connect-url`, { params: { returnTo } }),
+  disconnect: () => api.post(`/api/integrations/canva/disconnect`),
+  listBrandTemplates: (query?: string) =>
+    api.get(`/api/integrations/canva/brand-templates`, {
+      params: query ? { query } : undefined,
+    }),
+  getDataset: (brandTemplateId: string) =>
+    api.get(
+      `/api/integrations/canva/brand-templates/${brandTemplateId}/dataset`,
+    ),
+  listCompanyMappings: () =>
+    api.get(`/api/integrations/canva/company-mappings`),
+  saveCompanyMapping: (companyId: string, data: any) =>
+    api.put(`/api/integrations/canva/company-mappings/${companyId}`, data),
+  getCompanyLogoLink: (companyId: string) =>
+    api.get(`/api/integrations/canva/companies/${companyId}/logo`),
+  uploadCompanyLogoFromUrl: (companyId: string, url: string, name?: string) =>
+    api.post(`/api/integrations/canva/companies/${companyId}/logo/upload-url`, {
+      url,
+      name,
+    }),
+  getTeamHeadshotLink: (memberId: string) =>
+    api.get(`/api/integrations/canva/team/${memberId}/headshot`),
+  uploadTeamHeadshotFromUrl: (memberId: string, url: string, name?: string) =>
+    api.post(`/api/integrations/canva/team/${memberId}/headshot/upload-url`, {
+      url,
+      name,
+    }),
+  createDesignFromProposal: (proposalId: string, opts?: { force?: boolean }) =>
+    api.post(
+      `/api/integrations/canva/proposals/${proposalId}/create-design`,
+      null,
+      {
+        params: opts?.force ? { force: 1 } : undefined,
+      },
+    ),
+  validateProposal: (proposalId: string) =>
+    api.post(`/api/integrations/canva/proposals/${proposalId}/validate`),
+  exportProposalPdf: (proposalId: string) =>
+    api.get(`/api/integrations/canva/proposals/${proposalId}/export-pdf`, {
+      responseType: 'blob',
+    }),
+}
+
 // Template API calls
 export const templateApi = {
   list: () => api.get<{ data: Template[] }>('/api/templates'),

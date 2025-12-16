@@ -24,6 +24,7 @@ import Modal from '../../components/ui/Modal'
 import api, {
   Proposal,
   aiApi,
+  canvaApi,
   contentApi,
   extractList,
   proposalApi,
@@ -425,6 +426,72 @@ export default function ProposalDetail() {
     }
   }
 
+  const exportCanvaPdf = async () => {
+    if (!proposal) return
+    setDownloading(true)
+    setShowDownloadMenu(false)
+    try {
+      const resp = await canvaApi.exportProposalPdf(proposal._id)
+      const blob = new Blob([resp.data], { type: 'application/pdf' })
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.download = `${proposal.title
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase()}_canva.pdf`
+      link.click()
+      setTimeout(() => window.URL.revokeObjectURL(link.href), 1000)
+      openInfo('Canva export', 'Canva PDF export started.', 'success')
+    } catch (err: any) {
+      console.error('Canva PDF export failed:', err)
+      const message =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Export failed'
+      openInfo(
+        'Canva export failed',
+        `${message}\n\nTip: configure Canva under Integrations → Canva.`,
+        'error',
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const openInCanva = async () => {
+    if (!proposal) return
+    setDownloading(true)
+    setShowDownloadMenu(false)
+    try {
+      const resp = await canvaApi.createDesignFromProposal(proposal._id)
+      const editUrl = resp.data?.design?.urls?.edit_url || null
+      if (!editUrl) {
+        openInfo(
+          'Canva design created',
+          'Design created but no edit URL returned.',
+          'info',
+        )
+        return
+      }
+      window.open(editUrl, '_blank', 'noopener,noreferrer')
+      openInfo('Opened in Canva', 'Design opened in a new tab.', 'success')
+    } catch (err: any) {
+      console.error('Open in Canva failed:', err)
+      const message =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to create Canva design'
+      openInfo(
+        'Open in Canva failed',
+        `${message}\n\nTip: configure Canva under Integrations → Canva.`,
+        'error',
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const generateAISections = async () => {
     if (!proposal) return
 
@@ -732,6 +799,23 @@ export default function ProposalDetail() {
                       >
                         <DocumentTextIcon className="mr-3 h-4 w-4" />
                         Download as DOCX
+                      </button>
+                      <div className="my-1 border-t border-gray-200" />
+                      <button
+                        onClick={openInCanva}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        title="Create a Canva design from this proposal and open it"
+                      >
+                        <SparklesIcon className="mr-3 h-4 w-4" />
+                        Open in Canva
+                      </button>
+                      <button
+                        onClick={exportCanvaPdf}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        title="Create a Canva design and export as PDF"
+                      >
+                        <SparklesIcon className="mr-3 h-4 w-4" />
+                        Export Canva PDF
                       </button>
                     </div>
                   )}

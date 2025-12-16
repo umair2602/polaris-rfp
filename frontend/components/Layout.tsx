@@ -192,6 +192,12 @@ export default function Layout({ children }: LayoutProps) {
       icon: UserGroupIcon,
       current: router.pathname === '/content',
     },
+    {
+      name: 'Integrations',
+      href: '/integrations/canva',
+      icon: CogIcon,
+      current: router.pathname.startsWith('/integrations'),
+    },
     // { name: 'Google Drive', href: '/googledrive', icon: CloudIcon, current: router.pathname === '/googledrive' },
   ]
 
