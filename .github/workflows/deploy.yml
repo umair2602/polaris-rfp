@@ -10,7 +10,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ROOT_STACK_NAME: polaris-root-stack
-  CFN_ARTIFACT_BUCKET: "polaris-rfp-cfn-artifacts-${{ secrets.AWS_ACCOUNT_ID }}-${{ env.AWS_REGION }}"
+  CFN_ARTIFACT_BUCKET_PREFIX: "polaris-rfp-cfn-artifacts-${{ secrets.AWS_ACCOUNT_ID }}"
 
 jobs:
   deploy:
@@ -31,12 +31,24 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-${{ github.run_id }}
 
+      - name: Compute CloudFormation artifacts bucket name
+        run: |
+          echo "CFN_ARTIFACT_BUCKET=${{ env.CFN_ARTIFACT_BUCKET_PREFIX }}-${{ env.AWS_REGION }}" >> $GITHUB_ENV
+
       - name: Ensure CloudFormation artifacts bucket exists
         run: |
-          aws s3api head-bucket --bucket "${{ env.CFN_ARTIFACT_BUCKET }}" 2>/dev/null || \
+          aws s3api head-bucket --bucket "${{ env.CFN_ARTIFACT_BUCKET }}" 2>/dev/null && exit 0
+
+          if [ "${{ env.AWS_REGION }}" = "us-east-1" ]; then
             aws s3api create-bucket \
               --bucket "${{ env.CFN_ARTIFACT_BUCKET }}" \
               --region "${{ env.AWS_REGION }}"
+          else
+            aws s3api create-bucket \
+              --bucket "${{ env.CFN_ARTIFACT_BUCKET }}" \
+              --region "${{ env.AWS_REGION }}" \
+              --create-bucket-configuration LocationConstraint="${{ env.AWS_REGION }}"
+          fi
 
       - name: Package nested CloudFormation templates
         run: |

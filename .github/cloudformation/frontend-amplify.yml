@@ -6,23 +6,23 @@ Parameters:
     Type: String
     Description: GitHub repository URL
     Default: 'https://github.com/umair2602/polaris-rfp.git'
-  
+
   BranchName:
     Type: String
     Description: Branch name to deploy
     Default: 'main'
-  
+
   Environment:
     Type: String
     Description: Environment name
     Default: 'production'
     AllowedValues: ['development', 'staging', 'production']
-  
+
   GitHubToken:
     Type: String
     Description: GitHub token for repository access
     NoEcho: true
-  
+
   BackendUrl:
     Type: String
     Description: Backend API URL
@@ -99,7 +99,7 @@ Resources:
         - Source: '**'
           Target: '/index.html'
           Status: '200'
-      Platform: WEB
+      Platform: WEB_COMPUTE
 
   # Amplify Branch
   AmplifyBranch:
