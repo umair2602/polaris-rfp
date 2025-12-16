@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Unified Polaris deployment: Amplify (frontend) + App Runner (backend)'
+
+Parameters:
+  RepositoryUrl:
+    Type: String
+    Description: GitHub repository URL
+    Default: 'https://github.com/umair2602/polaris-rfp.git'
+
+  BranchName:
+    Type: String
+    Description: Branch name to deploy
+    Default: 'main'
+
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: 'production'
+    AllowedValues: ['development', 'staging', 'production']
+
+  # Amplify needs a GitHub token unless you're using a CodeStar connection for Amplify
+  GitHubToken:
+    Type: String
+    Description: GitHub token for Amplify repository access
+    NoEcho: true
+
+  # App Runner GitHub connection (CodeStar)
+  CodeStarConnectionArn:
+    Type: String
+    Description: ARN of existing App Runner connection for GitHub
+    Default: 'arn:aws:apprunner:us-east-1:211125621822:connection/polaris-rfp/577729d32ae34e1380983e866e425016'
+
+  EnableCustomDomain:
+    Type: String
+    Description: Whether to create Amplify custom domain mapping
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+
+  CustomDomainName:
+    Type: String
+    Description: Root domain for Amplify custom domain mapping (e.g. polariseco.com)
+    Default: 'polariseco.com'
+
+  CustomDomainPrefix:
+    Type: String
+    Description: Subdomain prefix (e.g. rfp)
+    Default: 'rfp'
+
+Conditions:
+  UseCustomDomain: !Equals [!Ref EnableCustomDomain, 'true']
+
+Resources:
+  # IAM Role for App Runner
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  # CloudWatch Log Group for App Runner
+  AppRunnerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apprunner/${AWS::StackName}'
+      RetentionInDays: 14
+
+  # App Runner Service (backend)
+  BackendAppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub 'polaris-backend-${Environment}'
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          ConnectionArn: !Ref CodeStarConnectionArn
+        CodeRepository:
+          RepositoryUrl: !Ref RepositoryUrl
+          SourceCodeVersion:
+            Type: BRANCH
+            Value: !Ref BranchName
+          CodeConfiguration:
+            ConfigurationSource: API
+            CodeConfigurationValues:
+              Runtime: NODEJS_22
+              BuildCommand: 'npm install --prefix backend'
+              StartCommand: 'npm start --prefix backend'
+              RuntimeEnvironmentVariables:
+                - Name: NODE_ENV
+                  Value: production
+                - Name: PORT
+                  Value: '8080'
+                # Used by backend CORS allowlist (see backend/server.js)
+                - Name: FRONTEND_URL
+                  Value: !If
+                    - UseCustomDomain
+                    - !Sub 'https://${CustomDomainPrefix}.${CustomDomainName}'
+                    - ''
+                - Name: TMPDIR
+                  Value: '/tmp'
+        AutoDeploymentsEnabled: true
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 2
+        UnhealthyThreshold: 5
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: Backend
+
+  # IAM Role for Amplify
+  AmplifyServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess-Amplify
+
+  # Amplify App (frontend)
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub 'polaris-frontend-${Environment}'
+      Repository: !Ref RepositoryUrl
+      AccessToken: !Ref GitHubToken
+      IAMServiceRole: !GetAtt AmplifyServiceRole.Arn
+      BuildSpec: |
+        version: 1
+        applications:
+          - frontend:
+              phases:
+                preBuild:
+                  commands:
+                    - npm ci
+                build:
+                  commands:
+                    - npm run build
+              artifacts:
+                baseDirectory: out
+                files:
+                  - '**/*'
+              cache:
+                paths: []
+            appRoot: frontend
+      EnvironmentVariables:
+        - Name: NODE_ENV
+          Value: !Ref Environment
+        # Next.js static export reads NEXT_PUBLIC_* at build time
+        - Name: API_BASE_URL
+          Value: !GetAtt BackendAppRunnerService.ServiceUrl
+        - Name: NEXT_PUBLIC_API_BASE_URL
+          Value: !GetAtt BackendAppRunnerService.ServiceUrl
+      CustomRules:
+        # SPA fallback for Next.js static export
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|svg|txt|woff|woff2|map|json)$)([^.]+$)/>'
+          Target: '/index.html'
+          Status: '200'
+      Platform: WEB
+
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: !Ref BranchName
+      Description: !Sub 'Branch ${BranchName} for ${Environment}'
+      EnableAutoBuild: true
+      EnablePullRequestPreview: true
+      EnvironmentVariables:
+        - Name: NODE_ENV
+          Value: !Ref Environment
+        - Name: API_BASE_URL
+          Value: !GetAtt BackendAppRunnerService.ServiceUrl
+        - Name: NEXT_PUBLIC_API_BASE_URL
+          Value: !GetAtt BackendAppRunnerService.ServiceUrl
+
+  AmplifyDomain:
+    Condition: UseCustomDomain
+    Type: AWS::Amplify::Domain
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      DomainName: !Ref CustomDomainName
+      SubDomainSettings:
+        - BranchName: !Ref BranchName
+          Prefix: !Ref CustomDomainPrefix
+
+Outputs:
+  BackendUrl:
+    Description: 'App Runner Service URL'
+    Value: !GetAtt BackendAppRunnerService.ServiceUrl
+
+  BackendArn:
+    Description: 'App Runner Service ARN'
+    Value: !GetAtt BackendAppRunnerService.ServiceArn
+
+  AmplifyAppId:
+    Description: 'Amplify App ID'
+    Value: !GetAtt AmplifyApp.AppId
+
+  AmplifyDefaultUrl:
+    Description: 'Amplify Default Branch URL'
+    Value: !Sub 'https://${BranchName}.${AmplifyApp.DefaultDomain}'

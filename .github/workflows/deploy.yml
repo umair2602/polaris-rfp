@@ -443,7 +443,9 @@ jobs:
       run: |
         aws amplify update-app \
           --app-id ${{ steps.get-app-id.outputs.app-id }} \
-          --environment-variables API_BASE_URL=${{ steps.get-backend-url.outputs.backend-url }}
+          --environment-variables \
+            API_BASE_URL=${{ steps.get-backend-url.outputs.backend-url }} \
+            NEXT_PUBLIC_API_BASE_URL=${{ steps.get-backend-url.outputs.backend-url }}
 
     - name: Trigger Frontend Rebuild
       run: |

@@ -17,16 +17,61 @@ const authRoutes = require("./routes/auth");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// CORS allowlist
+// - Local dev
+// - Custom prod domain(s) (e.g. https://rfp.polariseco.com)
+// - Amplify default domains / PR previews (e.g. https://main.<id>.amplifyapp.com)
+// - Optional extra origins via env: FRONTEND_URL and/or FRONTEND_URLS (comma-separated)
+const defaultAllowedOrigins = new Set([
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "https://rfp.polariseco.com",
+]);
+
+for (const v of [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]) {
+  if (!v) continue;
+  for (const origin of String(v)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    defaultAllowedOrigins.add(origin);
+  }
+}
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // curl/postman/health checks
+  if (defaultAllowedOrigins.has(origin)) return true;
+
+  // Allow any Amplify default domain / preview domain
+  // Examples:
+  // - https://main.d3abcdefg.amplifyapp.com
+  // - https://pr-123.d3abcdefg.amplifyapp.com
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== "https:" && protocol !== "http:") return false;
+
+    if (hostname.endsWith(".amplifyapp.com")) return true;
+    if (hostname === "amplifyapp.com") return true;
+
+    // Allow any subdomain of polariseco.com (covers rfp, www, etc.)
+    if (hostname === "polariseco.com" || hostname.endsWith(".polariseco.com"))
+      return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Middleware
 app.use(helmet());
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:3002",
-      "https://rfp.polariseco.com",
-    ],
+    origin: (origin, cb) => {
+      if (isAllowedOrigin(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked origin: ${origin}`));
+    },
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
